@@ -67,7 +67,8 @@ pip-delete-this-directory.txt
 # ========== Database ==========
 *.db
 *.sqlite3
-*.sql
+# Allow SQL setup scripts in scripts folder
+# *.sql
 
 # ========== Secrets & Configuration ==========
 .env
