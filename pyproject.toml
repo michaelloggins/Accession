@@ -1,0 +1,81 @@
+[project]
+name = "lab-document-intelligence"
+version = "1.0.0"
+description = "HIPAA-Compliant Lab Document Intelligence System"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+authors = [
+    {name = "Engineering Team", email = "engineering@example.com"}
+]
+keywords = ["hipaa", "healthcare", "ai", "document-processing", "fastapi"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Healthcare Industry",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "sqlalchemy>=2.0.0",
+    "openai>=1.6.0",
+    "azure-storage-blob>=12.19.0",
+    "azure-keyvault-secrets>=4.7.0",
+    "azure-identity>=1.15.0",
+    "cryptography>=41.0.0",
+    "pyjwt>=2.8.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "httpx>=0.25.0",
+    "jinja2>=3.1.0",
+    "python-multipart>=0.0.6",
+    "pyodbc>=5.0.0",
+    "alembic>=1.12.0",
+    "pymupdf>=1.23.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "pylint>=3.0.0",
+    "flake8>=6.1.0",
+    "black>=23.11.0",
+    "bandit>=1.7.0",
+    "safety>=2.3.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.pylint.main]
+max-line-length = 100
+disable = ["C0114", "C0115", "C0116"]  # Missing docstrings
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --cov=app --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*", "alembic/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

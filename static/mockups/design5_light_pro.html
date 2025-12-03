@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design 5: Light Mode Professional - MiraVista Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --mv-green: #8BC53F;
+            --mv-green-dark: #6da234;
+            --mv-green-light: #a8d665;
+            --light-bg: #f8faf5;
+            --light-card: #ffffff;
+            --light-card-hover: #f0f8e8;
+            --light-border: #e2e8d9;
+            --light-text: #2d3748;
+            --light-text-muted: #718096;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: var(--light-bg);
+            min-height: 100vh;
+            color: var(--light-text);
+        }
+
+        /* GRADIENT HEADER - Light Version */
+        .gradient-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f8e8 50%, #ffffff 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gradient-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('../images/white.jpg');
+            background-size: 500px;
+            opacity: 0.4;
+        }
+
+        /* TOP NAV */
+        .top-nav {
+            position: relative;
+            z-index: 10;
+            padding: 18px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--light-border);
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-area img {
+            height: 40px;
+        }
+
+        .logo-divider {
+            width: 1px;
+            height: 28px;
+            background: var(--light-border);
+        }
+
+        .brand-text {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--light-text-muted);
+        }
+
+        .brand-text strong {
+            color: var(--mv-green-dark);
+        }
+
+        .nav-center {
+            display: flex;
+            gap: 6px;
+            background: var(--light-bg);
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid var(--light-border);
+        }
+
+        .nav-link-light {
+            padding: 10px 22px;
+            color: var(--light-text-muted);
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-link-light:hover {
+            color: var(--light-text);
+            background: white;
+        }
+
+        .nav-link-light.active {
+            background: linear-gradient(135deg, var(--mv-green), var(--mv-green-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(139, 197, 63, 0.3);
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .session-badge {
+            background: rgba(139, 197, 63, 0.1);
+            border: 1px solid rgba(139, 197, 63, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--mv-green-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .icon-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: white;
+            border: 1px solid var(--light-border);
+            color: var(--light-text-muted);
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .icon-btn:hover {
+            background: var(--light-card-hover);
+            color: var(--mv-green);
+            border-color: var(--mv-green);
+        }
+
+        .icon-btn .badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 18px;
+            height: 18px;
+            background: var(--mv-green);
+            border-radius: 50%;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .user-avatar-light {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--mv-green), var(--mv-green-dark));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.3s;
+            box-shadow: 0 4px 15px rgba(139, 197, 63, 0.3);
+        }
+
+        .user-avatar-light:hover {
+            transform: scale(1.05);
+        }
+
+        /* HERO STATS SECTION */
+        .hero-stats {
+            position: relative;
+            z-index: 10;
+            padding: 35px 40px 45px;
+        }
+
+        .hero-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: var(--light-text);
+        }
+
+        .hero-title span {
+            background: linear-gradient(135deg, var(--mv-green), var(--mv-green-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            color: var(--light-text-muted);
+            margin-bottom: 30px;
+        }
+
+        .stats-grid-light {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .stat-card-light {
+            background: white;
+            border: 1px solid var(--light-border);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card-light::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--stat-color);
+        }
+
+        .stat-card-light:hover {
+            border-color: var(--stat-color);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(139, 197, 63, 0.15);
+        }
+
+        .stat-card-light.pending { --stat-color: #f59e0b; }
+        .stat-card-light.review { --stat-color: #3b82f6; }
+        .stat-card-light.approved { --stat-color: var(--mv-green); }
+        .stat-card-light.rejected { --stat-color: #ef4444; }
+
+        .stat-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .stat-icon-light {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .stat-card-light.pending .stat-icon-light { background: #fef3c7; color: #d97706; }
+        .stat-card-light.review .stat-icon-light { background: #dbeafe; color: #2563eb; }
+        .stat-card-light.approved .stat-icon-light { background: #dcfce7; color: var(--mv-green-dark); }
+        .stat-card-light.rejected .stat-icon-light { background: #fee2e2; color: #dc2626; }
+
+        .stat-change {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .stat-change.up { background: #dcfce7; color: #166534; }
+        .stat-change.down { background: #fee2e2; color: #dc2626; }
+
+        .stat-value-light {
+            font-size: 2.75rem;
+            font-weight: 800;
+            color: var(--light-text);
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .stat-label-light {
+            color: var(--light-text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* MAIN CONTENT */
+        .main-content-light {
+            padding: 0 40px 40px;
+        }
+
+        .content-grid-light {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 25px;
+        }
+
+        /* LIGHT CARDS */
+        .card-light {
+            background: white;
+            border: 1px solid var(--light-border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        }
+
+        .card-light-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--light-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #fafffe, #f8faf5);
+        }
+
+        .card-light-title {
+            font-size: 1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--light-text);
+        }
+
+        .card-light-title i {
+            color: var(--mv-green);
+        }
+
+        .view-all-link {
+            color: var(--mv-green-dark);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .view-all-link:hover {
+            text-decoration: underline;
+        }
+
+        /* TABLE LIGHT */
+        .table-light-custom {
+            width: 100%;
+        }
+
+        .table-light-custom th {
+            padding: 14px 20px;
+            text-align: left;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--light-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #f8faf5;
+            border-bottom: 1px solid var(--light-border);
+        }
+
+        .table-light-custom td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f4e8;
+            font-size: 0.9rem;
+        }
+
+        .table-light-custom tr:hover {
+            background: var(--light-card-hover);
+        }
+
+        .accession-light {
+            font-weight: 600;
+            color: var(--mv-green-dark);
+        }
+
+        .facility-light {
+            color: var(--light-text);
+        }
+
+        .facility-light small {
+            display: block;
+            color: var(--light-text-muted);
+            font-size: 0.8rem;
+        }
+
+        .confidence-badge-light {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .confidence-badge-light.high { background: #dcfce7; color: #166534; }
+        .confidence-badge-light.medium { background: #fef3c7; color: #92400e; }
+        .confidence-badge-light.low { background: #fee2e2; color: #991b1b; }
+
+        .status-light {
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-light.pending { background: #fef3c7; color: #92400e; }
+        .status-light.review { background: #dbeafe; color: #1e40af; }
+        .status-light.approved { background: #dcfce7; color: #166534; }
+        .status-light.rejected { background: #fee2e2; color: #991b1b; }
+
+        .source-light {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #f1f5f9;
+            color: var(--light-text-muted);
+        }
+
+        .action-btn-light {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid var(--light-border);
+            background: white;
+            color: var(--light-text-muted);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-btn-light:hover {
+            border-color: var(--mv-green);
+            color: var(--mv-green);
+            background: #f0fdf4;
+        }
+
+        /* SIDEBAR LIGHT */
+        .sidebar-light {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* UPLOAD LIGHT */
+        .upload-light {
+            padding: 25px;
+        }
+
+        .upload-zone-light {
+            border: 2px dashed var(--mv-green);
+            border-radius: 16px;
+            padding: 40px 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, #fafffe, #f0fdf4);
+        }
+
+        .upload-zone-light:hover {
+            border-color: var(--mv-green-dark);
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            transform: scale(1.02);
+        }
+
+        .upload-icon-light {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--mv-green), var(--mv-green-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 1.8rem;
+            color: white;
+            box-shadow: 0 8px 30px rgba(139, 197, 63, 0.4);
+        }
+
+        .upload-text-light {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--light-text);
+        }
+
+        .upload-hint-light {
+            color: var(--light-text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* QUICK ACTIONS LIGHT */
+        .quick-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .quick-btn-light {
+            padding: 18px 15px;
+            background: var(--light-bg);
+            border: 1px solid var(--light-border);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .quick-btn-light:hover {
+            border-color: var(--mv-green);
+            background: #f0fdf4;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(139, 197, 63, 0.15);
+        }
+
+        .quick-btn-light i {
+            font-size: 1.5rem;
+            color: var(--mv-green);
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .quick-btn-light span {
+            font-size: 0.85rem;
+            color: var(--light-text);
+            font-weight: 500;
+        }
+
+        /* PERFORMANCE WIDGET */
+        .perf-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            padding: 20px;
+        }
+
+        .perf-item {
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #fafffe, #f0fdf4);
+            border-radius: 12px;
+            border: 1px solid #e2e8d9;
+        }
+
+        .perf-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--mv-green-dark);
+            margin-bottom: 5px;
+        }
+
+        .perf-label {
+            font-size: 0.75rem;
+            color: var(--light-text-muted);
+        }
+
+        /* HIPAA LIGHT */
+        .hipaa-light {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: white;
+            border: 1px solid var(--light-border);
+            padding: 12px 22px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--mv-green-dark);
+            box-shadow: 0 4px 20px rgba(139, 197, 63, 0.2);
+        }
+
+        /* SUBTLE GLOW EFFECT */
+        .glow-light {
+            box-shadow: 0 4px 25px rgba(139, 197, 63, 0.12);
+        }
+    </style>
+</head>
+<body>
+    <!-- GRADIENT HEADER -->
+    <div class="gradient-header">
+        <!-- TOP NAV -->
+        <nav class="top-nav">
+            <div class="logo-area">
+                <img src="../images/miravista_logo_transparent.png" alt="MiraVista">
+                <div class="logo-divider"></div>
+                <div class="brand-text">Lab <strong>Intelligence</strong> Platform</div>
+            </div>
+
+            <div class="nav-center">
+                <a href="#" class="nav-link-light active">
+                    <i class="bi bi-grid-1x2-fill"></i> Dashboard
+                </a>
+                <a href="#" class="nav-link-light">
+                    <i class="bi bi-file-medical"></i> Documents
+                </a>
+                <a href="#" class="nav-link-light">
+                    <i class="bi bi-clipboard-check"></i> Review
+                </a>
+                <a href="#" class="nav-link-light">
+                    <i class="bi bi-graph-up-arrow"></i> Analytics
+                </a>
+                <a href="#" class="nav-link-light">
+                    <i class="bi bi-gear-wide-connected"></i> Admin
+                </a>
+            </div>
+
+            <div class="nav-right">
+                <div class="session-badge">
+                    <i class="bi bi-shield-lock"></i>
+                    Session: 14:32
+                </div>
+                <button class="icon-btn">
+                    <i class="bi bi-bell"></i>
+                    <span class="badge">5</span>
+                </button>
+                <button class="icon-btn">
+                    <i class="bi bi-question-circle"></i>
+                </button>
+                <div class="user-avatar-light">JD</div>
+            </div>
+        </nav>
+
+        <!-- HERO STATS -->
+        <div class="hero-stats">
+            <h1 class="hero-title">Welcome back, <span>Dr. Jane Doe</span></h1>
+            <p class="hero-subtitle">You have 12 documents awaiting review • Monday, December 1, 2025</p>
+
+            <div class="stats-grid-light">
+                <div class="stat-card-light pending glow-light">
+                    <div class="stat-top">
+                        <div class="stat-icon-light"><i class="bi bi-hourglass-split"></i></div>
+                        <span class="stat-change up">+5 today</span>
+                    </div>
+                    <div class="stat-value-light">24</div>
+                    <div class="stat-label-light">Pending Extraction</div>
+                </div>
+                <div class="stat-card-light review">
+                    <div class="stat-top">
+                        <div class="stat-icon-light"><i class="bi bi-eye"></i></div>
+                        <span class="stat-change down">-3</span>
+                    </div>
+                    <div class="stat-value-light">12</div>
+                    <div class="stat-label-light">Awaiting Review</div>
+                </div>
+                <div class="stat-card-light approved">
+                    <div class="stat-top">
+                        <div class="stat-icon-light"><i class="bi bi-check2-circle"></i></div>
+                        <span class="stat-change up">+23%</span>
+                    </div>
+                    <div class="stat-value-light">156</div>
+                    <div class="stat-label-light">Approved Today</div>
+                </div>
+                <div class="stat-card-light rejected">
+                    <div class="stat-top">
+                        <div class="stat-icon-light"><i class="bi bi-x-circle"></i></div>
+                        <span class="stat-change down">-2</span>
+                    </div>
+                    <div class="stat-value-light">3</div>
+                    <div class="stat-label-light">Rejected</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content-light">
+        <div class="content-grid-light">
+            <!-- DOCUMENTS TABLE -->
+            <div class="card-light">
+                <div class="card-light-header">
+                    <div class="card-light-title">
+                        <i class="bi bi-table"></i>
+                        Recent Documents
+                    </div>
+                    <a href="#" class="view-all-link">View All <i class="bi bi-arrow-right"></i></a>
+                </div>
+                <table class="table-light-custom">
+                    <thead>
+                        <tr>
+                            <th>Accession #</th>
+                            <th>Facility</th>
+                            <th>Confidence</th>
+                            <th>Status</th>
+                            <th>Source</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="accession-light">MVD-2024-001234</td>
+                            <td class="facility-light">
+                                Indianapolis Vet Clinic
+                                <small>Max (Canine)</small>
+                            </td>
+                            <td><span class="confidence-badge-light high">96%</span></td>
+                            <td><span class="status-light review">In Review</span></td>
+                            <td><span class="source-light">Email</span></td>
+                            <td>
+                                <button class="action-btn-light"><i class="bi bi-eye"></i></button>
+                                <button class="action-btn-light"><i class="bi bi-pencil"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="accession-light">MVD-2024-001233</td>
+                            <td class="facility-light">
+                                Central Animal Hospital
+                                <small>Bella (Feline)</small>
+                            </td>
+                            <td><span class="confidence-badge-light medium">78%</span></td>
+                            <td><span class="status-light pending">Pending</span></td>
+                            <td><span class="source-light">Fax</span></td>
+                            <td>
+                                <button class="action-btn-light"><i class="bi bi-eye"></i></button>
+                                <button class="action-btn-light"><i class="bi bi-pencil"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="accession-light">MVD-2024-001232</td>
+                            <td class="facility-light">
+                                Unity Health Partners
+                                <small>John Smith</small>
+                            </td>
+                            <td><span class="confidence-badge-light high">98%</span></td>
+                            <td><span class="status-light approved">Approved</span></td>
+                            <td><span class="source-light">API</span></td>
+                            <td>
+                                <button class="action-btn-light"><i class="bi bi-eye"></i></button>
+                                <button class="action-btn-light"><i class="bi bi-pencil"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="accession-light">MVD-2024-001231</td>
+                            <td class="facility-light">
+                                Midwest Pet Care
+                                <small>Cooper (Canine)</small>
+                            </td>
+                            <td><span class="confidence-badge-light high">94%</span></td>
+                            <td><span class="status-light approved">Approved</span></td>
+                            <td><span class="source-light">Scan</span></td>
+                            <td>
+                                <button class="action-btn-light"><i class="bi bi-eye"></i></button>
+                                <button class="action-btn-light"><i class="bi bi-pencil"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SIDEBAR -->
+            <div class="sidebar-light">
+                <!-- UPLOAD -->
+                <div class="card-light">
+                    <div class="card-light-header">
+                        <div class="card-light-title">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                            Quick Upload
+                        </div>
+                    </div>
+                    <div class="upload-light">
+                        <div class="upload-zone-light">
+                            <div class="upload-icon-light">
+                                <i class="bi bi-cloud-arrow-up"></i>
+                            </div>
+                            <div class="upload-text-light">Drop files here</div>
+                            <div class="upload-hint-light">PDF, JPG, PNG up to 10MB</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QUICK ACTIONS -->
+                <div class="card-light">
+                    <div class="card-light-header">
+                        <div class="card-light-title">
+                            <i class="bi bi-lightning-charge"></i>
+                            Quick Actions
+                        </div>
+                    </div>
+                    <div class="quick-grid">
+                        <a href="#" class="quick-btn-light">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>Manual Entry</span>
+                        </a>
+                        <a href="#" class="quick-btn-light">
+                            <i class="bi bi-folder2-open"></i>
+                            <span>Bulk Import</span>
+                        </a>
+                        <a href="#" class="quick-btn-light">
+                            <i class="bi bi-clipboard-data"></i>
+                            <span>Reports</span>
+                        </a>
+                        <a href="#" class="quick-btn-light">
+                            <i class="bi bi-building"></i>
+                            <span>Facilities</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- PERFORMANCE -->
+                <div class="card-light">
+                    <div class="card-light-header">
+                        <div class="card-light-title">
+                            <i class="bi bi-speedometer2"></i>
+                            Today's Performance
+                        </div>
+                    </div>
+                    <div class="perf-grid">
+                        <div class="perf-item">
+                            <div class="perf-value">94.2%</div>
+                            <div class="perf-label">Avg Confidence</div>
+                        </div>
+                        <div class="perf-item">
+                            <div class="perf-value">2.3s</div>
+                            <div class="perf-label">Process Time</div>
+                        </div>
+                        <div class="perf-item">
+                            <div class="perf-value">189</div>
+                            <div class="perf-label">Processed</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HIPAA BADGE -->
+    <div class="hipaa-light">
+        <i class="bi bi-shield-check"></i>
+        HIPAA Compliant
+    </div>
+</body>
+</html>

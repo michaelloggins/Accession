@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+
+{% block title %}Documents - Lab Document Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--card-shadow);
+    }
+
+    .document-row {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .document-row:hover {
+        background-color: var(--table-row-hover);
+    }
+
+    .badge-processing {
+        background-color: var(--info);
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+
+    .source-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .table-sm td, .table-sm th {
+        padding: 0.5rem;
+    }
+
+    .search-highlight {
+        background-color: rgba(245, 158, 11, 0.2);
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+
+    /* Card footer styling */
+    .card-footer {
+        background: var(--bg-tertiary) !important;
+        border-top: 1px solid var(--border-color);
+    }
+
+    /* Pagination styling */
+    .page-link {
+        background: var(--bg-secondary);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .page-link:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--mv-green);
+        color: var(--mv-green);
+    }
+
+    .page-item.active .page-link {
+        background: var(--mv-green);
+        border-color: var(--mv-green);
+        color: white;
+    }
+
+    .page-item.disabled .page-link {
+        background: var(--bg-tertiary);
+        border-color: var(--border-color);
+        color: var(--text-secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4><i class="bi bi-file-earmark-text"></i> Documents</h4>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="refreshDocuments()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+                <a href="/dashboard" class="btn btn-primary btn-sm">
+                    <i class="bi bi-upload"></i> Upload New
+                </a>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-card">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="searchInput"
+                           placeholder="Accession #, facility, filename..." onkeyup="debounceSearch()">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Status</label>
+                    <select class="form-select form-select-sm" id="statusFilter" onchange="loadDocuments()">
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending Review</option>
+                        <option value="auto_approved">Auto-Approved</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="processing">Processing</option>
+                        <option value="queued">Queued</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Processing Status</label>
+                    <select class="form-select form-select-sm" id="procStatusFilter" onchange="loadDocuments()">
+                        <option value="">All</option>
+                        <option value="queued">Queued</option>
+                        <option value="processing">Processing</option>
+                        <option value="extracted">Extracted</option>
+                        <option value="failed">Failed</option>
+                        <option value="pending">Pending Extraction</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Source</label>
+                    <select class="form-select form-select-sm" id="sourceFilter" onchange="loadDocuments()">
+                        <option value="">All Sources</option>
+                        <option value="upload">Manual Upload</option>
+                        <option value="blob_upload">Blob Storage</option>
+                        <option value="email">Email</option>
+                        <option value="fax">Fax</option>
+                        <option value="scanner">Scanner</option>
+                        <option value="manual">Manual Entry</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Date Range</label>
+                    <select class="form-select form-select-sm" id="dateFilter" onchange="loadDocuments()">
+                        <option value="">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="clearFilters()">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents Table -->
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 120px;">Accession #</th>
+                                <th>Filename</th>
+                                <th>Facility</th>
+                                <th style="width: 100px;">Source</th>
+                                <th style="width: 150px;">Upload Date</th>
+                                <th style="width: 100px;">Confidence</th>
+                                <th style="width: 120px;">Status</th>
+                                <th style="width: 120px;">Proc. Status</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="documentsTable">
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                    Loading documents...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <div class="text-muted small">
+                    Showing <span id="showingCount">0</span> of <span id="totalCount">0</span> documents
+                </div>
+                <nav id="pagination">
+                    <!-- Pagination will be inserted here -->
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    const pageSize = 50;
+    let searchTimeout = null;
+
+    // Get auth headers - checks localStorage first, then js_access_token cookie (for SAML SSO)
+    function getAuthHeaders() {
+        let token = localStorage.getItem('access_token');
+
+        // If no token in localStorage, check for js_access_token cookie (set by SAML SSO)
+        if (!token) {
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'js_access_token' && value) {
+                    token = value;
+                    // Cache in localStorage for future requests
+                    localStorage.setItem('access_token', token);
+                    break;
+                }
+            }
+        }
+
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDocuments();
+    });
+
+    function debounceSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1;
+            loadDocuments();
+        }, 300);
+    }
+
+    function clearFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('procStatusFilter').value = '';
+        document.getElementById('sourceFilter').value = '';
+        document.getElementById('dateFilter').value = '';
+        currentPage = 1;
+        loadDocuments();
+    }
+
+    async function loadDocuments() {
+        const tbody = document.getElementById('documentsTable');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    Loading documents...
+                </td>
+            </tr>
+        `;
+
+        const params = new URLSearchParams();
+        params.append('skip', (currentPage - 1) * pageSize);
+        params.append('limit', pageSize);
+
+        const status = document.getElementById('statusFilter').value;
+        const procStatus = document.getElementById('procStatusFilter').value;
+        const source = document.getElementById('sourceFilter').value;
+        const search = document.getElementById('searchInput').value;
+        const dateFilter = document.getElementById('dateFilter').value;
+
+        if (status) params.append('status', status);
+        if (procStatus) params.append('processing_status', procStatus);
+        if (source) params.append('source', source);
+        if (search) params.append('search', search);
+        if (dateFilter) params.append('date_range', dateFilter);
+
+        try {
+            const response = await fetch(`/api/documents/?${params.toString()}`, {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            renderDocuments(data.documents || []);
+            updatePagination(data.total || 0);
+
+        } catch (error) {
+            console.error('Failed to load documents:', error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center py-4 text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Failed to load documents
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    function renderDocuments(documents) {
+        const tbody = document.getElementById('documentsTable');
+
+        if (documents.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center py-4 text-muted">
+                        No documents found matching your filters
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = documents.map(doc => `
+            <tr class="document-row ${doc.processing_status === 'failed' ? 'table-danger clickable-error' : ''}"
+                onclick="${doc.processing_status === 'failed' ? `showDocumentError(${doc.id}, '${escapeHtml(doc.accession_number)}', '${escapeHtml(doc.last_extraction_error || '')}')` : `viewDocument(${doc.id})`}"
+                ${doc.processing_status === 'failed' ? 'title="Click to view error details"' : ''}>
+                <td><strong>${doc.accession_number}</strong></td>
+                <td class="text-truncate" style="max-width: 200px;" title="${doc.filename || '-'}">
+                    ${doc.filename || '<span class="text-muted">-</span>'}
+                </td>
+                <td class="text-truncate" style="max-width: 180px;" title="${doc.facility_name || ''}">
+                    ${doc.facility_name || '<span class="text-muted">-</span>'}
+                </td>
+                <td>${getSourceBadge(doc.source)}</td>
+                <td>${formatLocalDate(doc.upload_date)}</td>
+                <td>${formatConfidence(doc.confidence_score, doc.processing_status)}</td>
+                <td>${getStatusBadge(doc.status)}</td>
+                <td>${getProcStatusBadge(doc.processing_status)}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/review/${doc.id}" class="btn btn-outline-primary" onclick="event.stopPropagation();">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        ${doc.processing_status === 'failed' ? `
+                            <button class="btn btn-outline-warning" onclick="event.stopPropagation(); reExtract(${doc.id});" title="Re-extract">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function getSourceBadge(source) {
+        const badges = {
+            'upload': '<span class="badge bg-primary source-badge">Upload</span>',
+            'blob_upload': '<span class="badge bg-info source-badge">Blob</span>',
+            'email': '<span class="badge bg-success source-badge">Email</span>',
+            'fax': '<span class="badge bg-warning text-dark source-badge">Fax</span>',
+            'scanner': '<span class="badge bg-secondary source-badge">Scanner</span>',
+            'manual': '<span class="badge bg-dark source-badge">Manual</span>',
+            'api': '<span class="badge bg-light text-dark source-badge">API</span>'
+        };
+        return badges[source] || `<span class="badge bg-secondary source-badge">${source || '-'}</span>`;
+    }
+
+    function getStatusBadge(status) {
+        const badges = {
+            'pending': '<span class="badge bg-warning text-dark">Pending</span>',
+            'processing': '<span class="badge bg-info">Processing</span>',
+            'auto_approved': '<span class="badge bg-success">Auto-Approved</span>',
+            'approved': '<span class="badge bg-primary">Approved</span>',
+            'rejected': '<span class="badge bg-danger">Rejected</span>',
+            'reviewed': '<span class="badge bg-secondary">Reviewed</span>'
+        };
+        return badges[status] || `<span class="badge bg-secondary">${status || '-'}</span>`;
+    }
+
+    function getProcStatusBadge(status) {
+        const badges = {
+            'queued': '<span class="badge bg-info"><i class="bi bi-clock"></i> Queued</span>',
+            'processing': '<span class="badge badge-processing"><i class="bi bi-hourglass-split"></i> Processing</span>',
+            'extracted': '<span class="badge bg-success"><i class="bi bi-check"></i> Extracted</span>',
+            'failed': '<span class="badge bg-danger"><i class="bi bi-x"></i> Failed</span>',
+            'pending': '<span class="badge bg-secondary">Pending</span>',
+            'manual': '<span class="badge bg-dark">Manual</span>'
+        };
+        return badges[status] || `<span class="badge bg-secondary">${status || '-'}</span>`;
+    }
+
+    function formatConfidence(score, procStatus) {
+        if (procStatus === 'queued' || procStatus === 'processing') {
+            return '<span class="text-muted">-</span>';
+        }
+        if (score === null || score === undefined || isNaN(score)) {
+            return '<span class="text-muted">-</span>';
+        }
+        const percent = (score * 100).toFixed(1);
+        const colorClass = score >= 0.9 ? 'text-success' : score >= 0.7 ? 'text-warning' : 'text-danger';
+        return `<span class="${colorClass}">${percent}%</span>`;
+    }
+
+    function updatePagination(total) {
+        document.getElementById('showingCount').textContent =
+            Math.min((currentPage - 1) * pageSize + 1, total) + '-' + Math.min(currentPage * pageSize, total);
+        document.getElementById('totalCount').textContent = total;
+
+        const totalPages = Math.ceil(total / pageSize);
+        const pagination = document.getElementById('pagination');
+
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+
+        let html = '<ul class="pagination pagination-sm mb-0">';
+
+        // Previous button
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="goToPage(${currentPage - 1}); return false;">Previous</a>
+        </li>`;
+
+        // Page numbers (show max 5)
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, startPage + 4);
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="goToPage(${i}); return false;">${i}</a>
+            </li>`;
+        }
+
+        // Next button
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="goToPage(${currentPage + 1}); return false;">Next</a>
+        </li>`;
+
+        html += '</ul>';
+        pagination.innerHTML = html;
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        loadDocuments();
+    }
+
+    function viewDocument(id) {
+        window.location.href = `/review/${id}`;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML.replace(/'/g, "\\'").replace(/"/g, '\\"');
+    }
+
+    function showDocumentError(docId, accessionNumber, errorMessage) {
+        showErrorDetail(
+            `Document: ${accessionNumber}`,
+            errorMessage,
+            '<span class="badge bg-danger"><i class="bi bi-x"></i> Failed</span>',
+            function() { reExtract(docId); }
+        );
+    }
+
+    async function reExtract(documentId) {
+        if (!confirm('Re-extract this document? Previous extraction data will be replaced.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/documents/${documentId}/re-extract`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                alert('Document queued for re-extraction');
+                loadDocuments();
+            } else {
+                const data = await response.json();
+                alert('Failed: ' + (data.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    function refreshDocuments() {
+        loadDocuments();
+    }
+</script>
+{% endblock %}

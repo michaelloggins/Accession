@@ -1,0 +1,273 @@
+EXECUTION INSTRUCTIONS FOR LAB DOCUMENT EXTRACTION
+
+## HOW TO USE THESE PROMPTS:
+
+These prompts work together in a two-part message structure for Azure OpenAI:
+
+1. **system.txt** = System Message (defines AI behavior and rules)
+2. **user.txt** = User Message (defines what to extract and output format)
+3. **Document Image/PDF** = Sent with the user message
+
+## AZURE OPENAI API CALL STRUCTURE:
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "<contents of system.txt>"
+    },
+    {
+        "role": "user",
+        "content": [
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": "data:image/jpeg;base64,<base64_encoded_document>",
+                    "detail": "high"
+                }
+            },
+            {
+                "type": "text",
+                "text": "<contents of user.txt>"
+            }
+        ]
+    }
+]
+
+response = client.chat.completions.create(
+    model="gpt-4-vision",  # Your deployment name
+    messages=messages,
+    temperature=0,  # CRITICAL: Use 0 for deterministic extraction
+    max_tokens=2000,
+    top_p=1.0,
+    frequency_penalty=0,
+    presence_penalty=0
+)
+```
+
+## CRITICAL SETTINGS:
+
+- **temperature=0**: Ensures consistent, deterministic output (no randomness)
+- **max_tokens=2000**: Sufficient for most lab forms
+- **detail="high"**: Use high detail for medical documents
+- **Fresh messages array**: Create new array for each document (no conversation history)
+
+## WHAT EACH PROMPT DOES:
+
+### system.txt (System Message):
+- Establishes AI's role as a medical document extraction specialist
+- Sets core principles: accuracy over completeness, zero hallucination
+- Defines what the AI should and should not do
+- Applies to ALL documents processed
+
+### user.txt (User Message):
+- Lists all specific fields to extract
+- Provides field-level instructions (formats, options)
+- Defines confidence scoring guidelines
+- Specifies exact JSON output structure
+
+### Document (Image/PDF):
+- The actual form to be processed
+- Sent as base64-encoded data URI
+- Can be PDF, PNG, JPG, TIFF
+
+## PREVENTING HALLUCINATION:
+
+1. **Use temperature=0** - No randomness in output
+2. **Fresh message array each time** - No conversation history
+3. **Explicit instructions** - System prompt forbids inference
+4. **Validation required** - Always validate extracted data
+
+## WORKFLOW:
+
+1. Load system.txt content → System message
+2. Load user.txt content → Part of user message
+3. Encode document as base64 → Part of user message
+4. Send both messages to Azure OpenAI
+5. Parse JSON response
+6. Validate extracted data
+7. If confidence < 0.90 → Send to human review
+8. If confidence >= 0.90 → Auto-approve (optional)
+
+## RESPONSE HANDLING:
+
+The model will return JSON. Sometimes it may include markdown:
+
+```json
+{
+  "patient_name": "John Doe",
+  ...
+}
+```
+
+Your code should:
+1. Strip markdown code blocks (```json and ```)
+2. Parse JSON
+3. Validate structure
+4. Check confidence_score is between 0.0 and 1.0
+5. Ensure required fields are present (can be null)
+
+## POST-PROCESSING VALIDATION:
+
+After extraction, validate:
+- Date formats (YYYY-MM-DD)
+- Phone formats ((XXX) XXX-XXXX)
+- ICD-10 code formats (Letter + digits)
+- Age from DOB is reasonable (<150 years)
+- Collection date not in far future
+- Tests requested is an array
+- Confidence score is 0.0-1.0
+
+## CONFIDENCE THRESHOLDS:
+
+Recommended thresholds:
+- **>= 0.90**: Auto-approve and submit to lab system
+- **0.70 - 0.89**: Require human review and correction
+- **< 0.70**: Flag for urgent review (poor quality or wrong document)
+
+## DOCUMENT ISOLATION (CRITICAL):
+
+Each extraction MUST be independent:
+- ✓ Create fresh messages array for each document
+- ✓ No assistant messages in array (no conversation history)
+- ✓ Each call is stateless and independent
+- ✗ Never reuse messages array across documents
+- ✗ Never include previous extractions in context
+
+## COST ESTIMATION:
+
+Per document (approximate):
+- System prompt: ~500 tokens
+- User prompt: ~800 tokens
+- Image processing: ~1000 tokens (varies by size)
+- Response: ~500 tokens
+- Total: ~2800 tokens per document
+
+At GPT-4 Vision pricing (~$0.03/1K input, ~$0.06/1K output):
+- Cost per document: ~$0.08 - $0.12
+
+## ERROR HANDLING:
+
+Common errors and solutions:
+- **Rate limit (429)**: Implement exponential backoff, retry after 2^n seconds
+- **Timeout**: Retry with same request
+- **Invalid JSON response**: Strip markdown and re-parse
+- **Missing fields**: Acceptable if null, validate structure only
+- **Low confidence**: Send to human review queue
+
+## EXAMPLE PYTHON IMPLEMENTATION:
+
+```python
+import base64
+from openai import AzureOpenAI
+
+# Initialize client
+client = AzureOpenAI(
+    api_key="your-api-key",
+    api_version="2024-02-15-preview",
+    azure_endpoint="https://your-resource.openai.azure.com/"
+)
+
+# Read prompts
+with open('system.txt', 'r') as f:
+    system_prompt = f.read()
+
+with open('user.txt', 'r') as f:
+    user_prompt = f.read()
+
+# Read and encode document
+with open('lab_form.pdf', 'rb') as f:
+    document_bytes = f.read()
+    document_base64 = base64.b64encode(document_bytes).decode('utf-8')
+
+# Build messages
+messages = [
+    {
+        "role": "system",
+        "content": system_prompt
+    },
+    {
+        "role": "user",
+        "content": [
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:application/pdf;base64,{document_base64}",
+                    "detail": "high"
+                }
+            },
+            {
+                "type": "text",
+                "text": user_prompt
+            }
+        ]
+    }
+]
+
+# Call API
+response = client.chat.completions.create(
+    model="gpt-4-vision",
+    messages=messages,
+    temperature=0,
+    max_tokens=2000
+)
+
+# Extract result
+result_text = response.choices[0].message.content
+
+# Parse JSON (handle markdown if present)
+import json
+if result_text.startswith('```'):
+    result_text = result_text.split('```')[1]
+    if result_text.startswith('json'):
+        result_text = result_text[4:]
+    result_text = result_text.strip()
+
+extracted_data = json.loads(result_text)
+
+# Use extracted data
+print(f"Patient: {extracted_data['patient_name']}")
+print(f"Confidence: {extracted_data['confidence_score']}")
+```
+
+## PROMPT VERSIONING:
+
+Store multiple versions for A/B testing:
+- system_v1.txt, system_v2.txt
+- user_v1.txt, user_v2.txt
+
+Track which version was used for each extraction to measure performance.
+
+## MONITORING:
+
+Track these metrics:
+- Average confidence score
+- Extraction time (should be <30 seconds)
+- Fields extracted successfully (by field)
+- Human correction rate
+- Cost per document
+- API error rate
+
+## UPDATING PROMPTS:
+
+When updating prompts:
+1. Save as new version (e.g., user_v3.txt)
+2. Test with 50-100 sample documents
+3. Compare accuracy to current version
+4. If better, promote to default
+5. Keep old versions for rollback
+
+## KEY REMINDERS:
+
+✓ Always use temperature=0
+✓ Create fresh messages array for each document
+✓ Validate all extracted data
+✓ Log confidence scores and extraction metadata
+✓ Send low-confidence extractions to human review
+✓ Never assume the model "remembers" previous documents
+✓ Monitor costs and performance metrics
+✓ Version your prompts for continuous improvement
+
+---
+
+END OF EXECUTION INSTRUCTIONS

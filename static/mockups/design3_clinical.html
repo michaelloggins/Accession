@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design 3: Clinical Dashboard - MiraVista Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --mv-green: #8BC53F;
+            --mv-green-dark: #6da234;
+            --mv-green-light: #a8d665;
+            --mv-gray: #2d3748;
+            --mv-gray-light: #718096;
+            --mv-bg: #f7fafc;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: var(--mv-bg);
+            min-height: 100vh;
+        }
+
+        /* COMPACT TOP BAR */
+        .top-bar {
+            background: var(--mv-green);
+            padding: 8px 0;
+            color: white;
+        }
+
+        .top-bar-inner {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 0 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .top-bar a {
+            color: white;
+            opacity: 0.9;
+            text-decoration: none;
+            margin-left: 20px;
+        }
+
+        .top-bar a:hover {
+            opacity: 1;
+        }
+
+        /* MAIN HEADER */
+        .main-header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 18px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand-area {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .brand-area img {
+            height: 42px;
+        }
+
+        /* HORIZONTAL TABS */
+        .nav-tabs-clinical {
+            display: flex;
+            gap: 5px;
+            background: #f1f5f9;
+            padding: 5px;
+            border-radius: 12px;
+        }
+
+        .nav-tab {
+            padding: 10px 22px;
+            color: var(--mv-gray-light);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-tab:hover {
+            color: var(--mv-gray);
+            background: white;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: var(--mv-green);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: #f1f5f9;
+            border-radius: 10px;
+            padding: 10px 16px;
+            width: 280px;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            width: 100%;
+            margin-left: 10px;
+            font-size: 0.9rem;
+        }
+
+        .search-box i {
+            color: var(--mv-gray-light);
+        }
+
+        .notification-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background: #f1f5f9;
+            border: none;
+            color: var(--mv-gray-light);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .notification-btn:hover {
+            background: #e2e8f0;
+            color: var(--mv-gray);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 18px;
+            height: 18px;
+            background: #ef4444;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .user-menu-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--mv-green), var(--mv-green-dark));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .user-menu-info {
+            line-height: 1.3;
+        }
+
+        .user-menu-name {
+            font-weight: 600;
+            color: var(--mv-gray);
+            font-size: 0.9rem;
+        }
+
+        .user-menu-role {
+            font-size: 0.75rem;
+            color: var(--mv-gray-light);
+        }
+
+        /* DASHBOARD CONTAINER */
+        .dashboard-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        /* PAGE HEADER */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--mv-gray);
+        }
+
+        .page-subtitle {
+            color: var(--mv-gray-light);
+            font-size: 0.95rem;
+            margin-top: 5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-clinical {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-clinical.primary {
+            background: var(--mv-green);
+            color: white;
+        }
+
+        .btn-clinical.primary:hover {
+            background: var(--mv-green-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-clinical.secondary {
+            background: white;
+            color: var(--mv-gray);
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-clinical.secondary:hover {
+            border-color: var(--mv-green);
+            color: var(--mv-green);
+        }
+
+        /* STATS ROW */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .clinical-stat {
+            background: white;
+            border-radius: 16px;
+            padding: 22px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+
+        .clinical-stat:hover {
+            border-color: var(--mv-green);
+            box-shadow: 0 4px 20px rgba(139, 197, 63, 0.1);
+        }
+
+        .clinical-stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .clinical-stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .clinical-stat.total .clinical-stat-icon { background: #f0fdf4; color: var(--mv-green); }
+        .clinical-stat.pending .clinical-stat-icon { background: #fef3c7; color: #d97706; }
+        .clinical-stat.review .clinical-stat-icon { background: #dbeafe; color: #2563eb; }
+        .clinical-stat.approved .clinical-stat-icon { background: #dcfce7; color: #16a34a; }
+        .clinical-stat.rejected .clinical-stat-icon { background: #fee2e2; color: #dc2626; }
+
+        .clinical-stat-badge {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .clinical-stat-badge.up { background: #dcfce7; color: #16a34a; }
+        .clinical-stat-badge.down { background: #fee2e2; color: #dc2626; }
+        .clinical-stat-badge.neutral { background: #f1f5f9; color: #64748b; }
+
+        .clinical-stat-value {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--mv-gray);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .clinical-stat-label {
+            font-size: 0.85rem;
+            color: var(--mv-gray-light);
+            font-weight: 500;
+        }
+
+        /* MAIN CONTENT LAYOUT */
+        .content-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 25px;
+        }
+
+        /* CLINICAL CARD */
+        .clinical-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        .clinical-card-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clinical-card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--mv-gray);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .clinical-card-title i {
+            color: var(--mv-green);
+            font-size: 1.1rem;
+        }
+
+        /* FILTER BAR */
+        .filter-bar {
+            padding: 15px 25px;
+            background: #f8fafc;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-item label {
+            font-size: 0.8rem;
+            color: var(--mv-gray-light);
+            font-weight: 500;
+        }
+
+        .filter-item select, .filter-item input {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            background: white;
+        }
+
+        .filter-item select:focus, .filter-item input:focus {
+            outline: none;
+            border-color: var(--mv-green);
+        }
+
+        /* CLINICAL TABLE */
+        .clinical-table {
+            width: 100%;
+        }
+
+        .clinical-table th {
+            padding: 14px 20px;
+            text-align: left;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--mv-gray-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .clinical-table th.sortable {
+            cursor: pointer;
+        }
+
+        .clinical-table th.sortable:hover {
+            color: var(--mv-green);
+        }
+
+        .clinical-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+            color: var(--mv-gray);
+        }
+
+        .clinical-table tr:hover {
+            background: #fafffe;
+        }
+
+        .accession-link {
+            font-weight: 600;
+            color: var(--mv-green-dark);
+            text-decoration: none;
+        }
+
+        .accession-link:hover {
+            text-decoration: underline;
+        }
+
+        .facility-cell {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .facility-name {
+            font-weight: 500;
+        }
+
+        .facility-id {
+            font-size: 0.8rem;
+            color: var(--mv-gray-light);
+        }
+
+        .confidence-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .confidence-ring {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .confidence-ring.high { background: #dcfce7; color: #16a34a; }
+        .confidence-ring.medium { background: #fef3c7; color: #d97706; }
+        .confidence-ring.low { background: #fee2e2; color: #dc2626; }
+
+        .status-pill {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-pill.pending { background: #fef3c7; color: #92400e; }
+        .status-pill.review { background: #dbeafe; color: #1e40af; }
+        .status-pill.approved { background: #dcfce7; color: #166534; }
+        .status-pill.rejected { background: #fee2e2; color: #991b1b; }
+
+        .source-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .source-badge.email { background: #dbeafe; color: #1e40af; }
+        .source-badge.fax { background: #f3e8ff; color: #7c3aed; }
+        .source-badge.scan { background: #fce7f3; color: #be185d; }
+        .source-badge.api { background: #ccfbf1; color: #0d9488; }
+
+        .action-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        .table-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            color: var(--mv-gray-light);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .table-btn:hover {
+            border-color: var(--mv-green);
+            color: var(--mv-green);
+            background: #f0fdf4;
+        }
+
+        /* SIDEBAR WIDGETS */
+        .sidebar-widget {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .widget-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 700;
+            color: var(--mv-gray);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .widget-header i {
+            color: var(--mv-green);
+        }
+
+        .widget-body {
+            padding: 20px 22px;
+        }
+
+        /* UPLOAD WIDGET */
+        .upload-widget-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-widget-zone:hover {
+            border-color: var(--mv-green);
+            background: #f0fdf4;
+        }
+
+        .upload-widget-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--mv-green-light), var(--mv-green));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .upload-widget-text {
+            font-weight: 600;
+            color: var(--mv-gray);
+            margin-bottom: 5px;
+        }
+
+        .upload-widget-hint {
+            font-size: 0.85rem;
+            color: var(--mv-gray-light);
+        }
+
+        /* ACTIVITY FEED */
+        .activity-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+
+        .activity-dot.green { background: var(--mv-green); }
+        .activity-dot.blue { background: #3b82f6; }
+        .activity-dot.yellow { background: #f59e0b; }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-text {
+            font-size: 0.85rem;
+            color: var(--mv-gray);
+            line-height: 1.4;
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+            color: var(--mv-gray-light);
+            margin-top: 3px;
+        }
+
+        /* HIPAA FOOTER */
+        .hipaa-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 12px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--mv-gray-light);
+        }
+
+        .hipaa-badge-inline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--mv-green);
+            font-weight: 600;
+        }
+
+        .session-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Add bottom padding to account for fixed footer */
+        .dashboard-container {
+            padding-bottom: 80px;
+        }
+    </style>
+</head>
+<body>
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="top-bar-inner">
+            <div>Rapid Fungal Testing. Accurate Results.</div>
+            <div>
+                <a href="#"><i class="bi bi-telephone"></i> Support</a>
+                <a href="#"><i class="bi bi-question-circle"></i> Help</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN HEADER -->
+    <header class="main-header">
+        <div class="header-inner">
+            <div class="brand-area">
+                <img src="../images/miravista_logo.png" alt="MiraVista Diagnostics">
+
+                <div class="nav-tabs-clinical">
+                    <a href="#" class="nav-tab active">
+                        <i class="bi bi-grid-1x2-fill"></i> Dashboard
+                    </a>
+                    <a href="#" class="nav-tab">
+                        <i class="bi bi-file-medical"></i> Documents
+                    </a>
+                    <a href="#" class="nav-tab">
+                        <i class="bi bi-check2-square"></i> Review
+                    </a>
+                    <a href="#" class="nav-tab">
+                        <i class="bi bi-bar-chart-line"></i> Reports
+                    </a>
+                    <a href="#" class="nav-tab">
+                        <i class="bi bi-gear"></i> Admin
+                    </a>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" placeholder="Search documents, accessions...">
+                </div>
+                <button class="notification-btn">
+                    <i class="bi bi-bell"></i>
+                    <span class="notification-badge">3</span>
+                </button>
+                <div class="user-menu">
+                    <div class="user-menu-avatar">JD</div>
+                    <div class="user-menu-info">
+                        <div class="user-menu-name">Dr. Jane Doe</div>
+                        <div class="user-menu-role">Administrator</div>
+                    </div>
+                    <i class="bi bi-chevron-down" style="color: var(--mv-gray-light);"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- DASHBOARD CONTAINER -->
+    <div class="dashboard-container">
+        <!-- PAGE HEADER -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Document Dashboard</h1>
+                <p class="page-subtitle">Monday, December 1, 2025 • Last updated: 2 minutes ago</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-clinical secondary">
+                    <i class="bi bi-download"></i> Export
+                </button>
+                <button class="btn-clinical primary">
+                    <i class="bi bi-cloud-arrow-up"></i> Upload Documents
+                </button>
+            </div>
+        </div>
+
+        <!-- STATS ROW -->
+        <div class="stats-row">
+            <div class="clinical-stat total">
+                <div class="clinical-stat-header">
+                    <div class="clinical-stat-icon"><i class="bi bi-files"></i></div>
+                    <span class="clinical-stat-badge neutral">Today</span>
+                </div>
+                <div class="clinical-stat-value">195</div>
+                <div class="clinical-stat-label">Total Documents</div>
+            </div>
+            <div class="clinical-stat pending">
+                <div class="clinical-stat-header">
+                    <div class="clinical-stat-icon"><i class="bi bi-hourglass-split"></i></div>
+                    <span class="clinical-stat-badge up">+5</span>
+                </div>
+                <div class="clinical-stat-value">24</div>
+                <div class="clinical-stat-label">Pending Extraction</div>
+            </div>
+            <div class="clinical-stat review">
+                <div class="clinical-stat-header">
+                    <div class="clinical-stat-icon"><i class="bi bi-eye"></i></div>
+                    <span class="clinical-stat-badge down">-3</span>
+                </div>
+                <div class="clinical-stat-value">12</div>
+                <div class="clinical-stat-label">Awaiting Review</div>
+            </div>
+            <div class="clinical-stat approved">
+                <div class="clinical-stat-header">
+                    <div class="clinical-stat-icon"><i class="bi bi-check-circle"></i></div>
+                    <span class="clinical-stat-badge up">+23%</span>
+                </div>
+                <div class="clinical-stat-value">156</div>
+                <div class="clinical-stat-label">Approved</div>
+            </div>
+            <div class="clinical-stat rejected">
+                <div class="clinical-stat-header">
+                    <div class="clinical-stat-icon"><i class="bi bi-x-circle"></i></div>
+                    <span class="clinical-stat-badge neutral">-</span>
+                </div>
+                <div class="clinical-stat-value">3</div>
+                <div class="clinical-stat-label">Rejected</div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="content-layout">
+            <!-- DOCUMENTS TABLE -->
+            <div class="clinical-card">
+                <div class="clinical-card-header">
+                    <div class="clinical-card-title">
+                        <i class="bi bi-table"></i>
+                        Recent Documents
+                    </div>
+                    <a href="#" style="color: var(--mv-green); font-size: 0.9rem; text-decoration: none;">
+                        View All <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <div class="filter-bar">
+                    <div class="filter-item">
+                        <label>Status:</label>
+                        <select>
+                            <option>All Status</option>
+                            <option>Pending</option>
+                            <option>In Review</option>
+                            <option>Approved</option>
+                            <option>Rejected</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label>Facility:</label>
+                        <select>
+                            <option>All Facilities</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label>Date:</label>
+                        <input type="date">
+                    </div>
+                    <div class="filter-item">
+                        <input type="text" placeholder="Search accession #...">
+                    </div>
+                </div>
+                <table class="clinical-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable">Accession # <i class="bi bi-chevron-expand"></i></th>
+                            <th class="sortable">Facility</th>
+                            <th class="sortable">Confidence</th>
+                            <th class="sortable">Status</th>
+                            <th>Source</th>
+                            <th class="sortable">Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><a href="#" class="accession-link">MVD-2024-001234</a></td>
+                            <td class="facility-cell">
+                                <span class="facility-name">Indianapolis Vet Clinic</span>
+                                <span class="facility-id">IVC-001</span>
+                            </td>
+                            <td class="confidence-cell">
+                                <span class="confidence-ring high">96</span>
+                            </td>
+                            <td><span class="status-pill review">In Review</span></td>
+                            <td><span class="source-badge email">Email</span></td>
+                            <td>12/01/25 09:32</td>
+                            <td class="action-cell">
+                                <button class="table-btn"><i class="bi bi-eye"></i></button>
+                                <button class="table-btn"><i class="bi bi-pencil"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><a href="#" class="accession-link">MVD-2024-001233</a></td>
+                            <td class="facility-cell">
+                                <span class="facility-name">Central Animal Hospital</span>
+                                <span class="facility-id">CAH-045</span>
+                            </td>
+                            <td class="confidence-cell">
+                                <span class="confidence-ring medium">78</span>
+                            </td>
+                            <td><span class="status-pill pending">Pending</span></td>
+                            <td><span class="source-badge fax">Fax</span></td>
+                            <td>12/01/25 09:15</td>
+                            <td class="action-cell">
+                                <button class="table-btn"><i class="bi bi-eye"></i></button>
+                                <button class="table-btn"><i class="bi bi-pencil"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><a href="#" class="accession-link">MVD-2024-001232</a></td>
+                            <td class="facility-cell">
+                                <span class="facility-name">Unity Health Partners</span>
+                                <span class="facility-id">UHP-112</span>
+                            </td>
+                            <td class="confidence-cell">
+                                <span class="confidence-ring high">98</span>
+                            </td>
+                            <td><span class="status-pill approved">Approved</span></td>
+                            <td><span class="source-badge api">API</span></td>
+                            <td>12/01/25 08:44</td>
+                            <td class="action-cell">
+                                <button class="table-btn"><i class="bi bi-eye"></i></button>
+                                <button class="table-btn"><i class="bi bi-pencil"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- SIDEBAR -->
+            <div>
+                <!-- UPLOAD WIDGET -->
+                <div class="sidebar-widget">
+                    <div class="widget-header">
+                        <i class="bi bi-cloud-arrow-up"></i>
+                        Quick Upload
+                    </div>
+                    <div class="widget-body">
+                        <div class="upload-widget-zone">
+                            <div class="upload-widget-icon">
+                                <i class="bi bi-file-earmark-arrow-up"></i>
+                            </div>
+                            <div class="upload-widget-text">Drop files here</div>
+                            <div class="upload-widget-hint">PDF, JPG, PNG up to 10MB</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ACTIVITY FEED -->
+                <div class="sidebar-widget">
+                    <div class="widget-header">
+                        <i class="bi bi-activity"></i>
+                        Recent Activity
+                    </div>
+                    <div class="widget-body">
+                        <div class="activity-item">
+                            <div class="activity-dot green"></div>
+                            <div class="activity-content">
+                                <div class="activity-text">Document MVD-2024-001232 approved by Dr. Smith</div>
+                                <div class="activity-time">5 minutes ago</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-dot blue"></div>
+                            <div class="activity-content">
+                                <div class="activity-text">New document received via email from Indianapolis Vet</div>
+                                <div class="activity-time">12 minutes ago</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-dot yellow"></div>
+                            <div class="activity-content">
+                                <div class="activity-text">Low confidence extraction on MVD-2024-001229</div>
+                                <div class="activity-time">25 minutes ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HIPAA FOOTER -->
+    <div class="hipaa-footer">
+        <div class="hipaa-badge-inline">
+            <i class="bi bi-shield-check"></i>
+            HIPAA Compliant System
+        </div>
+        <div class="session-info">
+            <i class="bi bi-clock"></i>
+            Session: 14:32 remaining
+        </div>
+    </div>
+</body>
+</html>

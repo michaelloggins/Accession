@@ -1,0 +1,169 @@
+# Azure DevOps Pipeline for Lab Document Intelligence System
+# HIPAA-Compliant CI/CD
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    exclude:
+      - README.md
+      - docs/*
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.11'
+  appName: 'lab-doc-intelligence'
+
+stages:
+  # Build and Test Stage
+  - stage: Build
+    displayName: 'Build and Test'
+    jobs:
+      - job: BuildJob
+        displayName: 'Build, Lint, and Test'
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '$(pythonVersion)'
+            displayName: 'Use Python $(pythonVersion)'
+
+          - script: |
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+              pip install pytest pytest-cov pylint flake8 bandit safety
+            displayName: 'Install dependencies'
+
+          - script: |
+              flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+              flake8 app/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+            displayName: 'Lint with flake8'
+
+          - script: |
+              pylint app/ --fail-under=7.0 --disable=C0114,C0115,C0116 || true
+            displayName: 'Lint with pylint'
+
+          - script: |
+              bandit -r app/ -f json -o bandit-report.json || true
+            displayName: 'Security scan with bandit'
+
+          - script: |
+              safety check --full-report || true
+            displayName: 'Check for known vulnerabilities'
+
+          - script: |
+              pytest tests/ \
+                --cov=app \
+                --cov-report=xml \
+                --cov-report=html \
+                --junitxml=test-results.xml \
+                -v
+            displayName: 'Run tests with coverage'
+
+          - task: PublishTestResults@2
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: '**/test-results.xml'
+              testRunTitle: 'Python Tests'
+            displayName: 'Publish test results'
+
+          - task: PublishCodeCoverageResults@1
+            inputs:
+              codeCoverageTool: 'Cobertura'
+              summaryFileLocation: '**/coverage.xml'
+              reportDirectory: '**/htmlcov'
+            displayName: 'Publish code coverage'
+
+          - script: |
+              docker build -t $(appName):$(Build.BuildId) -f infrastructure/Dockerfile .
+            displayName: 'Build Docker image'
+
+          - task: Docker@2
+            condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+            inputs:
+              containerRegistry: 'ACR_SERVICE_CONNECTION'
+              repository: '$(appName)'
+              command: 'buildAndPush'
+              Dockerfile: 'infrastructure/Dockerfile'
+              tags: |
+                $(Build.BuildId)
+                latest
+            displayName: 'Push to Azure Container Registry'
+
+  # Deploy to Staging
+  - stage: DeployStaging
+    displayName: 'Deploy to Staging'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    jobs:
+      - deployment: DeployToStaging
+        displayName: 'Deploy to Staging Environment'
+        environment: 'staging'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: 'AZURE_SUBSCRIPTION'
+                    appType: 'webAppLinux'
+                    appName: '$(appName)-staging'
+                    deployToSlotOrASE: false
+                    package: '$(Pipeline.Workspace)/drop/*.zip'
+                  displayName: 'Deploy to Azure Web App (Staging)'
+
+                - script: |
+                    sleep 30
+                    curl -f https://$(appName)-staging.azurewebsites.net/health
+                  displayName: 'Health check'
+
+  # Deploy to Production
+  - stage: DeployProduction
+    displayName: 'Deploy to Production'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployToProduction
+        displayName: 'Deploy to Production Environment'
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: 'AZURE_SUBSCRIPTION'
+                    appType: 'webAppLinux'
+                    appName: '$(appName)-prod'
+                    deployToSlotOrASE: true
+                    slotName: 'staging'
+                    package: '$(Pipeline.Workspace)/drop/*.zip'
+                  displayName: 'Deploy to staging slot'
+
+                - script: |
+                    sleep 60
+                    curl -f https://$(appName)-prod-staging.azurewebsites.net/health
+                  displayName: 'Health check on staging slot'
+
+                - task: AzureAppServiceManage@0
+                  inputs:
+                    azureSubscription: 'AZURE_SUBSCRIPTION'
+                    Action: 'Swap Slots'
+                    WebAppName: '$(appName)-prod'
+                    ResourceGroupName: '$(appName)-rg'
+                    SourceSlot: 'staging'
+                  displayName: 'Swap slots'
+
+                - script: |
+                    curl -f https://$(appName)-prod.azurewebsites.net/health
+                  displayName: 'Production health check'

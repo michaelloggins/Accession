@@ -1,0 +1,568 @@
+{
+  "_comment": "MiraVista Diagnostics Complete Test Catalog (Veterinary + Human)",
+  "_source": "Veterinary-Test-Request-Form-Writable-Rev04, MVD-MEDICAL-HUMAN-ONLY-TEST-REQUISITION, Medical-Test-Menu",
+  "_note": "Test codes are 3-4 digits. Specimen abbreviations: UR=Urine, SER=Serum, PLS=Plasma, CSF=Cerebrospinal Fluid, BAL=Bronchoalveolar Lavage",
+  "tests": {
+    "Histoplasma EIA": {
+      "test_code": "310",
+      "full_name": "MVista® Histoplasma Antigen EIA",
+      "test_type": "Antigen Test",
+      "species": "Any",
+      "notes": "First choice K9/Fel - Urine first choice",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5, "notes": "First choice"},
+        "Serum": {"minimum_volume_ml": 1.0},
+        "Plasma": {"minimum_volume_ml": 1.0},
+        "CSF": {"minimum_volume_ml": 0.8},
+        "BAL": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "Blastomyces EIA": {
+      "test_code": "316",
+      "full_name": "MVista® Blastomyces Antigen EIA",
+      "test_type": "Antigen Test",
+      "species": "Any",
+      "notes": "First choice K9/Fel - Urine first choice",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5, "notes": "First choice"},
+        "Serum": {"minimum_volume_ml": 1.0},
+        "Plasma": {"minimum_volume_ml": 1.0},
+        "CSF": {"minimum_volume_ml": 0.8},
+        "BAL": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "Coccidioides EIA": {
+      "test_code": "315",
+      "full_name": "MVista® Coccidioides Antigen EIA",
+      "test_type": "Antigen Test",
+      "species": "Any",
+      "notes": "Second choice K9/Fel - Codes 329 K9 & Code 320 Fel first choices",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 1.0},
+        "Plasma": {"minimum_volume_ml": 1.0},
+        "CSF": {"minimum_volume_ml": 0.8},
+        "BAL": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "Aspergillus EIA": {
+      "test_code": "309",
+      "full_name": "Aspergillus Galactomannan Antigen EIA",
+      "test_type": "Antigen Test",
+      "species": "Any",
+      "notes": "First choice systemic dz K9/Fel - Serum & Urine or Serum alone",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.4},
+        "Serum": {"minimum_volume_ml": 0.4, "notes": "First choice"},
+        "Plasma": {"minimum_volume_ml": 0.4},
+        "CSF": {"minimum_volume_ml": 0.4},
+        "BAL": {"minimum_volume_ml": 0.4}
+      }
+    },
+    "Cryptococcus LA": {
+      "test_code": "319",
+      "full_name": "Cryptococcal Antigen Latex Agglutination",
+      "test_type": "Antigen Test",
+      "species": "Any",
+      "notes": "First choice K9/Fel - Serum first choice",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25, "notes": "First choice"},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Beta-D-Glucan": {
+      "test_code": "317",
+      "full_name": "(1→3)-β-D-Glucan (BDG)",
+      "test_type": "Antigen Test",
+      "species": "Any",
+      "notes": "Best if combined with Asper antigen Code 309",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Histoplasma ID (Any)": {
+      "test_code": "321",
+      "full_name": "Histoplasma Immunodiffusion (Any Species)",
+      "test_type": "Antibody Test",
+      "species": "Any",
+      "notes": "Not recommended K9/Fel - Code 327/328 recommended K9/Fel",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Blastomyces ID (Any)": {
+      "test_code": "322",
+      "full_name": "Blastomyces Immunodiffusion (Any Species)",
+      "test_type": "Antibody Test",
+      "species": "Any",
+      "notes": "Not recommended K9 - Code 330 instead - Only Blasto antibody test for Fel",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Coccidioides ID (Any)": {
+      "test_code": "320",
+      "full_name": "Coccidioides Immunodiffusion (Any Species)",
+      "test_type": "Antibody Test",
+      "species": "Any",
+      "notes": "First choice Fel - Second choice K9 dx - First choice K9 tx monitoring",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Aspergillus ID (Any)": {
+      "test_code": "324",
+      "full_name": "Aspergillus Immunodiffusion (Any Species)",
+      "test_type": "Antibody Test",
+      "species": "Any",
+      "notes": "First choice sinonasal dz K9/Fel - Serum first choice",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25, "notes": "First choice"},
+        "Plasma": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Histoplasma IgG EIA (K9)": {
+      "test_code": "327",
+      "full_name": "Histoplasma IgG Antibody EIA (Canine)",
+      "test_type": "Antibody Test",
+      "species": "Canine",
+      "notes": "Best if combined with Histo antigen Code 310",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Histoplasma IgG EIA (Fel)": {
+      "test_code": "328",
+      "full_name": "Histoplasma IgG Antibody EIA (Feline)",
+      "test_type": "Antibody Test",
+      "species": "Feline",
+      "notes": "Best if combined with Histo antigen Code 310",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Blastomyces IgG EIA (K9)": {
+      "test_code": "330",
+      "full_name": "Blastomyces IgG Antibody EIA (Canine)",
+      "test_type": "Antibody Test",
+      "species": "Canine",
+      "notes": "Best if combined with Blasto antigen Code 316",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Coccidioides IgG EIA (K9)": {
+      "test_code": "329",
+      "full_name": "Coccidioides IgG Antibody EIA (Canine)",
+      "test_type": "Antibody Test",
+      "species": "Canine",
+      "notes": "First choice K9",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Pythium IgG EIA (K9/Fel)": {
+      "test_code": "332",
+      "full_name": "Pythium IgG Antibody EIA (Canine/Feline)",
+      "test_type": "Antibody Test",
+      "species": "K9/Fel",
+      "notes": "First choice K9/Fel",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Itraconazole Bioassay": {
+      "test_code": "312",
+      "full_name": "Itraconazole Drug Level Bioassay",
+      "test_type": "Drug Monitoring",
+      "species": "Any",
+      "notes": "Drug levels measured after steady-state (3-4 wks). Trough time recommended (within 4 hrs before next dose)",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25, "notes": "Collect at trough time if possible"},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "Fel Fungal, Ext": {
+      "test_code": "900",
+      "full_name": "Feline Fungal Panel, Extended",
+      "test_type": "Panel - General/Geographic",
+      "species": "Feline",
+      "notes": "Includes: Histo 310 (UR); Crypto 319 (SER); Cocci 320 (SER); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 1.0},
+        "Serum": {"minimum_volume_ml": 1.0}
+      }
+    },
+    "K9 Fungal West, Ext": {
+      "test_code": "901",
+      "full_name": "Canine Fungal Panel West, Extended",
+      "test_type": "Panel - General/Geographic",
+      "species": "Canine",
+      "notes": "West = States/Canada West of Rockies + TX, OK, KS, NE. Includes: Histo 310 (UR); Cocci 329 (SER); Asper 309 (SER); Crypto 319 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 1.0},
+        "Serum": {"minimum_volume_ml": 1.0}
+      }
+    },
+    "K9 Fungal East, Ext": {
+      "test_code": "902",
+      "full_name": "Canine Fungal Panel East, Extended",
+      "test_type": "Panel - General/Geographic",
+      "species": "Canine",
+      "notes": "East = States/Canada East of Rockies. Includes: Blasto 316 (UR); Cocci 329 (SER); Asper 309 (SER); Crypto 319 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 1.0},
+        "Serum": {"minimum_volume_ml": 1.0}
+      }
+    },
+    "Fel Fungal West": {
+      "test_code": "903",
+      "full_name": "Feline Fungal Panel West",
+      "test_type": "Panel - General/Geographic",
+      "species": "Feline",
+      "notes": "Includes: Histo 310 (UR); Crypto 319 (SER); Cocci 320 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "K9 Fungal West": {
+      "test_code": "904",
+      "full_name": "Canine Fungal Panel West",
+      "test_type": "Panel - General/Geographic",
+      "species": "Canine",
+      "notes": "Includes: Histo 310 (UR); Cocci 329 (SER); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.75}
+      }
+    },
+    "K9 Fungal East": {
+      "test_code": "905",
+      "full_name": "Canine Fungal Panel East",
+      "test_type": "Panel - General/Geographic",
+      "species": "Canine",
+      "notes": "Includes: Blasto 316 (UR); Crypto 319 (SER); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.75}
+      }
+    },
+    "Fel Fungal East": {
+      "test_code": "907",
+      "full_name": "Feline Fungal Panel East",
+      "test_type": "Panel - General/Geographic",
+      "species": "Feline",
+      "notes": "Includes: Crypto 319 (SER); Histo 310 (UR); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.75}
+      }
+    },
+    "K9 Fungal, Comp": {
+      "test_code": "908",
+      "full_name": "Canine Fungal Panel, Comprehensive",
+      "test_type": "Panel - General/Geographic",
+      "species": "Canine",
+      "notes": "Includes: Blasto 316 (UR); Asper 309 (SER); Crypto 319 (SER); Cocci 329 (SER); Histo 327 (SER); Blasto 330 (SER); Cocci 320 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 1.75}
+      }
+    },
+    "Fel Fungal, Comp": {
+      "test_code": "909",
+      "full_name": "Feline Fungal Panel, Comprehensive",
+      "test_type": "Panel - General/Geographic",
+      "species": "Feline",
+      "notes": "Includes: Histo 310 (UR); Asper 309 (SER); Crypto 319 (SER); Histo 328 (SER); Cocci 320 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 1.25}
+      }
+    },
+    "K9 Blastomycosis": {
+      "test_code": "910",
+      "full_name": "Canine Blastomycosis Panel",
+      "test_type": "Panel - Pathogen",
+      "species": "Canine",
+      "notes": "Includes: Blasto 316 (UR); Blasto 330 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "K9 Histoplasmosis": {
+      "test_code": "911",
+      "full_name": "Canine Histoplasmosis Panel",
+      "test_type": "Panel - Pathogen",
+      "species": "Canine",
+      "notes": "Includes: Histo 310 (UR); Histo 327 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "K9 Coccidioidomycosis": {
+      "test_code": "912",
+      "full_name": "Canine Coccidioidomycosis Panel",
+      "test_type": "Panel - Pathogen",
+      "species": "Canine",
+      "notes": "Includes: Cocci 329 (SER); Cocci 320 (SER)",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "Fel Histoplasmosis": {
+      "test_code": "913",
+      "full_name": "Feline Histoplasmosis Panel",
+      "test_type": "Panel - Pathogen",
+      "species": "Feline",
+      "notes": "Includes: Histo 310 (UR); Histo 328 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "K9 & Fel Mold-Hyphae": {
+      "test_code": "914",
+      "full_name": "Canine & Feline Mold/Hyphae Panel",
+      "test_type": "Panel - Pathogen",
+      "species": "K9/Fel",
+      "notes": "Includes: Asper 309 (SER); Beta-D-Glucan 317 (SER); Pythium 332 (SER)",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 1.0}
+      }
+    },
+    "K9 & Fel Fungal Nasal": {
+      "test_code": "915",
+      "full_name": "Canine & Feline Fungal Nasal Panel",
+      "test_type": "Panel - Syndrome",
+      "species": "K9/Fel",
+      "notes": "Includes: Crypto 319 (SER); Asper 324 (SER)",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "K9 Fungal GI": {
+      "test_code": "916",
+      "full_name": "Canine Fungal GI Panel",
+      "test_type": "Panel - Syndrome",
+      "species": "Canine",
+      "notes": "Includes: Histo 310 (UR); Histo 327 (SER); Pythium 332 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "Fel Fungal GI": {
+      "test_code": "917",
+      "full_name": "Feline Fungal GI Panel",
+      "test_type": "Panel - Syndrome",
+      "species": "Feline",
+      "notes": "Includes: Histo 310 (UR); Histo 328 (SER); Pythium 332 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "K9 Fungal Bone East": {
+      "test_code": "918",
+      "full_name": "Canine Fungal Bone Panel East",
+      "test_type": "Panel - Syndrome",
+      "species": "Canine",
+      "notes": "Includes: Blasto 316 (UR); Blasto 330 (SER); Histo 327 (SER); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.75}
+      }
+    },
+    "K9 Fungal Bone West": {
+      "test_code": "919",
+      "full_name": "Canine Fungal Bone Panel West",
+      "test_type": "Panel - Syndrome",
+      "species": "Canine",
+      "notes": "Includes: Histo 310 (UR); Cocci 329 (SER); Histo 327 (SER); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.75}
+      }
+    },
+    "Fel Fungal Bone West": {
+      "test_code": "920",
+      "full_name": "Feline Fungal Bone Panel West",
+      "test_type": "Panel - Syndrome",
+      "species": "Feline",
+      "notes": "Includes: Histo 310 (UR); Cocci 320 (SER); Histo 328 (SER); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.75}
+      }
+    },
+    "Fel Fungal Bone East": {
+      "test_code": "921",
+      "full_name": "Feline Fungal Bone Panel East",
+      "test_type": "Panel - Syndrome",
+      "species": "Feline",
+      "notes": "Includes: Histo 310 (UR); Histo 328 (SER); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "K9 Fungal Eye West": {
+      "test_code": "922",
+      "full_name": "Canine Fungal Eye Panel West",
+      "test_type": "Panel - Syndrome",
+      "species": "Canine",
+      "notes": "Includes: Histo 310 (UR); Cocci 329 (SER); Histo 327 (SER); Asper 309 (SER); Crypto 319 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 1.0}
+      }
+    },
+    "K9 Fungal Eye East": {
+      "test_code": "923",
+      "full_name": "Canine Fungal Eye Panel East",
+      "test_type": "Panel - Syndrome",
+      "species": "Canine",
+      "notes": "Includes: Blasto 316 (UR); Blasto 330 (SER); Histo 327 (SER); Asper 309 (SER); Crypto 319 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 1.0}
+      }
+    },
+    "Fel Fungal Eye West": {
+      "test_code": "924",
+      "full_name": "Feline Fungal Eye Panel West",
+      "test_type": "Panel - Syndrome",
+      "species": "Feline",
+      "notes": "Includes: Histo 310 (UR); Cocci 320 (SER); Crypto 319 (SER); Histo 328 (SER); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 1.0}
+      }
+    },
+    "Fel Fungal Eye East": {
+      "test_code": "925",
+      "full_name": "Feline Fungal Eye Panel East",
+      "test_type": "Panel - Syndrome",
+      "species": "Feline",
+      "notes": "Includes: Histo 310 (UR); Histo 328 (SER); Crypto 319 (SER); Asper 309 (SER)",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 0.75}
+      }
+    },
+    "Histoplasma IgG/IgM EIA": {
+      "test_code": "326",
+      "full_name": "MVista® Histoplasma Antibody IgG, IgM EIA",
+      "test_type": "Antibody Test",
+      "species": "Human",
+      "cpt_code": "86698 x2",
+      "notes": "12% cross reactivity with Blastomycosis. 24% cross reactivity with Coccidioidomycosis.",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25, "notes": "Reported with rare specimen comment"},
+        "CSF": {"minimum_volume_ml": 0.25, "notes": "Reported with rare specimen comment"}
+      }
+    },
+    "Blastomyces IgG EIA": {
+      "test_code": "331",
+      "full_name": "MVista® Blastomyces Antibody IgG EIA",
+      "test_type": "Antibody Test",
+      "species": "Human",
+      "cpt_code": "86612",
+      "notes": "Specimens positive for Histoplasmosis may cross react and test positive.",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25, "notes": "Reported with rare specimen comment"}
+      }
+    },
+    "Coccidioides IgG/IgM EIA": {
+      "test_code": "325",
+      "full_name": "MVista® Coccidioides Antibody IgG, IgM EIA",
+      "test_type": "Antibody Test",
+      "species": "Human",
+      "cpt_code": "86635 x2",
+      "notes": "Cross-reactions occur with Aspergillus spp., Histoplasma capsulatum, Paracoccidioides brasiliensis, and Talaromyces marneffei.",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "Plasma": {"minimum_volume_ml": 0.25, "notes": "Reported with rare specimen comment"},
+        "CSF": {"minimum_volume_ml": 0.25, "notes": "Reported with rare specimen comment"}
+      }
+    },
+    "Histoplasma PCR": {
+      "test_code": "403",
+      "full_name": "MVista® Histoplasma DNA, PCR",
+      "test_type": "Molecular Test",
+      "species": "Human",
+      "cpt_code": "87798",
+      "notes": "Specimens positive for Paracoccidioides brasiliensis, Aspergillus niger, Aspergillus flavus, and Aspergillus nidulans may cross react.",
+      "specimens": {
+        "BAL": {"minimum_volume_ml": 0.5, "notes": "Tracheal Aspirate and Bronchial Wash also acceptable"}
+      }
+    },
+    "Blastomyces PCR": {
+      "test_code": "404",
+      "full_name": "MVista® Blastomyces DNA, PCR",
+      "test_type": "Molecular Test",
+      "species": "Human",
+      "cpt_code": "87798",
+      "notes": "Specimens positive for Cryptococcus neoformans may cross react and test positive.",
+      "specimens": {
+        "BAL": {"minimum_volume_ml": 0.5, "notes": "Tracheal Aspirate and Bronchial Wash also acceptable"}
+      }
+    },
+    "Coccidioides PCR": {
+      "test_code": "405",
+      "full_name": "MVista® Coccidioides DNA, PCR",
+      "test_type": "Molecular Test",
+      "species": "Human",
+      "cpt_code": "87798",
+      "notes": "No cross-reactions or interfering substances were identified during validation.",
+      "specimens": {
+        "BAL": {"minimum_volume_ml": 0.5, "notes": "Tracheal Aspirate and Bronchial Wash also acceptable"}
+      }
+    },
+    "Pneumocystis PCR": {
+      "test_code": "402",
+      "full_name": "MVista® Pneumocystis DNA, PCR",
+      "test_type": "Molecular Test",
+      "species": "Human",
+      "cpt_code": "87798",
+      "notes": "No cross-reactions or interfering substances were identified during validation.",
+      "specimens": {
+        "BAL": {"minimum_volume_ml": 0.5, "notes": "Tracheal Aspirate and Bronchial Wash also acceptable"}
+      }
+    },
+    "Pulmonary Fungal PCR Panel": {
+      "test_code": "1000",
+      "full_name": "MVista® Pulmonary Fungal PCR Panel",
+      "test_type": "Panel - Molecular",
+      "species": "Human",
+      "cpt_code": "87798 x4",
+      "notes": "Includes: Histo 403; Blasto 404; Cocci 405; Pneumo 402",
+      "specimens": {
+        "BAL": {"minimum_volume_ml": 0.5, "notes": "Tracheal Aspirate and Bronchial Wash also acceptable"}
+      }
+    }
+  }
+}

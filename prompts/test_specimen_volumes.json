@@ -1,0 +1,148 @@
+{
+  "_comment": "Reference data for lab tests, their allowed specimen types, and minimum volumes",
+  "_instructions": "Based on MiraVista Diagnostics Medical Test Menu (MVD-REC-00006 Rev15/16) and common lab tests",
+  "_source": "Medical-Test-Menu.pdf from MiraVista Labs + standard lab protocols",
+  "tests": {
+    "MVista Histoplasma Ag": {
+      "test_code": "310",
+      "full_name": "MVista® Histoplasma Ag Quantitative EIA",
+      "cpt_code": "87385",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5, "notes": "Sterile leak-proof container"},
+        "Serum": {"minimum_volume_ml": 1.2, "notes": "Separated from clot"},
+        "CSF": {"minimum_volume_ml": 0.8, "notes": "Sterile leak-proof container"},
+        "BAL": {"minimum_volume_ml": 0.5, "notes": "Bronchoalveolar lavage"},
+        "Plasma": {"minimum_volume_ml": 1.2, "notes": "EDTA, heparin, or sodium citrate"}
+      }
+    },
+    "MVista Blastomyces Ag": {
+      "test_code": "316",
+      "full_name": "MVista® Blastomyces Ag Quantitative EIA",
+      "cpt_code": "87449",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 1.2},
+        "CSF": {"minimum_volume_ml": 0.8},
+        "BAL": {"minimum_volume_ml": 0.5},
+        "Plasma": {"minimum_volume_ml": 1.2}
+      }
+    },
+    "MVista Coccidioides Ag": {
+      "test_code": "315",
+      "full_name": "MVista® Coccidioides Ag Quantitative EIA",
+      "cpt_code": "87449",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 0.5},
+        "Serum": {"minimum_volume_ml": 1.2},
+        "CSF": {"minimum_volume_ml": 0.8},
+        "BAL": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "Aspergillus Galactomannan": {
+      "test_code": "309",
+      "full_name": "Aspergillus Galactomannan EIA",
+      "cpt_code": "87305",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.8},
+        "CSF": {"minimum_volume_ml": 0.8},
+        "BAL": {"minimum_volume_ml": 0.8}
+      }
+    },
+    "Beta-D-Glucan": {
+      "test_code": "317",
+      "full_name": "(1→3)-β-D-Glucan Colorimetric Assay",
+      "cpt_code": "87449",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.2},
+        "CSF": {"minimum_volume_ml": 0.2}
+      }
+    },
+    "Cryptococcal Antigen": {
+      "test_code": "319",
+      "full_name": "Cryptococcal Antigen, Latex Agglutination",
+      "cpt_code": "86403",
+      "specimens": {
+        "Serum": {"minimum_volume_ml": 0.25},
+        "CSF": {"minimum_volume_ml": 0.25}
+      }
+    },
+    "MVista Pneumocystis DNA": {
+      "test_code": "402",
+      "full_name": "MVista® Pneumocystis DNA, PCR",
+      "cpt_code": "87798",
+      "specimens": {
+        "BAL": {"minimum_volume_ml": 0.5}
+      }
+    },
+    "CBC": {
+      "full_name": "Complete Blood Count",
+      "cpt_code": "85025",
+      "specimens": {
+        "Blood": {"minimum_volume_ml": 3.0, "preferred_tube": "Lavender top (EDTA)"}
+      }
+    },
+    "CMP": {
+      "full_name": "Comprehensive Metabolic Panel",
+      "cpt_code": "80053",
+      "specimens": {
+        "Blood": {"minimum_volume_ml": 2.0, "preferred_tube": "Gold top (SST)"}
+      }
+    },
+    "BMP": {
+      "full_name": "Basic Metabolic Panel",
+      "cpt_code": "80048",
+      "specimens": {
+        "Blood": {"minimum_volume_ml": 1.0, "preferred_tube": "Gold top (SST)"}
+      }
+    },
+    "Lipid Panel": {
+      "full_name": "Lipid Panel",
+      "cpt_code": "80061",
+      "specimens": {
+        "Blood": {"minimum_volume_ml": 2.0, "preferred_tube": "Gold top (SST)", "notes": "Fasting 9-12 hours preferred"}
+      }
+    },
+    "TSH": {
+      "full_name": "Thyroid Stimulating Hormone",
+      "cpt_code": "84443",
+      "specimens": {
+        "Blood": {"minimum_volume_ml": 1.0, "preferred_tube": "Gold top (SST)"}
+      }
+    },
+    "HbA1c": {
+      "full_name": "Hemoglobin A1c",
+      "cpt_code": "83036",
+      "specimens": {
+        "Blood": {"minimum_volume_ml": 1.0, "preferred_tube": "Lavender top (EDTA)", "notes": "No fasting required"}
+      }
+    },
+    "Urinalysis": {
+      "full_name": "Urinalysis",
+      "cpt_code": "81001",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 10.0, "notes": "Mid-stream clean catch preferred"}
+      }
+    },
+    "Urine Culture": {
+      "full_name": "Urine Culture and Sensitivity",
+      "cpt_code": "87086",
+      "specimens": {
+        "Urine": {"minimum_volume_ml": 5.0, "notes": "Mid-stream clean catch required"}
+      }
+    },
+    "PT/INR": {
+      "full_name": "Prothrombin Time/International Normalized Ratio",
+      "cpt_code": "85610",
+      "specimens": {
+        "Blood": {"minimum_volume_ml": 2.7, "preferred_tube": "Blue top (Sodium Citrate)", "notes": "Tube must be filled to the line"}
+      }
+    },
+    "PSA": {
+      "full_name": "Prostate-Specific Antigen",
+      "cpt_code": "84153",
+      "specimens": {
+        "Blood": {"minimum_volume_ml": 1.0, "preferred_tube": "Gold top (SST)"}
+      }
+    }
+  }
+}

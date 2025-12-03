@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}Compliance Reports - Lab Document Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Card styling */
+    .card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .card-header {
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .card-body {
+        color: var(--text-primary);
+    }
+
+    /* Stat cards */
+    .stat-card {
+        background: var(--bg-tertiary) !important;
+        border: 1px solid var(--border-color);
+    }
+
+    .stat-card .card-body {
+        color: var(--text-primary);
+    }
+
+    .stat-card h3 {
+        color: var(--mv-green);
+    }
+
+    h2, h3, h5 {
+        color: var(--text-primary);
+    }
+
+    /* Override bg-light for dark mode */
+    .bg-light {
+        background: var(--bg-tertiary) !important;
+    }
+
+    /* Toast notifications */
+    .toast-container {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 9999;
+    }
+
+    .custom-toast {
+        min-width: 300px;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        box-shadow: var(--card-shadow);
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        animation: slideIn 0.3s ease-out;
+        border-left: 4px solid var(--mv-green);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--text-primary);
+    }
+
+    .custom-toast.success { border-left-color: var(--mv-green); }
+    .custom-toast.error { border-left-color: var(--danger); }
+    .custom-toast.warning { border-left-color: var(--warning); }
+    .custom-toast.info { border-left-color: var(--info); }
+
+    .custom-toast i { font-size: 1.25rem; }
+    .custom-toast.success i { color: var(--mv-green); }
+    .custom-toast.error i { color: var(--danger); }
+    .custom-toast.warning i { color: var(--warning); }
+    .custom-toast.info i { color: var(--info); }
+
+    @keyframes slideIn {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Loading state for button */
+    .btn-loading {
+        position: relative;
+        color: transparent !important;
+    }
+
+    .btn-loading::after {
+        content: "";
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        top: 50%;
+        left: 50%;
+        margin-left: -8px;
+        margin-top: -8px;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-shield-check"></i> Compliance Reports</h2>
+            <button class="btn btn-outline-primary btn-sm" onclick="refreshCompliance()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+
+        <!-- Report Generator -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Generate Report</h5>
+            </div>
+            <div class="card-body">
+                <form id="reportForm" class="row">
+                    <div class="col-md-3">
+                        <label class="form-label">Report Type</label>
+                        <select class="form-select" id="reportType" required>
+                            <option value="phi_access">PHI Access Report</option>
+                            <option value="user_activity">User Activity Report</option>
+                            <option value="document_processing">Document Processing Report</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Start Date</label>
+                        <input type="datetime-local" class="form-control" id="reportStartDate" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">End Date</label>
+                        <input type="datetime-local" class="form-control" id="reportEndDate" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Format</label>
+                        <select class="form-select" id="reportFormat">
+                            <option value="json">JSON</option>
+                            <option value="csv">CSV</option>
+                            <option value="pdf">PDF</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100" id="generateReportBtn" title="Generate Report">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- PHI Access Summary -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>PHI Access Summary (Last 30 Days)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 id="totalAccesses">0</h3>
+                                <p class="mb-0">Total PHI Accesses</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 id="uniqueUsers">0</h3>
+                                <p class="mb-0">Unique Users</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 id="uniqueDocs">0</h3>
+                                <p class="mb-0">Unique Documents</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generated Reports List -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Generated Reports</h5>
+                <button class="btn btn-outline-primary btn-sm" onclick="updateReportsTable()" title="Refresh">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Report ID</th>
+                            <th>Type</th>
+                            <th>Period</th>
+                            <th>Generated At</th>
+                            <th>Generated By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportsTable">
+                        <tr>
+                            <td>RPT-20250117-001</td>
+                            <td>PHI Access</td>
+                            <td>2025-01-01 to 2025-01-17</td>
+                            <td>2025-01-17 10:30</td>
+                            <td>admin@example.com</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-download"></i> Download
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye"></i> Preview
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPHISummary();
+
+        // Set default date range (last 30 days)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+
+        document.getElementById('reportEndDate').value = endDate.toISOString().slice(0, 16);
+        document.getElementById('reportStartDate').value = startDate.toISOString().slice(0, 16);
+    });
+
+    function refreshCompliance() {
+        loadPHISummary();
+        updateReportsTable();
+        showToast('Data refreshed', 'success');
+    }
+
+    // Get auth headers - checks localStorage first, then js_access_token cookie (for SAML SSO)
+    function getAuthHeaders() {
+        let token = localStorage.getItem('access_token');
+
+        // If no token in localStorage, check for js_access_token cookie (set by SAML SSO)
+        if (!token) {
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'js_access_token' && value) {
+                    token = value;
+                    // Cache in localStorage for future requests
+                    localStorage.setItem('access_token', token);
+                    break;
+                }
+            }
+        }
+
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+        };
+    }
+
+    async function loadPHISummary() {
+        try {
+            const response = await fetch('/api/compliance/phi-access-summary', {
+                headers: getAuthHeaders()
+            });
+            const data = await response.json();
+
+            document.getElementById('totalAccesses').textContent = data.total_phi_accesses;
+            document.getElementById('uniqueUsers').textContent = data.unique_users;
+            document.getElementById('uniqueDocs').textContent = data.unique_documents;
+        } catch (error) {
+            console.error('Failed to load PHI summary:', error);
+        }
+    }
+
+    // Toast notification function
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `custom-toast ${type}`;
+        const icons = {
+            success: 'bi-check-circle-fill',
+            error: 'bi-exclamation-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill'
+        };
+        toast.innerHTML = `<i class="bi ${icons[type] || icons.info}"></i><div>${message}</div>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'slideIn 0.3s ease-out reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    // Store generated reports for the session
+    let generatedReports = [];
+
+    document.getElementById('reportForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('generateReportBtn');
+        const originalHtml = btn.innerHTML;
+
+        // Show loading state
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+
+        const reportType = document.getElementById('reportType').value;
+        const reportTypeLabels = {
+            'phi_access': 'PHI Access',
+            'user_activity': 'User Activity',
+            'document_processing': 'Document Processing'
+        };
+
+        const params = new URLSearchParams({
+            report_type: reportType,
+            start_date: new Date(document.getElementById('reportStartDate').value).toISOString(),
+            end_date: new Date(document.getElementById('reportEndDate').value).toISOString(),
+            format: document.getElementById('reportFormat').value
+        });
+
+        try {
+            const response = await fetch(`/api/compliance/report?${params}`, {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Add to generated reports
+            generatedReports.unshift({
+                id: data.report_id,
+                type: reportTypeLabels[reportType] || reportType,
+                period: data.period,
+                generated_at: data.generated_at,
+                generated_by: data.generated_by,
+                summary: data.summary
+            });
+
+            // Update the reports table
+            updateReportsTable();
+
+            // Show success toast
+            showToast(`Report ${data.report_id} generated successfully! PHI Accesses: ${data.summary.total_phi_accesses}`, 'success');
+
+        } catch (error) {
+            console.error('Report generation error:', error);
+            showToast('Failed to generate report: ' + error.message, 'error');
+        } finally {
+            // Reset button state
+            btn.classList.remove('btn-loading');
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }
+    });
+
+    function updateReportsTable() {
+        const tbody = document.getElementById('reportsTable');
+
+        if (generatedReports.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-3">
+                        No reports generated in this session
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = generatedReports.map(report => `
+            <tr>
+                <td><code>${report.id}</code></td>
+                <td>${report.type}</td>
+                <td>${report.period}</td>
+                <td>${formatLocalDate(report.generated_at)}</td>
+                <td>${report.generated_by}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewReportDetails('${report.id}')">
+                        <i class="bi bi-eye"></i> Details
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function viewReportDetails(reportId) {
+        const report = generatedReports.find(r => r.id === reportId);
+        if (report) {
+            showToast(`${report.type} Report - Users: ${report.summary.unique_users}, Documents: ${report.summary.unique_documents}, PHI Accesses: ${report.summary.total_phi_accesses}`, 'info');
+        }
+    }
+
+    // Initialize reports table
+    updateReportsTable();
+</script>
+{% endblock %}

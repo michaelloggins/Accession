@@ -1,0 +1,91 @@
+OUTPUT FORMAT:
+{
+  "facility": {
+    "facility_name": "Happy Paws Veterinary Clinic",
+    "address": "123 Main Street",
+    "city": "Indianapolis",
+    "state": "IN",
+    "zipcode": "46201",
+    "laboratory_contact": "Dr. Smith",
+    "phone": "(317) 555-0100",
+    "fax": "(317) 555-0101",
+    "email": "lab@happypaws.com"
+  },
+
+  "patient": {
+    "species": "Canine",
+    "owner_first_name": "John",
+    "owner_last_name": "Doe",
+    "owner_middle_name": null,
+    "pet_name": "Fluffy",
+    "date_of_birth": "2020-03-15",
+    "gender": "F",
+    "medical_record_number": "MRN12345",
+    "patient_id": null,
+    "phone": "(317) 555-1234",
+    "email": "john.doe@email.com",
+    "address": "456 Oak Street",
+    "city": "Indianapolis",
+    "state": "IN",
+    "zipcode": "46202"
+  },
+
+  "order": {
+    "ordering_veterinarian": "Dr. Jane Williams, DVM",
+    "specimen_collection_date": "2025-01-18",
+    "specimen_collection_time": "09:30",
+    "specimen_storage_temperature": "Stored Refrigerated",
+    "priority": "Routine",
+    "special_instructions": "Handle with care"
+  },
+
+  "tests_requested": [
+    {
+      "test_name": "MVista Histoplasma Ag",
+      "test_number": "310",
+      "specimen_type": "Urine",
+      "specimen_volume_ml": 1.0,
+      "specimen_notes": null
+    },
+    {
+      "test_name": "CBC",
+      "test_number": null,
+      "specimen_type": "Blood",
+      "specimen_volume_ml": 3.0,
+      "specimen_notes": "EDTA tube"
+    }
+  ],
+
+  "insurance": {
+    "insurance_provider": "Pet Insurance Co",
+    "insurance_policy_number": "POL123456",
+    "insurance_group_number": "GRP001"
+  },
+
+  "diagnosis": {
+    "icd10_codes": ["B39.4", "R50.9"],
+    "diagnosis_description": "Suspected histoplasmosis with fever",
+    "fasting_required": false
+  },
+
+  "billing": {
+    "billing_type": "Insurance"
+  },
+
+  "metadata": {
+    "confidence_score": 0.95,
+    "extraction_notes": "All fields extracted clearly"
+  }
+}
+
+IMPORTANT NOTES FOR SPECIES IDENTIFICATION:
+- If document contains "veterinarian", "DVM", "pet name", or animal species → Use veterinary species (Canine, Feline, Equine, etc.)
+- If document contains "physician", "MD", "DO", or human medical terminology → Use "Human" as species
+- For HUMAN patients:
+  - Put patient's name in owner_first_name/owner_last_name
+  - Set pet_name = null
+  - Set species = "Human"
+- For VETERINARY patients:
+  - Put owner's name in owner_first_name/owner_last_name
+  - Put pet's name in pet_name
+  - Set species to actual animal species (Canine, Feline, Equine, Bovine, Ovine, Caprine, Porcine, Avian, Reptilian, Rodent, Aquatic)

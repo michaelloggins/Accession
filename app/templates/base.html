@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Initialize theme FIRST before any CSS loads to prevent flash -->
+    <script>
+        (function() {
+            var savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}Lab Document Intelligence{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="/static/css/styles.css" rel="stylesheet">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body data-environment="{{ environment or 'production' }}">
+    <!-- Navigation -->
+    {% block navbar %}
+    <header class="main-header">
+        <nav class="top-nav">
+            <!-- Logo Area -->
+            <div class="logo-area">
+                <img src="/static/images/miravista_logo_transparent.png" alt="MiraVista Diagnostics">
+                <div class="logo-divider"></div>
+                <div class="brand-text">Lab <strong>Intelligence</strong> Platform</div>
+            </div>
+
+            <!-- Center Navigation -->
+            <div class="nav-center">
+                <a href="/dashboard" class="nav-link-item {% if request.path == '/dashboard' %}active{% endif %}">
+                    <i class="bi bi-grid-1x2-fill"></i> Dashboard
+                </a>
+                <a href="/documents" class="nav-link-item {% if request.path == '/documents' %}active{% endif %}">
+                    <i class="bi bi-file-medical"></i> Documents
+                </a>
+                <a href="/queue" class="nav-link-item power-user-only {% if request.path == '/queue' %}active{% endif %}" style="display: none;">
+                    <i class="bi bi-list-task"></i> Queue
+                </a>
+                <a href="/compliance" class="nav-link-item {% if request.path == '/compliance' %}active{% endif %}">
+                    <i class="bi bi-clipboard-check"></i> Compliance
+                </a>
+                <a href="/admin" class="nav-link-item admin-only {% if request.path == '/admin' %}active{% endif %}" style="display: none;">
+                    <i class="bi bi-gear-wide-connected"></i> Admin
+                </a>
+                <a href="/system-health" class="nav-link-item admin-only {% if request.path == '/system-health' %}active{% endif %}" style="display: none;">
+                    <i class="bi bi-heart-pulse"></i> Health
+                </a>
+            </div>
+
+            <!-- Right Side -->
+            <div class="nav-right">
+                <!-- Theme Toggle -->
+                <div class="theme-toggle">
+                    <i class="bi bi-sun-fill"></i>
+                    <div class="toggle-switch" onclick="toggleTheme()"></div>
+                    <i class="bi bi-moon-fill"></i>
+                </div>
+
+                <!-- Session Timer -->
+                <div class="session-badge" id="session-timer">
+                    <i class="bi bi-shield-lock"></i>
+                    <span id="timer-display">15:00</span>
+                </div>
+
+                <!-- User Info -->
+                <div class="user-avatar" id="user-avatar" title="Click to logout" onclick="logout()">
+                    <span id="user-initials">--</span>
+                </div>
+            </div>
+        </nav>
+    </header>
+    {% endblock %}
+
+    <!-- Main Content -->
+    <main class="container-fluid py-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer py-3">
+        <div class="container text-center">
+            <small>Lab Document Intelligence System v1.0 | HIPAA Compliant | MiraVista Diagnostics</small>
+        </div>
+    </footer>
+
+    <!-- Error Detail Modal -->
+    <div class="modal fade" id="errorDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Error Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Item</label>
+                        <div id="errorDetailItem" class="fw-semibold"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Status</label>
+                        <div id="errorDetailStatus"></div>
+                    </div>
+                    <div>
+                        <label class="form-label text-muted small">Error Message</label>
+                        <pre id="errorDetailMessage" class="bg-dark text-danger p-3 rounded" style="white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto;"></pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-warning" id="errorDetailRetryBtn" style="display: none;">
+                        <i class="bi bi-arrow-repeat me-1"></i>Retry
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Timeout Modal -->
+    <div class="modal fade" id="sessionTimeoutModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">Session Timeout Warning</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Your session will expire in <strong id="timeout-countdown">2:00</strong> minutes due to inactivity.</p>
+                    <p>Click "Continue Session" to stay logged in.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="logout()">Logout</button>
+                    <button type="button" class="btn btn-primary" onclick="extendSession()">Continue Session</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="/static/js/app.js"></script>
+
+    <!-- Global date formatting function -->
+    <script>
+        // Format date in user's local timezone as MM/DD/YYYY hh:mm:ss AM/PM
+        function formatLocalDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '-';
+
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const year = date.getFullYear();
+
+            let hours = date.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 0 should be 12
+
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const seconds = date.getSeconds().toString().padStart(2, '0');
+
+            return `${month}/${day}/${year} ${hours}:${minutes}:${seconds} ${ampm}`;
+        }
+
+        // Update user display with initials
+        document.addEventListener('DOMContentLoaded', function() {
+            const userJson = localStorage.getItem('user');
+            const initialsEl = document.getElementById('user-initials');
+
+            if (userJson && initialsEl) {
+                try {
+                    const user = JSON.parse(userJson);
+                    if (user.full_name) {
+                        const names = user.full_name.split(' ');
+                        const initials = names.map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                        initialsEl.textContent = initials;
+                    }
+                } catch (e) {
+                    console.warn('Could not parse user info');
+                }
+            }
+
+            // Development mode - show admin initials
+            const isLocalhost = window.location.hostname === 'localhost' ||
+                               window.location.hostname === '127.0.0.1';
+            const isDev = document.body.dataset.environment === 'development';
+
+            if ((isLocalhost || isDev) && initialsEl) {
+                initialsEl.textContent = 'DV';
+            }
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

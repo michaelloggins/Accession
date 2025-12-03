@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design 1: Lab Hero Sidebar - MiraVista Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --mv-green: #8BC53F;
+            --mv-green-dark: #6da234;
+            --mv-green-light: #a8d665;
+            --mv-gray: #4a4a4a;
+            --mv-light: #f8faf5;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--mv-light);
+            min-height: 100vh;
+        }
+
+        /* LEFT SIDEBAR - Lab Hero Image */
+        .sidebar-hero {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, var(--mv-green) 0%, var(--mv-green-dark) 100%);
+            overflow: hidden;
+        }
+
+        .sidebar-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('../images/lab.jpg') center center;
+            background-size: cover;
+            opacity: 0.15;
+        }
+
+        .sidebar-content {
+            position: relative;
+            z-index: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 30px 25px;
+            color: white;
+        }
+
+        .sidebar-logo {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .sidebar-logo img {
+            height: 40px;
+            width: auto;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+        }
+
+        .nav-item-custom {
+            display: flex;
+            align-items: center;
+            padding: 14px 18px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-item-custom:hover, .nav-item-custom.active {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .nav-item-custom i {
+            font-size: 1.2rem;
+            margin-right: 14px;
+            width: 24px;
+        }
+
+        .sidebar-tagline {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            line-height: 1.6;
+            padding: 20px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        /* MAIN CONTENT AREA */
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+        }
+
+        /* TOP HEADER */
+        .top-header {
+            background: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--mv-gray);
+        }
+
+        .page-title span {
+            color: var(--mv-green);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .session-timer {
+            background: linear-gradient(135deg, var(--mv-green-light), var(--mv-green));
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 8px 15px;
+            border-radius: 25px;
+            transition: background 0.3s;
+        }
+
+        .user-dropdown:hover {
+            background: var(--mv-light);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--mv-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* DASHBOARD CONTENT */
+        .dashboard-content {
+            padding: 30px 40px;
+        }
+
+        /* STATS ROW */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--mv-green);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(139, 197, 63, 0.2);
+        }
+
+        .stat-card.pending::before { background: #ffc107; }
+        .stat-card.review::before { background: #17a2b8; }
+        .stat-card.approved::before { background: var(--mv-green); }
+        .stat-card.rejected::before { background: #dc3545; }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .stat-card.pending .stat-icon { background: #fff8e1; color: #ffc107; }
+        .stat-card.review .stat-icon { background: #e3f2fd; color: #17a2b8; }
+        .stat-card.approved .stat-icon { background: #f1f8e9; color: var(--mv-green); }
+        .stat-card.rejected .stat-icon { background: #ffebee; color: #dc3545; }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--mv-gray);
+            line-height: 1;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* ACTION CARDS ROW */
+        .action-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .action-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+
+        .action-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .action-card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--mv-gray);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .action-card-title i {
+            color: var(--mv-green);
+        }
+
+        /* UPLOAD ZONE */
+        .upload-zone {
+            border: 2px dashed var(--mv-green);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: linear-gradient(135deg, #f8fff0 0%, #f0f8e8 100%);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--mv-green-dark);
+            background: linear-gradient(135deg, #f0ffe0 0%, #e8f8d8 100%);
+        }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--mv-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: var(--mv-gray);
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        /* QUICK STATS */
+        .quick-stat-row {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .quick-stat {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            background: var(--mv-light);
+            border-radius: 10px;
+        }
+
+        .quick-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--mv-green);
+        }
+
+        .quick-stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        /* DOCUMENT TABLE */
+        .table-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+
+        .table-card-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--mv-gray);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-row input, .filter-row select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .filter-row input:focus, .filter-row select:focus {
+            outline: none;
+            border-color: var(--mv-green);
+        }
+
+        .custom-table {
+            width: 100%;
+        }
+
+        .custom-table th {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--mv-gray);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .custom-table td {
+            padding: 18px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+
+        .custom-table tr:hover {
+            background: #fafffe;
+        }
+
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-review { background: #cce5ff; color: #004085; }
+        .status-approved { background: #d4edda; color: #155724; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
+
+        .confidence-bar {
+            width: 60px;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            display: inline-block;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: var(--mv-green);
+            border-radius: 4px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            background: var(--mv-green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: var(--mv-green-dark);
+            transform: translateY(-2px);
+        }
+
+        /* HIPAA BADGE */
+        .hipaa-badge {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--mv-green);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(139, 197, 63, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar-hero">
+        <div class="sidebar-content">
+            <div class="sidebar-logo">
+                <img src="../images/miravista_logo.png" alt="MiraVista Diagnostics">
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item-custom active">
+                    <i class="bi bi-speedometer2"></i>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-item-custom">
+                    <i class="bi bi-file-earmark-medical"></i>
+                    Documents
+                </a>
+                <a href="#" class="nav-item-custom">
+                    <i class="bi bi-clipboard-check"></i>
+                    Review Queue
+                </a>
+                <a href="#" class="nav-item-custom">
+                    <i class="bi bi-bar-chart-line"></i>
+                    Analytics
+                </a>
+                <a href="#" class="nav-item-custom">
+                    <i class="bi bi-building"></i>
+                    Facilities
+                </a>
+                <a href="#" class="nav-item-custom">
+                    <i class="bi bi-gear"></i>
+                    Settings
+                </a>
+            </nav>
+
+            <div class="sidebar-tagline">
+                <strong>Rapid Fungal Testing.</strong><br>
+                Accurate Results.
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <!-- TOP HEADER -->
+        <header class="top-header">
+            <h1 class="page-title">Lab <span>Intelligence</span> Dashboard</h1>
+            <div class="header-actions">
+                <div class="session-timer">
+                    <i class="bi bi-clock"></i> Session: 14:32
+                </div>
+                <div class="user-dropdown">
+                    <div class="user-avatar">JD</div>
+                    <div>
+                        <div style="font-weight: 600; color: var(--mv-gray);">Dr. Jane Doe</div>
+                        <div style="font-size: 0.8rem; color: #888;">Administrator</div>
+                    </div>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD CONTENT -->
+        <div class="dashboard-content">
+            <!-- STATS ROW -->
+            <div class="stats-row">
+                <div class="stat-card pending">
+                    <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+                    <div class="stat-number">24</div>
+                    <div class="stat-label">Pending Extraction</div>
+                </div>
+                <div class="stat-card review">
+                    <div class="stat-icon"><i class="bi bi-eye"></i></div>
+                    <div class="stat-number">12</div>
+                    <div class="stat-label">Awaiting Review</div>
+                </div>
+                <div class="stat-card approved">
+                    <div class="stat-icon"><i class="bi bi-check-circle"></i></div>
+                    <div class="stat-number">156</div>
+                    <div class="stat-label">Approved Today</div>
+                </div>
+                <div class="stat-card rejected">
+                    <div class="stat-icon"><i class="bi bi-x-circle"></i></div>
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">Rejected</div>
+                </div>
+            </div>
+
+            <!-- ACTION CARDS -->
+            <div class="action-row">
+                <div class="action-card">
+                    <div class="action-card-header">
+                        <div class="action-card-title">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                            Upload Documents
+                        </div>
+                    </div>
+                    <div class="upload-zone">
+                        <div class="upload-icon">
+                            <i class="bi bi-file-earmark-arrow-up"></i>
+                        </div>
+                        <div class="upload-text">Drag & drop files here</div>
+                        <div class="upload-hint">or click to browse (PDF, JPG, PNG)</div>
+                    </div>
+                </div>
+                <div class="action-card">
+                    <div class="action-card-header">
+                        <div class="action-card-title">
+                            <i class="bi bi-activity"></i>
+                            Today's Performance
+                        </div>
+                    </div>
+                    <div class="quick-stat-row">
+                        <div class="quick-stat">
+                            <div class="quick-stat-value">94.2%</div>
+                            <div class="quick-stat-label">Avg Confidence</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="quick-stat-value">2.3s</div>
+                            <div class="quick-stat-label">Avg Process Time</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="quick-stat-value">189</div>
+                            <div class="quick-stat-label">Total Processed</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DOCUMENTS TABLE -->
+            <div class="table-card">
+                <div class="table-card-header">
+                    <div class="table-card-title">Recent Documents</div>
+                    <div class="filter-row">
+                        <input type="text" placeholder="Search accession...">
+                        <select>
+                            <option>All Status</option>
+                            <option>Pending</option>
+                            <option>In Review</option>
+                            <option>Approved</option>
+                        </select>
+                    </div>
+                </div>
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Accession #</th>
+                            <th>Facility</th>
+                            <th>Patient</th>
+                            <th>Confidence</th>
+                            <th>Status</th>
+                            <th>Received</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>MVD-2024-001234</strong></td>
+                            <td>Indianapolis Vet Clinic</td>
+                            <td>Max (Canine)</td>
+                            <td>
+                                <span class="confidence-bar"><span class="confidence-fill" style="width: 96%"></span></span>
+                                96%
+                            </td>
+                            <td><span class="status-badge status-review">In Review</span></td>
+                            <td>Email</td>
+                            <td><button class="action-btn">Review</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>MVD-2024-001233</strong></td>
+                            <td>Central Animal Hospital</td>
+                            <td>Bella (Feline)</td>
+                            <td>
+                                <span class="confidence-bar"><span class="confidence-fill" style="width: 89%"></span></span>
+                                89%
+                            </td>
+                            <td><span class="status-badge status-pending">Pending</span></td>
+                            <td>Fax</td>
+                            <td><button class="action-btn">Review</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>MVD-2024-001232</strong></td>
+                            <td>Unity Health Partners</td>
+                            <td>John Smith</td>
+                            <td>
+                                <span class="confidence-bar"><span class="confidence-fill" style="width: 98%"></span></span>
+                                98%
+                            </td>
+                            <td><span class="status-badge status-approved">Approved</span></td>
+                            <td>API</td>
+                            <td><button class="action-btn">View</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- HIPAA BADGE -->
+    <div class="hipaa-badge">
+        <i class="bi bi-shield-check"></i>
+        HIPAA Compliant
+    </div>
+</body>
+</html>

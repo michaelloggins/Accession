@@ -1,0 +1,174 @@
+# Lab Document Intelligence System - Git Ignore
+
+# ========== Python ==========
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ========== Virtual Environment ==========
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ========== IDE ==========
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-workspace
+
+# ========== Testing ==========
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+nosetests.xml
+test-results.xml
+
+# ========== Distribution ==========
+*.manifest
+*.spec
+
+# ========== Logs ==========
+*.log
+logs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ========== Database ==========
+*.db
+*.sqlite3
+*.sql
+
+# ========== Secrets & Configuration ==========
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+credentials.json
+service-account.json
+
+# ========== Azure ==========
+.azure/
+azure.json
+
+# ========== Docker ==========
+.docker/
+
+# ========== OS Generated ==========
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ========== Application Specific ==========
+uploads/
+documents/
+reports/
+exports/
+*.pdf
+*.tiff
+*.tif
+jobs_store.json
+
+# ========== Alembic ==========
+# Keep migration files - they're essential for database schema management
+# alembic/versions/*.py
+
+# ========== Node (if using any npm packages) ==========
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ========== Temporary Files ==========
+*.tmp
+*.bak
+*.swp
+*~
+
+# ========== Windows/System ==========
+nul
+2.0.36
+
+# ========== Claude Code ==========
+.claude/
+
+# ========== Security Reports ==========
+bandit-report.json
+security-scan-results.json
+
+# ========== Azure App Logs ==========
+app_logs*/
+app_logs*.zip
+webapp_logs/
+api_logs/
+api_error_logs/
+debug_logs/
+prod_logs*/
+prod_error_logs/
+fresh_extract/
+fresh_logs_extract/
+latest_debug_logs/
+latest_logs*/
+*_extract/
+
+# ========== Debug/Troubleshooting Folders ==========
+auth_debug/
+scim_logs/
+saml_debug/
+
+# ========== Development/Debug Scripts ==========
+**/check_schema.py
+**/fix_*_schema.py
+
+# ========== Data Files (PHI/PII) ==========
+*.csv
+!requirements*.csv
+
+# ========== Scripts folder data files (keep scripts, exclude data) ==========
+scripts/*.csv
+scripts/*.db
+scripts/jobs_store.json
+
+# ========== Miscellaneous artifacts ==========
+*.zip
+2.0.36
+jobs_store.json
+nul

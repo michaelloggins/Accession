@@ -1,0 +1,717 @@
+{% extends "base.html" %}
+
+{% block title %}Queue Management - Lab Document Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-card {
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .status-card.running {
+        background: rgba(139, 197, 63, 0.1);
+        border-left-color: var(--mv-green);
+    }
+
+    .status-card.stopped {
+        background: rgba(239, 68, 68, 0.1);
+        border-left-color: var(--danger);
+    }
+
+    .status-card.warning {
+        background: rgba(245, 158, 11, 0.1);
+        border-left-color: var(--warning);
+    }
+
+    .queue-stats {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-item {
+        text-align: center;
+        min-width: 100px;
+        padding: 1rem;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .batch-row {
+        cursor: pointer;
+    }
+
+    .batch-row:hover {
+        background-color: var(--table-row-hover);
+    }
+
+    .action-buttons .btn {
+        min-width: 120px;
+    }
+
+    .pulse-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+    }
+
+    .pulse-dot.green {
+        background-color: var(--mv-green);
+    }
+
+    .pulse-dot.red {
+        background-color: var(--danger);
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.9); }
+    }
+
+    .log-container {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.8rem;
+        padding: 1rem;
+        border-radius: 8px;
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+    }
+
+    .log-entry {
+        margin-bottom: 0.25rem;
+    }
+
+    .log-entry.error {
+        color: var(--danger);
+    }
+
+    .log-entry.success {
+        color: var(--mv-green);
+    }
+
+    .log-entry.warning {
+        color: var(--warning);
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4><i class="bi bi-list-task"></i> Queue Management</h4>
+            <button class="btn btn-outline-primary btn-sm" onclick="refreshAll()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+
+        <!-- Service Status Cards -->
+        <div class="row mb-4">
+            <!-- Blob Watcher Status -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-cloud-download"></i> Blob Watcher</h5>
+                        <span id="blobWatcherStatus" class="badge bg-secondary">Loading...</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="blobWatcherDetails">
+                            <p class="text-muted">Loading status...</p>
+                        </div>
+                        <div class="action-buttons mt-3">
+                            <button class="btn btn-success btn-sm" id="startBlobWatcherBtn" onclick="controlBlobWatcher('start')" disabled>
+                                <i class="bi bi-play-fill"></i> Start
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="stopBlobWatcherBtn" onclick="controlBlobWatcher('stop')" disabled>
+                                <i class="bi bi-stop-fill"></i> Stop
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" onclick="triggerBlobScan()">
+                                <i class="bi bi-search"></i> Scan Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extraction Worker Status -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-cpu"></i> Extraction Worker</h5>
+                        <span id="extractionWorkerStatus" class="badge bg-secondary">Loading...</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="extractionWorkerDetails">
+                            <p class="text-muted">Loading status...</p>
+                        </div>
+                        <div class="action-buttons mt-3">
+                            <button class="btn btn-success btn-sm" id="startWorkerBtn" onclick="controlExtractionWorker('start')" disabled>
+                                <i class="bi bi-play-fill"></i> Start
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="stopWorkerBtn" onclick="controlExtractionWorker('stop')" disabled>
+                                <i class="bi bi-stop-fill"></i> Stop
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" onclick="triggerProcessCycle()">
+                                <i class="bi bi-lightning"></i> Process Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Queue Statistics -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Queue Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="queue-stats" id="queueStats">
+                    <div class="stat-item">
+                        <div class="stat-value text-info" id="queuedCount">-</div>
+                        <div class="stat-label">Queued</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value text-primary" id="processingCount">-</div>
+                        <div class="stat-label">Processing</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value text-success" id="extractedCount">-</div>
+                        <div class="stat-label">Extracted</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value text-danger" id="failedCount">-</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value text-secondary" id="pendingExtractCount">-</div>
+                        <div class="stat-label">Pending Extraction</div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <h6>Bulk Actions</h6>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-sm" onclick="requeueFailed()">
+                            <i class="bi bi-arrow-repeat"></i> Requeue All Failed
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="requeuePending()">
+                            <i class="bi bi-play-circle"></i> Queue All Pending
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Batches -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-collection"></i> Recent Extraction Batches</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Batch ID</th>
+                                <th>Status</th>
+                                <th>Documents</th>
+                                <th>Success</th>
+                                <th>Failed</th>
+                                <th>Started</th>
+                                <th>Completed</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batchesTable">
+                            <tr>
+                                <td colspan="8" class="text-center py-3">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Failed Documents -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle text-danger"></i> Failed Extractions</h5>
+                <button class="btn btn-outline-danger btn-sm" onclick="loadFailedDocuments()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Accession #</th>
+                                <th>Filename</th>
+                                <th>Attempts</th>
+                                <th>Last Error</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="failedTable">
+                            <tr>
+                                <td colspan="5" class="text-center py-3">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Get auth headers - checks localStorage first, then js_access_token cookie (for SAML SSO)
+    function getAuthHeaders() {
+        let token = localStorage.getItem('access_token');
+
+        // If no token in localStorage, check for js_access_token cookie (set by SAML SSO)
+        if (!token) {
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'js_access_token' && value) {
+                    token = value;
+                    // Cache in localStorage for future requests
+                    localStorage.setItem('access_token', token);
+                    break;
+                }
+            }
+        }
+
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAllStatus();
+        // Auto-refresh every 10 seconds
+        setInterval(loadAllStatus, 10000);
+    });
+
+    function refreshAll() {
+        loadAllStatus();
+    }
+
+    async function loadAllStatus() {
+        await Promise.all([
+            loadBlobWatcherStatus(),
+            loadExtractionWorkerStatus(),
+            loadQueueStats(),
+            loadRecentBatches(),
+            loadFailedDocuments()
+        ]);
+    }
+
+    async function loadBlobWatcherStatus() {
+        try {
+            const response = await fetch('/api/queue/blob-watcher/status', {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to load status');
+
+            const status = await response.json();
+
+            const statusBadge = document.getElementById('blobWatcherStatus');
+            const detailsDiv = document.getElementById('blobWatcherDetails');
+
+            if (status.running) {
+                statusBadge.className = 'badge bg-success';
+                statusBadge.innerHTML = '<span class="pulse-dot green"></span> Running';
+                document.getElementById('startBlobWatcherBtn').disabled = true;
+                document.getElementById('stopBlobWatcherBtn').disabled = false;
+            } else {
+                statusBadge.className = 'badge bg-danger';
+                statusBadge.innerHTML = '<span class="pulse-dot red"></span> Stopped';
+                document.getElementById('startBlobWatcherBtn').disabled = false;
+                document.getElementById('stopBlobWatcherBtn').disabled = true;
+            }
+
+            detailsDiv.innerHTML = `
+                <p class="mb-1"><strong>Status:</strong> ${status.status}</p>
+                <p class="mb-1"><strong>Known Blobs:</strong> ${status.known_blobs || 0}</p>
+                <p class="mb-0"><strong>Last Scan:</strong> ${status.last_full_scan ? formatLocalDate(status.last_full_scan) : 'Never'}</p>
+            `;
+
+        } catch (error) {
+            console.error('Failed to load blob watcher status:', error);
+            document.getElementById('blobWatcherStatus').className = 'badge bg-secondary';
+            document.getElementById('blobWatcherStatus').textContent = 'Unknown';
+        }
+    }
+
+    async function loadExtractionWorkerStatus() {
+        try {
+            const response = await fetch('/api/queue/extraction-worker/status', {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to load status');
+
+            const status = await response.json();
+
+            const statusBadge = document.getElementById('extractionWorkerStatus');
+            const detailsDiv = document.getElementById('extractionWorkerDetails');
+
+            if (status.running) {
+                statusBadge.className = 'badge bg-success';
+                statusBadge.innerHTML = '<span class="pulse-dot green"></span> Running';
+                document.getElementById('startWorkerBtn').disabled = true;
+                document.getElementById('stopWorkerBtn').disabled = false;
+            } else {
+                statusBadge.className = 'badge bg-danger';
+                statusBadge.innerHTML = '<span class="pulse-dot red"></span> Stopped';
+                document.getElementById('startWorkerBtn').disabled = false;
+                document.getElementById('stopWorkerBtn').disabled = true;
+            }
+
+            detailsDiv.innerHTML = `
+                <p class="mb-1"><strong>Status:</strong> ${status.status}</p>
+                <p class="mb-1"><strong>Current Batch:</strong> ${status.current_batch_id || 'None'}</p>
+                <p class="mb-0"><strong>Last Cycle:</strong> ${status.last_cycle ? formatLocalDate(status.last_cycle) : 'Never'}</p>
+            `;
+
+        } catch (error) {
+            console.error('Failed to load extraction worker status:', error);
+            document.getElementById('extractionWorkerStatus').className = 'badge bg-secondary';
+            document.getElementById('extractionWorkerStatus').textContent = 'Unknown';
+        }
+    }
+
+    async function loadQueueStats() {
+        try {
+            const response = await fetch('/api/queue/stats', {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to load stats');
+
+            const stats = await response.json();
+
+            document.getElementById('queuedCount').textContent = stats.queued || 0;
+            document.getElementById('processingCount').textContent = stats.processing || 0;
+            document.getElementById('extractedCount').textContent = stats.extracted || 0;
+            document.getElementById('failedCount').textContent = stats.failed || 0;
+            document.getElementById('pendingExtractCount').textContent = stats.pending || 0;
+
+        } catch (error) {
+            console.error('Failed to load queue stats:', error);
+        }
+    }
+
+    async function loadRecentBatches() {
+        try {
+            const response = await fetch('/api/queue/batches?limit=10', {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to load batches');
+
+            const batches = await response.json();
+            const tbody = document.getElementById('batchesTable');
+
+            if (batches.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">No batches yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = batches.map(batch => `
+                <tr class="batch-row ${batch.status === 'failed' ? 'table-danger clickable-error' : ''}"
+                    ${batch.status === 'failed' && batch.error_message ? `style="cursor: pointer;" onclick="showBatchError('${batch.id}', '${escapeHtml(batch.error_message)}')"` : ''}>
+                    <td><code>${batch.id.substring(0, 8)}...</code></td>
+                    <td>${getBatchStatusBadge(batch.status)}</td>
+                    <td>${batch.document_count}</td>
+                    <td class="text-success">${batch.successful_count || 0}</td>
+                    <td class="text-danger">${batch.failed_count || 0}</td>
+                    <td>${batch.started_at ? formatLocalDate(batch.started_at) : '-'}</td>
+                    <td>${batch.completed_at ? formatLocalDate(batch.completed_at) : '-'}</td>
+                    <td>${calculateDuration(batch.started_at, batch.completed_at)}</td>
+                </tr>
+            `).join('');
+
+        } catch (error) {
+            console.error('Failed to load batches:', error);
+            document.getElementById('batchesTable').innerHTML =
+                '<tr><td colspan="8" class="text-center py-3 text-danger">Failed to load batches</td></tr>';
+        }
+    }
+
+    async function loadFailedDocuments() {
+        try {
+            const response = await fetch('/api/documents/?processing_status=failed&limit=20', {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to load');
+
+            const data = await response.json();
+            const tbody = document.getElementById('failedTable');
+
+            if (!data.documents || data.documents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-success"><i class="bi bi-check-circle"></i> No failed documents</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.documents.map(doc => `
+                <tr class="clickable-error" style="cursor: pointer;"
+                    onclick="showDocumentError(${doc.id}, '${escapeHtml(doc.accession_number)}', '${escapeHtml(doc.last_extraction_error || '')}')">
+                    <td><strong>${doc.accession_number}</strong></td>
+                    <td class="text-truncate" style="max-width: 200px;">${doc.filename || '-'}</td>
+                    <td>${doc.extraction_attempts || 0}</td>
+                    <td class="text-truncate text-danger" style="max-width: 300px;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>${truncateError(doc.last_extraction_error)}
+                    </td>
+                    <td>
+                        <button class="btn btn-outline-warning btn-sm" onclick="event.stopPropagation(); reExtract(${doc.id})">
+                            <i class="bi bi-arrow-repeat"></i> Retry
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+        } catch (error) {
+            console.error('Failed to load failed documents:', error);
+        }
+    }
+
+    function getBatchStatusBadge(status) {
+        const badges = {
+            'queued': '<span class="badge bg-info">Queued</span>',
+            'processing': '<span class="badge bg-primary">Processing</span>',
+            'completed': '<span class="badge bg-success">Completed</span>',
+            'failed': '<span class="badge bg-danger">Failed</span>',
+            'split': '<span class="badge bg-warning">Split</span>'
+        };
+        return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+    }
+
+    function calculateDuration(start, end) {
+        if (!start) return '-';
+        const startTime = new Date(start);
+        const endTime = end ? new Date(end) : new Date();
+        const seconds = Math.floor((endTime - startTime) / 1000);
+
+        if (seconds < 60) return `${seconds}s`;
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+        return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+    }
+
+    async function controlBlobWatcher(action) {
+        try {
+            const response = await fetch(`/api/queue/blob-watcher/${action}`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                alert(`Blob watcher ${action}ed successfully`);
+                loadBlobWatcherStatus();
+            } else {
+                const data = await response.json();
+                alert('Failed: ' + (data.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function controlExtractionWorker(action) {
+        try {
+            const response = await fetch(`/api/queue/extraction-worker/${action}`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                alert(`Extraction worker ${action}ed successfully`);
+                loadExtractionWorkerStatus();
+            } else {
+                const data = await response.json();
+                alert('Failed: ' + (data.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function triggerBlobScan() {
+        try {
+            const response = await fetch('/api/queue/blob-watcher/scan', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                let message = `Blob Scan Complete:\n`;
+                message += `- Total blobs in container: ${data.total_blobs}\n`;
+                message += `- New blobs found: ${data.new_blobs_found}\n`;
+                message += `- Skipped (unsupported type): ${data.skipped_unsupported}\n`;
+                message += `- Already known: ${data.already_known}`;
+
+                if (data.processed_files && data.processed_files.length > 0) {
+                    message += `\n\nProcessed files:\n- ${data.processed_files.join('\n- ')}`;
+                }
+
+                if (data.error) {
+                    message += `\n\nWarning: ${data.error}`;
+                }
+
+                alert(message);
+                loadBlobWatcherStatus();
+                loadQueueStats();
+            } else {
+                alert('Failed: ' + (data.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function triggerProcessCycle() {
+        try {
+            const response = await fetch('/api/queue/extraction-worker/process', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                alert('Processing cycle triggered');
+                setTimeout(loadAllStatus, 2000);
+            } else {
+                const data = await response.json();
+                alert('Failed: ' + (data.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML.replace(/'/g, "\\'").replace(/"/g, '\\"');
+    }
+
+    function truncateError(error) {
+        if (!error) return '-';
+        return error.length > 50 ? error.substring(0, 50) + '...' : error;
+    }
+
+    function showDocumentError(docId, accessionNumber, errorMessage) {
+        showErrorDetail(
+            `Document: ${accessionNumber}`,
+            errorMessage,
+            '<span class="badge bg-danger"><i class="bi bi-x"></i> Failed</span>',
+            function() { reExtract(docId); }
+        );
+    }
+
+    function showBatchError(batchId, errorMessage) {
+        showErrorDetail(
+            `Batch: ${batchId.substring(0, 8)}...`,
+            errorMessage,
+            '<span class="badge bg-danger">Failed</span>',
+            null
+        );
+    }
+
+    async function reExtract(documentId) {
+        try {
+            const response = await fetch(`/api/documents/${documentId}/re-extract`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                alert('Document queued for re-extraction');
+                loadFailedDocuments();
+                loadQueueStats();
+            } else {
+                const data = await response.json();
+                alert('Failed: ' + (data.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function requeueFailed() {
+        if (!confirm('Requeue all failed documents for extraction?')) return;
+
+        try {
+            const response = await fetch('/api/queue/requeue-failed', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                alert(`Requeued ${data.count} documents`);
+                loadAllStatus();
+            } else {
+                const data = await response.json();
+                alert('Failed: ' + (data.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function requeuePending() {
+        if (!confirm('Queue all pending documents for extraction?')) return;
+
+        try {
+            const response = await fetch('/api/queue/queue-pending', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                alert(`Queued ${data.count} documents`);
+                loadAllStatus();
+            } else {
+                const data = await response.json();
+                alert('Failed: ' + (data.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

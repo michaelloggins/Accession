@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}System Health - Lab Document Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Card styling for dark mode */
+    .card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .card-body {
+        color: var(--text-primary);
+    }
+
+    .card-title {
+        color: var(--text-primary);
+    }
+
+    .card-text.text-muted,
+    .text-muted {
+        color: var(--text-secondary) !important;
+    }
+
+    h4, h5, h6 {
+        color: var(--text-primary);
+    }
+
+    /* Status border colors */
+    .border-success { border-color: var(--mv-green) !important; }
+    .border-warning { border-color: var(--warning) !important; }
+    .border-danger { border-color: var(--danger) !important; }
+    .border-secondary { border-color: var(--border-color) !important; }
+
+    /* Alert styling */
+    .alert-secondary {
+        background: var(--bg-tertiary);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .alert-success {
+        background: rgba(139, 197, 63, 0.15);
+        border-color: var(--mv-green);
+        color: var(--text-primary);
+    }
+
+    .alert-warning {
+        background: rgba(245, 158, 11, 0.15);
+        border-color: var(--warning);
+        color: var(--text-primary);
+    }
+
+    .alert-danger {
+        background: rgba(239, 68, 68, 0.15);
+        border-color: var(--danger);
+        color: var(--text-primary);
+    }
+
+    /* Status icons */
+    .text-success { color: var(--mv-green) !important; }
+    .text-warning { color: var(--warning) !important; }
+    .text-danger { color: var(--danger) !important; }
+
+    /* HR styling */
+    hr {
+        border-color: var(--border-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-heart-pulse"></i> System Health Dashboard</h2>
+            <div>
+                <span class="text-muted me-3" id="last-check-time">Last check: Never</span>
+                <button class="btn btn-outline-primary btn-sm" onclick="refreshHealth()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Overall Status Banner -->
+        <div id="overall-status" class="alert alert-secondary mb-4">
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <span>Checking system health...</span>
+            </div>
+        </div>
+
+        <!-- System Info Row -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Version</h6>
+                        <h4 id="system-version">-</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Environment</h6>
+                        <h4 id="system-environment">-</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Timezone</h6>
+                        <h4 id="system-timezone">-</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted">Response Time</h6>
+                        <h4 id="response-time">-</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- App Instances Section (Azure-style table) -->
+        <div id="instances-section" class="mb-4" style="display: none;">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3"><i class="bi bi-server me-2"></i>Health check</h5>
+                    <div class="row mb-3">
+                        <div class="col-auto">
+                            <span class="text-muted">Health check</span>
+                            <span id="health-percentage" class="ms-2 text-primary"></span>
+                        </div>
+                        <div class="col-auto">
+                            <span class="text-muted">Metrics</span>
+                            <a href="#" class="ms-2 text-primary">View details</a>
+                        </div>
+                    </div>
+                    <h6 class="mb-3">Instances</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="instances-table">
+                            <thead>
+                                <tr>
+                                    <th>Server</th>
+                                    <th>Physical zone</th>
+                                    <th>Status</th>
+                                    <th>Last error</th>
+                                    <th>Last error info</th>
+                                    <th>Last error occu...</th>
+                                    <th>Health check status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="instances-body">
+                                <!-- Instances will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Services Grid -->
+        <div class="row" id="services-grid">
+            <!-- Services will be populated by JavaScript -->
+        </div>
+
+        <!-- Legend -->
+        <div class="mt-4">
+            <h5>Status Legend</h5>
+            <div class="d-flex gap-4">
+                <span><i class="bi bi-check-circle-fill text-success fs-5"></i> Healthy - Fully operational</span>
+                <span><i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i> Degraded - Operational with issues</span>
+                <span><i class="bi bi-x-circle-fill text-danger fs-5"></i> Unhealthy - Not operational</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const statusIcons = {
+        'healthy': '<i class="bi bi-check-circle-fill text-success fs-1"></i>',
+        'degraded': '<i class="bi bi-exclamation-triangle-fill text-warning fs-1"></i>',
+        'unhealthy': '<i class="bi bi-x-circle-fill text-danger fs-1"></i>'
+    };
+
+    const statusColors = {
+        'healthy': 'success',
+        'degraded': 'warning',
+        'unhealthy': 'danger'
+    };
+
+    const statusLabels = {
+        'healthy': 'All Systems Operational',
+        'degraded': 'Some Systems Degraded',
+        'unhealthy': 'System Issues Detected'
+    };
+
+    async function refreshHealth() {
+        const overallStatus = document.getElementById('overall-status');
+        overallStatus.className = 'alert alert-secondary mb-4';
+        overallStatus.innerHTML = `
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <span>Checking system health...</span>
+            </div>
+        `;
+
+        try {
+            const response = await fetch('/health/detailed');
+            const data = await response.json();
+
+            // Update overall status
+            const color = statusColors[data.status] || 'secondary';
+            const label = statusLabels[data.status] || 'Unknown';
+            const icon = statusIcons[data.status] || '';
+
+            // Format timestamp in user's local timezone
+            const timeStr = formatLocalDate(data.timestamp);
+
+            overallStatus.className = `alert alert-${color} mb-4`;
+            overallStatus.innerHTML = `
+                <div class="d-flex align-items-center">
+                    ${icon}
+                    <div class="ms-3">
+                        <h4 class="mb-0">${label}</h4>
+                        <small>Checked at ${timeStr}</small>
+                    </div>
+                </div>
+            `;
+
+            // Update system info
+            document.getElementById('system-version').textContent = data.version || '-';
+            document.getElementById('system-environment').textContent = data.environment || '-';
+            document.getElementById('system-timezone').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local';
+            document.getElementById('response-time').textContent = data.response_time_ms ? `${data.response_time_ms} ms` : '-';
+
+            // Format last check time in user's local timezone
+            const lastCheckStr = formatLocalDate(new Date().toISOString());
+            document.getElementById('last-check-time').textContent = `Last check: ${lastCheckStr}`;
+
+            // Update services grid
+            const servicesGrid = document.getElementById('services-grid');
+            servicesGrid.innerHTML = '';
+
+            for (const [key, service] of Object.entries(data.services)) {
+                // Handle app_instances separately with a table view
+                if (key === 'app_instances' && service.details && service.details.instances) {
+                    updateInstancesTable(service);
+                    continue;
+                }
+                const serviceCard = createServiceCard(service);
+                servicesGrid.appendChild(serviceCard);
+            }
+
+        } catch (error) {
+            console.error('Health check failed:', error);
+            overallStatus.className = 'alert alert-danger mb-4';
+            overallStatus.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-x-circle-fill text-danger fs-1"></i>
+                    <div class="ms-3">
+                        <h4 class="mb-0">Health Check Failed</h4>
+                        <small>Error: ${error.message}</small>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function updateInstancesTable(service) {
+        const section = document.getElementById('instances-section');
+        const tbody = document.getElementById('instances-body');
+        const healthPercentage = document.getElementById('health-percentage');
+
+        // Show the section
+        section.style.display = 'block';
+
+        // Update health percentage
+        const details = service.details || {};
+        const healthy = details.healthy_count || 0;
+        const degraded = details.degraded_count || 0;
+        const total = details.total_count || 1;
+        const percentage = details.health_percentage || 0;
+
+        healthPercentage.innerHTML = `<span class="text-${percentage === 100 ? 'success' : percentage >= 50 ? 'warning' : 'danger'}">${percentage.toFixed(2)}% (Healthy ${healthy} / Degraded ${degraded})</span>`;
+
+        // Clear existing rows
+        tbody.innerHTML = '';
+
+        // Add instance rows
+        const instances = details.instances || [];
+        instances.forEach(instance => {
+            const tr = document.createElement('tr');
+
+            // Determine status icon and color
+            const isHealthy = instance.health_check_status === 'Healthy';
+            const statusIcon = isHealthy ?
+                '<i class="bi bi-check-circle-fill text-success"></i>' :
+                '<i class="bi bi-exclamation-triangle-fill text-warning"></i>';
+
+            const healthIcon = isHealthy ?
+                '<i class="bi bi-check-circle-fill text-success me-1"></i>' :
+                '<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>';
+
+            tr.innerHTML = `
+                <td><code>${instance.server || '---'}</code></td>
+                <td>${instance.physical_zone || '---'}</td>
+                <td>${statusIcon} ${instance.status || 'Unknown'}</td>
+                <td>${instance.last_error || '---'}</td>
+                <td>${instance.last_error_info || '---'}</td>
+                <td>${instance.last_error_occurred || '---'}</td>
+                <td>${healthIcon}${instance.health_check_status || 'Unknown'}</td>
+                <td><a href="#" class="text-primary">Repair</a></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function createServiceCard(service) {
+        const col = document.createElement('div');
+        col.className = 'col-md-6 col-lg-4 mb-3';
+
+        const status = service.status || 'unhealthy';
+        const color = statusColors[status] || 'secondary';
+        const icon = statusIcons[status] || '';
+        const borderClass = `border-${color}`;
+
+        let detailsHtml = '';
+        if (service.details) {
+            detailsHtml = '<hr><small class="text-muted">';
+            for (const [key, value] of Object.entries(service.details)) {
+                if (typeof value === 'object') {
+                    detailsHtml += `<strong>${key}:</strong> ${JSON.stringify(value)}<br>`;
+                } else {
+                    detailsHtml += `<strong>${key}:</strong> ${value}<br>`;
+                }
+            }
+            detailsHtml += '</small>';
+        }
+
+        col.innerHTML = `
+            <div class="card h-100 ${borderClass}" style="border-width: 2px;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="card-title">${service.name || 'Unknown Service'}</h5>
+                            <p class="card-text text-muted mb-2">${service.message || 'No status message'}</p>
+                            ${service.response_time_ms !== null ?
+                                `<small class="text-muted"><i class="bi bi-stopwatch"></i> ${service.response_time_ms} ms</small>` :
+                                ''
+                            }
+                        </div>
+                        <div class="text-end">
+                            ${icon}
+                        </div>
+                    </div>
+                    ${detailsHtml}
+                </div>
+            </div>
+        `;
+
+        return col;
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', () => {
+        refreshHealth();
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshHealth, 30000);
+    });
+</script>
+{% endblock %}

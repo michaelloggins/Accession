@@ -1,0 +1,1775 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Lab Document Intelligence{% endblock %}
+
+{% block navbar %}
+<!-- Custom header with hero section -->
+<header class="main-header">
+    <nav class="top-nav">
+        <!-- Logo Area -->
+        <div class="logo-area">
+            <img src="/static/images/miravista_logo_transparent.png" alt="MiraVista Diagnostics">
+            <div class="logo-divider"></div>
+            <div class="brand-text">Lab <strong>Intelligence</strong> Platform</div>
+        </div>
+
+        <!-- Center Navigation -->
+        <div class="nav-center">
+            <a href="/dashboard" class="nav-link-item active">
+                <i class="bi bi-grid-1x2-fill"></i> Dashboard
+            </a>
+            <a href="/documents" class="nav-link-item">
+                <i class="bi bi-file-medical"></i> Documents
+            </a>
+            <a href="/queue" class="nav-link-item power-user-only" style="display: none;">
+                <i class="bi bi-list-task"></i> Queue
+            </a>
+            <a href="/compliance" class="nav-link-item">
+                <i class="bi bi-clipboard-check"></i> Compliance
+            </a>
+            <a href="/admin" class="nav-link-item admin-only" style="display: none;">
+                <i class="bi bi-gear-wide-connected"></i> Admin
+            </a>
+            <a href="/system-health" class="nav-link-item admin-only" style="display: none;">
+                <i class="bi bi-heart-pulse"></i> Health
+            </a>
+        </div>
+
+        <!-- Right Side -->
+        <div class="nav-right">
+            <!-- Theme Toggle -->
+            <div class="theme-toggle">
+                <i class="bi bi-sun-fill"></i>
+                <div class="toggle-switch" onclick="toggleTheme()"></div>
+                <i class="bi bi-moon-fill"></i>
+            </div>
+
+            <!-- Session Timer -->
+            <div class="session-badge" id="session-timer">
+                <i class="bi bi-shield-lock"></i>
+                <span id="timer-display">15:00</span>
+            </div>
+
+            <!-- User Info -->
+            <div class="user-avatar" id="user-avatar" title="Click to logout" onclick="logout()">
+                <span id="user-initials">--</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <h1 class="hero-title">Welcome back, <span id="hero-user-name">User</span></h1>
+        <p class="hero-subtitle">
+            You have <span id="hero-pending-count">0</span> documents awaiting review •
+            <span id="hero-date"></span>
+        </p>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card pending">
+                <div class="stat-top">
+                    <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+                    <span class="stat-change up" id="stat-pending-change">--</span>
+                </div>
+                <div class="stat-value" id="pendingCount">0</div>
+                <div class="stat-label">Pending Review</div>
+            </div>
+            <div class="stat-card review">
+                <div class="stat-top">
+                    <div class="stat-icon"><i class="bi bi-eye"></i></div>
+                    <span class="stat-change up" id="stat-today-change">--</span>
+                </div>
+                <div class="stat-value" id="todayCount">0</div>
+                <div class="stat-label">Processed Today</div>
+            </div>
+            <div class="stat-card approved">
+                <div class="stat-top">
+                    <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
+                    <span class="stat-change up" id="stat-auto-change">--</span>
+                </div>
+                <div class="stat-value" id="automationRate">0%</div>
+                <div class="stat-label">Auto-Approved Rate</div>
+            </div>
+            <div class="stat-card total">
+                <div class="stat-top">
+                    <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                    <span class="stat-change up" id="stat-conf-change">--</span>
+                </div>
+                <div class="stat-value" id="avgConfidence">0%</div>
+                <div class="stat-label">Avg Confidence</div>
+            </div>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Dashboard-specific styles that extend base theme */
+
+    /* Content Grid Layout */
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 25px;
+    }
+
+    @media (max-width: 1200px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Sidebar */
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* Upload Section */
+    .upload-section {
+        padding: 25px;
+    }
+
+    /* Quick Actions Grid */
+    .quick-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding: 20px;
+    }
+
+    .quick-btn {
+        padding: 18px 15px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: block;
+    }
+
+    .quick-btn:hover {
+        border-color: var(--mv-green);
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+
+    .quick-btn i {
+        font-size: 1.5rem;
+        color: var(--mv-green);
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .quick-btn span {
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    /* Performance Grid */
+    .perf-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        padding: 20px;
+    }
+
+    .perf-item {
+        text-align: center;
+        padding: 15px;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .perf-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--mv-green);
+        margin-bottom: 5px;
+    }
+
+    .perf-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    /* Filter Row */
+    .filter-row {
+        display: flex;
+        gap: 10px;
+        padding: 15px 20px;
+        background: var(--bg-tertiary);
+        flex-wrap: wrap;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .filter-row input, .filter-row select {
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        background: var(--input-bg);
+        color: var(--text-primary);
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .filter-row input:focus, .filter-row select:focus {
+        outline: none;
+        border-color: var(--mv-green);
+    }
+
+    /* Status Filter Pills */
+    .status-pills {
+        display: flex;
+        gap: 8px;
+        padding: 15px 20px;
+        flex-wrap: wrap;
+    }
+
+    .status-pill {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        text-decoration: none;
+    }
+
+    .status-pill:hover {
+        border-color: var(--mv-green);
+        color: var(--mv-green);
+    }
+
+    .status-pill.active {
+        background: var(--mv-green);
+        border-color: var(--mv-green);
+        color: white;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 9999;
+    }
+
+    .custom-toast {
+        min-width: 300px;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        box-shadow: var(--card-shadow);
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        animation: slideIn 0.3s ease-out;
+        border-left: 4px solid var(--mv-green);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--text-primary);
+    }
+
+    .custom-toast.success { border-left-color: var(--success, #16a34a); }
+    .custom-toast.error { border-left-color: var(--danger, #ef4444); }
+    .custom-toast.warning { border-left-color: var(--warning, #f59e0b); }
+
+    .custom-toast i { font-size: 1.25rem; }
+    .custom-toast.success i { color: var(--success, #16a34a); }
+    .custom-toast.error i { color: var(--danger, #ef4444); }
+    .custom-toast.warning i { color: var(--warning, #f59e0b); }
+
+    @keyframes slideIn {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* View All Link */
+    .view-all {
+        color: var(--mv-green);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .view-all:hover {
+        text-decoration: underline;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .action-btn:hover {
+        border-color: var(--mv-green);
+        color: var(--mv-green);
+        background: rgba(139, 197, 63, 0.1);
+    }
+
+    /* Accession Number Style */
+    .accession-num {
+        font-weight: 600;
+        color: var(--mv-green);
+    }
+
+    /* Facility Info */
+    .facility-info small {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+
+    /* Confidence Badge */
+    .confidence-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
+    .confidence-badge.high { background: rgba(139, 197, 63, 0.2); color: var(--mv-green); }
+    .confidence-badge.medium { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+    .confidence-badge.low { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+    /* Status Badge */
+    .status-badge {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .status-badge.pending { background: rgba(245, 158, 11, 0.2); color: #d97706; }
+    .status-badge.review, .status-badge.extracted { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+    .status-badge.approved { background: rgba(139, 197, 63, 0.2); color: var(--mv-green); }
+    .status-badge.rejected { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+    /* Source Badge */
+    .source-badge {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        background: var(--badge-bg);
+        color: var(--text-secondary);
+    }
+
+    .source-badge.email { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .source-badge.fax { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+    .source-badge.scan, .source-badge.scanned { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
+    .source-badge.api { background: rgba(20, 184, 166, 0.15); color: #14b8a6; }
+
+    /* Progress bar override */
+    .progress {
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+    }
+
+    .progress-bar {
+        background: linear-gradient(135deg, var(--mv-green), var(--mv-green-dark));
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Main Content Grid -->
+<div class="content-grid">
+    <!-- Left Column: Document Table -->
+    <div class="card-main">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="bi bi-table"></i>
+                Recent Documents
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="loadQueue()" title="Refresh">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <a href="/documents" class="view-all">View All <i class="bi bi-arrow-right"></i></a>
+            </div>
+        </div>
+
+        <!-- Status Filter Pills -->
+        <div class="status-pills">
+            <a href="#" class="status-pill active" data-filter="pending" onclick="filterDocuments('pending'); return false;">
+                <i class="bi bi-clock"></i> Pending
+            </a>
+            <a href="#" class="status-pill" data-filter="auto_approved" onclick="filterDocuments('auto_approved'); return false;">
+                <i class="bi bi-check-circle"></i> Auto-Approved
+            </a>
+            <a href="#" class="status-pill" data-filter="approved" onclick="filterDocuments('approved'); return false;">
+                <i class="bi bi-check2-circle"></i> Approved
+            </a>
+            <a href="#" class="status-pill" data-filter="rejected" onclick="filterDocuments('rejected'); return false;">
+                <i class="bi bi-x-circle"></i> Rejected
+            </a>
+            <a href="#" class="status-pill" data-filter="" onclick="filterDocuments(''); return false;">
+                <i class="bi bi-grid"></i> All
+            </a>
+        </div>
+
+        <!-- Filter Row -->
+        <div class="filter-row">
+            <input type="text" id="filterAccession" placeholder="Accession #...">
+            <input type="text" id="filterFacility" placeholder="Facility...">
+            <select id="filterConfidence">
+                <option value="">All Confidence</option>
+                <option value="high">High (≥90%)</option>
+                <option value="medium">Medium (70-89%)</option>
+                <option value="low">Low (&lt;70%)</option>
+            </select>
+            <select id="filterHowReceived">
+                <option value="">All Sources</option>
+                <option value="upload">Upload</option>
+                <option value="email">Email</option>
+                <option value="fax">Fax</option>
+                <option value="scanner">Scanned</option>
+                <option value="api">API</option>
+            </select>
+            <button class="action-btn" onclick="clearDocFilters()" title="Clear Filters">
+                <i class="bi bi-x-circle"></i>
+            </button>
+        </div>
+
+        <!-- Data Table -->
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="cursor: pointer;" onclick="sortDocsBy('accession_number')">
+                        Accession # <i class="bi bi-arrow-down-up" id="sort-doc-accession_number"></i>
+                    </th>
+                    <th>Facility</th>
+                    <th style="cursor: pointer;" onclick="sortDocsBy('confidence_score')">
+                        Confidence <i class="bi bi-arrow-down-up" id="sort-doc-confidence_score"></i>
+                    </th>
+                    <th>Status</th>
+                    <th>Source</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="documentQueue">
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 2rem;">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div style="padding: 15px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: center;">
+            <nav id="pagination"></nav>
+        </div>
+    </div>
+
+    <!-- Right Column: Sidebar -->
+    <div class="sidebar">
+        <!-- Upload Card -->
+        <div class="card-main">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="bi bi-cloud-arrow-up"></i>
+                    Quick Upload
+                </div>
+            </div>
+            <div class="upload-section">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="upload-zone" onclick="document.getElementById('documentFile').click();">
+                        <div class="upload-icon">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                        </div>
+                        <div class="upload-text">Drop files here</div>
+                        <div class="upload-hint">PDF, TIFF, PNG, JPEG up to 25MB</div>
+                    </div>
+                    <input type="file" id="documentFile" style="display: none;"
+                           accept=".pdf,.tiff,.tif,.png,.jpg,.jpeg" multiple>
+                    <select class="form-select mt-3" id="documentSource">
+                        <option value="upload">Manual Upload</option>
+                        <option value="scanner">Scanner</option>
+                        <option value="email">Email</option>
+                        <option value="fax">Fax</option>
+                    </select>
+                    <div id="selectedFilesList" class="mt-3 d-none">
+                        <small class="text-muted">Selected files:</small>
+                        <ul id="fileNamesList" class="list-unstyled mb-0 small"></ul>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mt-3" id="uploadBtn">
+                        <i class="bi bi-upload"></i> Upload
+                    </button>
+                </form>
+                <div id="uploadProgress" class="mt-3 d-none">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             style="width: 100%">Processing...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Card -->
+        <div class="card-main">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="bi bi-lightning-charge"></i>
+                    Quick Actions
+                </div>
+            </div>
+            <div class="quick-grid">
+                <a href="#" class="quick-btn" onclick="showManualEntryModal(); return false;">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>New Order</span>
+                </a>
+                <a href="/documents" class="quick-btn">
+                    <i class="bi bi-folder2-open"></i>
+                    <span>All Documents</span>
+                </a>
+                <a href="/compliance" class="quick-btn">
+                    <i class="bi bi-clipboard-data"></i>
+                    <span>Compliance</span>
+                </a>
+                <a href="/admin" class="quick-btn admin-only" style="display: none;">
+                    <i class="bi bi-gear"></i>
+                    <span>Settings</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Performance Card -->
+        <div class="card-main">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="bi bi-speedometer2"></i>
+                    Today's Performance
+                </div>
+            </div>
+            <div class="perf-grid">
+                <div class="perf-item">
+                    <div class="perf-value" id="perf-avg-confidence">--%</div>
+                    <div class="perf-label">Avg Confidence</div>
+                </div>
+                <div class="perf-item">
+                    <div class="perf-value" id="perf-process-time">--s</div>
+                    <div class="perf-label">Process Time</div>
+                </div>
+                <div class="perf-item">
+                    <div class="perf-value" id="perf-processed">--</div>
+                    <div class="perf-label">Processed</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Order Entry Modal -->
+<div class="modal fade" id="manualEntryModal" tabindex="-1" aria-labelledby="manualEntryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--mv-green) 0%, var(--mv-green-light) 100%); color: white;">
+                <h5 class="modal-title" id="manualEntryModalLabel">
+                    <i class="bi bi-pencil-square"></i> Create New Order
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+                <form id="manualOrderForm" autocomplete="off">
+                    <!-- Facility Information -->
+                    <div class="card-main mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="bi bi-building"></i>
+                                Ordering Facility
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Facility ID</label>
+                                    <input type="text" class="form-control" id="manual_facility_id" placeholder="Enter ID" onblur="lookupFacilityById()">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Facility Name *</label>
+                                    <input type="text" class="form-control" id="manual_facility_name" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Contact</label>
+                                    <input type="text" class="form-control" id="manual_laboratory_contact">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Address</label>
+                                    <input type="text" class="form-control" id="manual_facility_address">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="manual_facility_email">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-control" id="manual_facility_city">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">State</label>
+                                    <input type="text" class="form-control" id="manual_facility_state" maxlength="2">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Zip</label>
+                                    <input type="text" class="form-control" id="manual_facility_zipcode">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" id="manual_facility_phone">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Fax</label>
+                                    <input type="tel" class="form-control" id="manual_facility_fax">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Patient Information -->
+                    <div class="card-main mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="card-title">
+                                <i class="bi bi-person"></i>
+                                Patient Information
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="manualLookupPatient()" id="manual_lookup_patient_btn">
+                                <i class="bi bi-search"></i> Lookup Patient
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Patient Type *</label>
+                                    <select class="form-select" id="manual_patient_type" required onchange="updateManualPatientType()">
+                                        <option value="">Select...</option>
+                                        <option value="Human">Human</option>
+                                        <option value="Veterinary">Veterinary</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Species *</label>
+                                    <select class="form-select" id="manual_species" required onchange="updateTestOptions()">
+                                        <option value="">Select...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Owner Last Name *</label>
+                                    <input type="text" class="form-control" id="manual_owner_last_name" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Owner First Name *</label>
+                                    <input type="text" class="form-control" id="manual_owner_first_name" required>
+                                </div>
+                                <div class="col-md-3" id="manual_pet_name_container">
+                                    <label class="form-label">Pet Name</label>
+                                    <input type="text" class="form-control" id="manual_pet_name">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Date of Birth *</label>
+                                    <input type="date" class="form-control" id="manual_date_of_birth" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Gender</label>
+                                    <select class="form-select" id="manual_patient_gender">
+                                        <option value="">Select...</option>
+                                        <option value="M">Male</option>
+                                        <option value="F">Female</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">MRN</label>
+                                    <input type="text" class="form-control" id="manual_medical_record_number">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" id="manual_patient_phone">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="manual_patient_email">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Address</label>
+                                    <input type="text" class="form-control" id="manual_patient_address">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Patient Lookup Results (hidden by default) -->
+                    <div class="card-main mb-4" id="manual_patient_lookup_results" style="display: none;">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="bi bi-people"></i>
+                                Patient Matches
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="manual_patient_matches_container"></div>
+                        </div>
+                    </div>
+
+                    <!-- EPR Section for Human Patients (hidden by default) -->
+                    <div class="card-main mb-4" id="manual_epr_section" style="display: none;">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="bi bi-file-medical"></i>
+                                Electronic Patient Record (EPR)
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info mb-3">
+                                <i class="bi bi-info-circle"></i>
+                                For human patients, an Electronic Patient Record can be created for LIMS integration.
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">EPR Status</label>
+                                    <select class="form-select" id="manual_epr_status">
+                                        <option value="not_required">Not Required</option>
+                                        <option value="pending">Pending Creation</option>
+                                        <option value="created">Created</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">EPR ID</label>
+                                    <input type="text" class="form-control" id="manual_epr_id" placeholder="Auto-generated if created">
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" class="btn btn-primary mt-4" onclick="manualCreateEPR()" id="manual_create_epr_btn">
+                                        <i class="bi bi-plus-circle"></i> Create EPR
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Information -->
+                    <div class="card-main mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="bi bi-clipboard-pulse"></i>
+                                Order Information
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Ordering Physician *</label>
+                                    <div class="input-group">
+                                        <select class="form-select" id="manual_ordering_physician_select">
+                                            <option value="">Select physician...</option>
+                                        </select>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="toggleManualPhysicianInput()" title="Enter manually">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                    <input type="text" class="form-control mt-2" id="manual_ordering_physician" style="display: none;" placeholder="Enter physician name">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Collection Date *</label>
+                                    <input type="date" class="form-control" id="manual_collection_date" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Storage Temperature</label>
+                                    <select class="form-select" id="manual_storage_temperature">
+                                        <option value="">Select...</option>
+                                        <option value="room_temp">Room Temperature (15-25C)</option>
+                                        <option value="refrigerated">Refrigerated (2-8C)</option>
+                                        <option value="frozen">Frozen (-20C)</option>
+                                        <option value="deep_frozen">Deep Frozen (-70C)</option>
+                                        <option value="ambient">Ambient</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tests Requested -->
+                    <div class="card-main mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="bi bi-list-check"></i>
+                                Tests Requested
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Test</th>
+                                        <th>Specimen Type</th>
+                                        <th>Volume (mL)</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manualTestsTableBody">
+                                </tbody>
+                            </table>
+                            <button type="button" class="btn btn-secondary mt-3" onclick="addManualTestRow()">
+                                <i class="bi bi-plus-circle"></i> Add Test
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Special Instructions -->
+                    <div class="card-main">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="bi bi-info-circle"></i>
+                                Additional Information
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <textarea class="form-control" id="manual_special_instructions" rows="3"
+                                      placeholder="Special handling or processing instructions"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="submitManualOrder()">
+                    <i class="bi bi-check-circle"></i> Create Order
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global filter state
+    let currentFilter = 'pending';
+    let allDocuments = [];
+    let filteredDocuments = [];
+    let docSortField = 'upload_date';
+    let docSortDir = 'desc';
+    let bulkUploadThreshold = 4;
+
+    // Test database
+    let TEST_DATABASE = { Human: [], Canine: [], Feline: [], Equine: [], Other: [] };
+    let currentTestOptions = [];
+
+    function getAuthHeaders() {
+        // Check localStorage first (for manual login)
+        let token = localStorage.getItem('access_token');
+
+        // If not in localStorage, check js_access_token cookie (set by SAML/SSO login)
+        if (!token) {
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'js_access_token' && value) {
+                    token = value;
+                    // Store in localStorage for future use
+                    localStorage.setItem('access_token', token);
+                    break;
+                }
+            }
+        }
+
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+        };
+    }
+
+    // Initialize on DOM load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadConfig();
+        loadTestsFromAPI();
+        loadStats();
+        loadQueue();
+        updateHeroDate();
+        updateHeroUserName();
+
+        // Filter event listeners
+        document.getElementById('filterAccession')?.addEventListener('input', applyDocFilters);
+        document.getElementById('filterFacility')?.addEventListener('input', applyDocFilters);
+        document.getElementById('filterConfidence')?.addEventListener('change', applyDocFilters);
+        document.getElementById('filterHowReceived')?.addEventListener('change', applyDocFilters);
+
+        // File input change handler
+        document.getElementById('documentFile').addEventListener('change', function() {
+            const filesListContainer = document.getElementById('selectedFilesList');
+            const fileNamesList = document.getElementById('fileNamesList');
+
+            if (this.files.length > 0) {
+                document.querySelector('.upload-text').textContent = `${this.files.length} file(s) selected`;
+
+                // Show file list
+                filesListContainer.classList.remove('d-none');
+                fileNamesList.innerHTML = '';
+
+                // Show first 3-4 files, then "+X more"
+                const maxFilesToShow = 4;
+                const files = Array.from(this.files);
+
+                files.slice(0, maxFilesToShow).forEach(file => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<i class="bi bi-file-earmark text-primary me-1"></i>${file.name}`;
+                    fileNamesList.appendChild(li);
+                });
+
+                if (files.length > maxFilesToShow) {
+                    const li = document.createElement('li');
+                    li.className = 'text-muted';
+                    li.textContent = `+${files.length - maxFilesToShow} more file(s)`;
+                    fileNamesList.appendChild(li);
+                }
+            } else {
+                filesListContainer.classList.add('d-none');
+                document.querySelector('.upload-text').textContent = 'Drop files here';
+            }
+        });
+    });
+
+    function updateHeroDate() {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('hero-date').textContent = new Date().toLocaleDateString('en-US', options);
+    }
+
+    function updateHeroUserName() {
+        let userJson = localStorage.getItem('user');
+
+        // If not in localStorage, check user_info cookie (set by SAML/SSO login)
+        if (!userJson) {
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'user_info' && value) {
+                    try {
+                        userJson = decodeURIComponent(value);
+                        // Store in localStorage for future use
+                        localStorage.setItem('user', userJson);
+                    } catch (e) {}
+                    break;
+                }
+            }
+        }
+
+        if (userJson) {
+            try {
+                const user = JSON.parse(userJson);
+                document.getElementById('hero-user-name').textContent = user.full_name || 'User';
+            } catch (e) {}
+        }
+
+        // Development mode
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isDev = document.body.dataset.environment === 'development';
+        if (isLocalhost || isDev) {
+            document.getElementById('hero-user-name').textContent = 'Developer';
+        }
+    }
+
+    async function loadConfig() {
+        try {
+            const response = await fetch('/api/config/BULK_UPLOAD_THRESHOLD', { headers: getAuthHeaders() });
+            if (response.ok) {
+                const config = await response.json();
+                bulkUploadThreshold = parseInt(config.value) || 4;
+            }
+        } catch (error) {
+            console.warn('Could not load config:', error.message);
+        }
+    }
+
+    async function loadTestsFromAPI() {
+        try {
+            const response = await fetch('/api/tests');
+            if (!response.ok) return;
+            const tests = await response.json();
+
+            const specimenTypeMap = { 'Urine': 'UR', 'Serum': 'SER', 'Plasma': 'PLS', 'CSF': 'CSF', 'BAL': 'BAL', 'Blood': 'Blood' };
+            const allTests = tests.map(test => ({
+                code: test.test_number,
+                name: test.test_name,
+                defaultSpecimen: specimenTypeMap[test.eligible_specimens?.[0]] || 'SER',
+                eligibleSpecimens: test.eligible_specimens?.map(s => specimenTypeMap[s] || s) || [],
+                species: test.species
+            }));
+
+            TEST_DATABASE = {
+                Human: allTests.filter(t => t.species === 'Any' || t.species === 'Human'),
+                Canine: allTests.filter(t => t.species === 'Any' || t.species === 'K9' || t.species === 'Canine'),
+                Feline: allTests.filter(t => t.species === 'Any' || t.species === 'Feline'),
+                Equine: allTests.filter(t => t.species === 'Any' || t.species === 'Equine'),
+                Other: allTests.filter(t => t.species === 'Any')
+            };
+        } catch (error) {
+            console.error('Error loading tests:', error);
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/stats', { headers: getAuthHeaders() });
+            if (!response.ok) {
+                if (response.status === 401) {
+                    document.getElementById('pendingCount').textContent = '-';
+                    document.getElementById('todayCount').textContent = '-';
+                    document.getElementById('automationRate').textContent = '-';
+                    document.getElementById('avgConfidence').textContent = '-';
+                    return;
+                }
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            const pending = data.pending_review || 0;
+            const today = data.today?.processed || 0;
+            const autoRate = ((data.automation_rate || 0) * 100).toFixed(0);
+            const avgConf = ((data.average_confidence || 0) * 100).toFixed(0);
+
+            document.getElementById('pendingCount').textContent = pending;
+            document.getElementById('todayCount').textContent = today;
+            document.getElementById('automationRate').textContent = autoRate + '%';
+            document.getElementById('avgConfidence').textContent = avgConf + '%';
+            document.getElementById('hero-pending-count').textContent = pending;
+
+            // Performance metrics
+            document.getElementById('perf-avg-confidence').textContent = avgConf + '%';
+            document.getElementById('perf-processed').textContent = today;
+            document.getElementById('perf-process-time').textContent = (data.avg_process_time || 2.3).toFixed(1) + 's';
+        } catch (error) {
+            console.error('Failed to load stats:', error);
+        }
+    }
+
+    function filterDocuments(status) {
+        currentFilter = status;
+        document.querySelectorAll('.status-pill').forEach(pill => pill.classList.remove('active'));
+        document.querySelector(`[data-filter="${status}"]`).classList.add('active');
+        loadQueue();
+    }
+
+    async function loadQueue() {
+        try {
+            const url = currentFilter ? `/api/documents/?status=${currentFilter}` : '/api/documents/';
+            const response = await fetch(url, { headers: getAuthHeaders() });
+            const tbody = document.getElementById('documentQueue');
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;">Please log in</td></tr>';
+                    return;
+                }
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            allDocuments = data.documents || [];
+            filteredDocuments = [...allDocuments];
+            applyDocFilters();
+        } catch (error) {
+            console.error('Failed to load queue:', error);
+        }
+    }
+
+    function applyDocFilters() {
+        const accessionFilter = document.getElementById('filterAccession')?.value.toLowerCase() || '';
+        const facilityFilter = document.getElementById('filterFacility')?.value.toLowerCase() || '';
+        const confidenceFilter = document.getElementById('filterConfidence')?.value || '';
+        const howReceivedFilter = document.getElementById('filterHowReceived')?.value || '';
+
+        filteredDocuments = allDocuments.filter(doc => {
+            if (accessionFilter && !doc.accession_number.toLowerCase().includes(accessionFilter)) return false;
+            const facilityText = (doc.facility_name || '').toLowerCase();
+            if (facilityFilter && !facilityText.includes(facilityFilter)) return false;
+            if (confidenceFilter) {
+                const score = doc.confidence_score || 0;
+                if (confidenceFilter === 'high' && score < 0.90) return false;
+                if (confidenceFilter === 'medium' && (score < 0.70 || score >= 0.90)) return false;
+                if (confidenceFilter === 'low' && score >= 0.70) return false;
+            }
+            if (howReceivedFilter && doc.how_received !== howReceivedFilter) return false;
+            return true;
+        });
+
+        sortDocsBy(docSortField, false);
+    }
+
+    function clearDocFilters() {
+        document.getElementById('filterAccession').value = '';
+        document.getElementById('filterFacility').value = '';
+        document.getElementById('filterConfidence').value = '';
+        document.getElementById('filterHowReceived').value = '';
+        filteredDocuments = [...allDocuments];
+        sortDocsBy(docSortField, false);
+    }
+
+    function sortDocsBy(field, toggleDir = true) {
+        if (toggleDir && field === docSortField) {
+            docSortDir = docSortDir === 'asc' ? 'desc' : 'asc';
+        } else if (toggleDir) {
+            docSortDir = field === 'upload_date' ? 'desc' : 'asc';
+        }
+        docSortField = field;
+
+        document.querySelectorAll('[id^="sort-doc-"]').forEach(icon => {
+            icon.className = 'bi bi-arrow-down-up';
+        });
+        const currentIcon = document.getElementById(`sort-doc-${field}`);
+        if (currentIcon) {
+            currentIcon.className = docSortDir === 'asc' ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+        }
+
+        filteredDocuments.sort((a, b) => {
+            let valA = a[field], valB = b[field];
+            if (field === 'upload_date') {
+                valA = new Date(valA || 0).getTime();
+                valB = new Date(valB || 0).getTime();
+            } else if (field === 'confidence_score') {
+                valA = parseFloat(valA) || 0;
+                valB = parseFloat(valB) || 0;
+            } else {
+                valA = (valA || '').toString().toLowerCase();
+                valB = (valB || '').toString().toLowerCase();
+            }
+            if (valA < valB) return docSortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return docSortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        renderDocuments();
+    }
+
+    function renderDocuments() {
+        const tbody = document.getElementById('documentQueue');
+        tbody.innerHTML = '';
+
+        if (filteredDocuments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;">No documents found</td></tr>';
+            return;
+        }
+
+        filteredDocuments.slice(0, 20).forEach(doc => {
+            const confidence = formatConfidence(doc.confidence_score, doc.status);
+            const status = getStatusBadge(doc.status);
+            const source = getSourceBadge(doc.how_received);
+            const isFailed = doc.processing_status === 'failed';
+
+            tbody.innerHTML += `
+                <tr class="${isFailed ? 'table-danger clickable-error' : ''}"
+                    ${isFailed ? `style="cursor:pointer;" onclick="showDocumentError(${doc.id}, '${escapeHtml(doc.accession_number)}', '${escapeHtml(doc.last_extraction_error || '')}')"` : ''}>
+                    <td class="accession-num"><a href="/review/${doc.id}" onclick="event.stopPropagation();">${doc.accession_number}</a></td>
+                    <td class="facility-info">
+                        ${doc.facility_name || '-'}
+                        ${doc.patient_name ? `<small>${doc.patient_name}</small>` : ''}
+                    </td>
+                    <td>${isFailed ? '<span class="badge bg-danger"><i class="bi bi-x"></i> Failed</span>' : confidence}</td>
+                    <td>${status}</td>
+                    <td>${source}</td>
+                    <td>
+                        ${isFailed ? `
+                            <button class="action-btn" onclick="event.stopPropagation(); reExtractDoc(${doc.id});" title="Retry extraction">
+                                <i class="bi bi-arrow-repeat text-warning"></i>
+                            </button>
+                        ` : ''}
+                        <a href="/review/${doc.id}" class="action-btn" onclick="event.stopPropagation();"><i class="bi bi-eye"></i></a>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function formatConfidence(score, status) {
+        if (status === 'processing' || status === 'queued') {
+            return '<span class="confidence-badge" style="width:auto;padding:0 10px;background:rgba(59,130,246,0.2);color:#3b82f6;">Processing</span>';
+        }
+        if (score === null || score === undefined || isNaN(score) || score === 0) {
+            return '<span class="confidence-badge" style="width:auto;padding:0 10px;">--</span>';
+        }
+        const pct = (score * 100).toFixed(0);
+        const cls = score >= 0.90 ? 'high' : score >= 0.70 ? 'medium' : 'low';
+        return `<span class="confidence-badge ${cls}">${pct}%</span>`;
+    }
+
+    function getStatusBadge(status) {
+        const badges = {
+            'pending': '<span class="status-badge pending">Pending</span>',
+            'processing': '<span class="status-badge review">Processing</span>',
+            'queued': '<span class="status-badge review">Queued</span>',
+            'auto_approved': '<span class="status-badge approved">Auto-Approved</span>',
+            'approved': '<span class="status-badge approved">Approved</span>',
+            'rejected': '<span class="status-badge rejected">Rejected</span>'
+        };
+        return badges[status] || `<span class="status-badge">${status}</span>`;
+    }
+
+    function getSourceBadge(source) {
+        const badges = {
+            'upload': '<span class="source-badge">Upload</span>',
+            'email': '<span class="source-badge email">Email</span>',
+            'fax': '<span class="source-badge fax">Fax</span>',
+            'scanner': '<span class="source-badge scan">Scanned</span>',
+            'api': '<span class="source-badge api">API</span>',
+            'blob_upload': '<span class="source-badge">Upload</span>'
+        };
+        return badges[source] || `<span class="source-badge">${source || '-'}</span>`;
+    }
+
+    // Toast notification
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `custom-toast ${type}`;
+        const icon = type === 'success' ? 'bi-check-circle-fill' : type === 'error' ? 'bi-exclamation-circle-fill' : type === 'warning' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill';
+        toast.innerHTML = `<i class="bi ${icon}"></i><div>${message}</div>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'slideIn 0.3s ease-out reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    async function refreshQueue() {
+        showToast('Refreshing...', 'info');
+        await loadStats();
+        await loadQueue();
+        showToast('Refreshed!', 'success');
+    }
+
+    // Upload form handler
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressDiv = document.getElementById('uploadProgress');
+        const files = document.getElementById('documentFile').files;
+        const source = document.getElementById('documentSource').value;
+
+        if (files.length === 0) {
+            showToast('Please select files', 'warning');
+            return;
+        }
+
+        uploadBtn.disabled = true;
+        progressDiv.classList.remove('d-none');
+
+        let successCount = 0, failCount = 0;
+
+        for (let i = 0; i < files.length; i++) {
+            const formData = new FormData();
+            formData.append('file', files[i]);
+            formData.append('source', source);
+
+            try {
+                const response = await fetch('/api/documents/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+                    body: formData
+                });
+                if (response.ok) successCount++;
+                else failCount++;
+            } catch (error) {
+                failCount++;
+            }
+            progressDiv.querySelector('.progress-bar').textContent = `Processing ${i + 1} of ${files.length}...`;
+        }
+
+        if (successCount > 0) {
+            showToast(`Uploaded ${successCount} file(s)${failCount > 0 ? `, ${failCount} failed` : ''}`, failCount > 0 ? 'warning' : 'success');
+        } else {
+            showToast(`All ${failCount} upload(s) failed`, 'error');
+        }
+
+        refreshQueue();
+        document.getElementById('uploadForm').reset();
+        document.querySelector('.upload-text').textContent = 'Drop files here';
+        document.getElementById('selectedFilesList').classList.add('d-none');
+        document.getElementById('fileNamesList').innerHTML = '';
+        uploadBtn.disabled = false;
+        progressDiv.classList.add('d-none');
+    });
+
+    // Manual entry functions
+    function showManualEntryModal() {
+        const modal = new bootstrap.Modal(document.getElementById('manualEntryModal'));
+        document.getElementById('manualOrderForm').reset();
+        document.getElementById('manualTestsTableBody').innerHTML = '';
+        document.getElementById('manual_collection_date').valueAsDate = new Date();
+        addManualTestRow();
+        modal.show();
+    }
+
+    function updateTestOptions() {
+        const patientType = document.getElementById('manual_patient_type').value;
+        const species = document.getElementById('manual_species').value;
+
+        if (patientType === 'Human') {
+            document.getElementById('manual_species').value = 'Human';
+            currentTestOptions = TEST_DATABASE.Human || [];
+        } else if (species && TEST_DATABASE[species]) {
+            currentTestOptions = TEST_DATABASE[species];
+        } else {
+            currentTestOptions = [];
+        }
+    }
+
+    // Track current matched facility for manual order
+    let manualMatchedFacilityId = null;
+    let manualFacilityPhysicians = [];
+    let manualSelectedPatientId = null;
+
+    async function lookupFacilityById() {
+        const facilityId = document.getElementById('manual_facility_id').value.trim();
+        if (!facilityId) return;
+
+        console.log('Looking up facility ID:', facilityId);
+
+        try {
+            const response = await fetch(`/api/facilities/by-facility-id/${encodeURIComponent(facilityId)}`, {
+                headers: getAuthHeaders()
+            });
+            console.log('Facility lookup response status:', response.status);
+
+            if (response.ok) {
+                const facility = await response.json();
+                console.log('Facility found:', facility);
+                document.getElementById('manual_facility_name').value = facility.facility_name || '';
+                document.getElementById('manual_facility_address').value = facility.address || '';
+                document.getElementById('manual_facility_city').value = facility.city || '';
+                document.getElementById('manual_facility_state').value = facility.state || '';
+                document.getElementById('manual_facility_zipcode').value = facility.zipcode || '';
+                document.getElementById('manual_facility_phone').value = facility.phone || '';
+                document.getElementById('manual_facility_fax').value = facility.fax || '';
+                document.getElementById('manual_facility_email').value = facility.email || '';
+
+                // Store facility ID for patient lookup
+                manualMatchedFacilityId = facility.id;
+
+                // Load physicians for this facility
+                await loadManualPhysicians(facility.id);
+
+                showToast(`Loaded: ${facility.facility_name}`, 'success');
+            } else if (response.status === 404) {
+                showToast('Facility ID not found in database', 'warning');
+            } else {
+                const errorText = await response.text();
+                console.error('Facility lookup failed:', response.status, errorText);
+                showToast('Error looking up facility', 'danger');
+            }
+        } catch (error) {
+            console.error('Facility lookup error:', error);
+            showToast('Error connecting to server', 'danger');
+        }
+    }
+
+    // Load physicians for the selected facility
+    async function loadManualPhysicians(facilityId) {
+        const select = document.getElementById('manual_ordering_physician_select');
+        select.innerHTML = '<option value="">Loading...</option>';
+
+        try {
+            const response = await fetch(`/api/facilities/${facilityId}/physicians`, {
+                headers: getAuthHeaders()
+            });
+            if (response.ok) {
+                manualFacilityPhysicians = await response.json();
+                select.innerHTML = '<option value="">Select physician...</option>';
+
+                if (manualFacilityPhysicians.length === 0) {
+                    select.innerHTML += '<option value="" disabled>No physicians found</option>';
+                } else {
+                    manualFacilityPhysicians.forEach(p => {
+                        const option = document.createElement('option');
+                        option.value = p.id;
+                        option.textContent = `${p.name}${p.specialty ? ' - ' + p.specialty : ''}`;
+                        select.appendChild(option);
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error loading physicians:', error);
+            select.innerHTML = '<option value="">Select physician...</option>';
+        }
+    }
+
+    // Toggle between physician dropdown and text input
+    function toggleManualPhysicianInput() {
+        const select = document.getElementById('manual_ordering_physician_select');
+        const input = document.getElementById('manual_ordering_physician');
+
+        if (input.style.display === 'none') {
+            input.style.display = 'block';
+            select.parentElement.style.display = 'none';
+        } else {
+            input.style.display = 'none';
+            select.parentElement.style.display = 'flex';
+        }
+    }
+
+    // Update patient type - show/hide pet name, EPR section
+    function updateManualPatientType() {
+        const patientType = document.getElementById('manual_patient_type').value;
+        const petNameContainer = document.getElementById('manual_pet_name_container');
+        const eprSection = document.getElementById('manual_epr_section');
+        const speciesSelect = document.getElementById('manual_species');
+
+        // Update species options based on patient type
+        speciesSelect.innerHTML = '<option value="">Select...</option>';
+
+        if (patientType === 'Human') {
+            speciesSelect.innerHTML += '<option value="Human" selected>Human</option>';
+            petNameContainer.style.display = 'none';
+            eprSection.style.display = 'block';
+        } else if (patientType === 'Veterinary') {
+            speciesSelect.innerHTML += `
+                <option value="Canine">Canine</option>
+                <option value="Feline">Feline</option>
+                <option value="Equine">Equine</option>
+                <option value="Bovine">Bovine</option>
+                <option value="Porcine">Porcine</option>
+                <option value="Avian">Avian</option>
+                <option value="Other">Other</option>
+            `;
+            petNameContainer.style.display = 'block';
+            eprSection.style.display = 'none';
+        } else {
+            petNameContainer.style.display = 'block';
+            eprSection.style.display = 'none';
+        }
+
+        updateTestOptions();
+    }
+
+    // Patient lookup for manual order
+    async function manualLookupPatient() {
+        if (!manualMatchedFacilityId) {
+            showToast('Please select a facility first', 'warning');
+            return;
+        }
+
+        const ownerLastName = document.getElementById('manual_owner_last_name').value.trim();
+        const ownerFirstName = document.getElementById('manual_owner_first_name').value.trim();
+        const petName = document.getElementById('manual_pet_name').value.trim();
+        const mrn = document.getElementById('manual_medical_record_number').value.trim();
+
+        if (!ownerLastName && !mrn) {
+            showToast('Please enter owner last name or MRN to search', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/patients/lookup', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    facility_id: manualMatchedFacilityId,
+                    owner_last_name: ownerLastName,
+                    owner_first_name: ownerFirstName,
+                    pet_name: petName,
+                    medical_record_number: mrn
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                displayManualPatientMatches(result);
+            }
+        } catch (error) {
+            console.error('Patient lookup error:', error);
+            showToast('Error looking up patient', 'error');
+        }
+    }
+
+    // Display patient matches for selection
+    function displayManualPatientMatches(result) {
+        const container = document.getElementById('manual_patient_matches_container');
+        const section = document.getElementById('manual_patient_lookup_results');
+
+        if (!result.matches || result.matches.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">No matching patients found. You can create a new patient record.</div>';
+            section.style.display = 'block';
+            return;
+        }
+
+        let html = '<div class="list-group">';
+        result.matches.forEach(match => {
+            const displayName = match.pet_name
+                ? `${match.owner_last_name}, ${match.owner_first_name} (${match.pet_name})`
+                : `${match.owner_last_name}, ${match.owner_first_name}`;
+
+            html += `
+                <button type="button" class="list-group-item list-group-item-action" onclick="selectManualPatient(${match.patient_id})">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${displayName}</h6>
+                        <small class="text-muted">${(match.confidence * 100).toFixed(0)}% match</small>
+                    </div>
+                    <small class="text-muted">${match.match_details}</small>
+                    ${match.medical_record_number ? `<br><small>MRN: ${match.medical_record_number}</small>` : ''}
+                </button>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+        section.style.display = 'block';
+    }
+
+    // Select a patient from lookup results
+    async function selectManualPatient(patientId) {
+        try {
+            const response = await fetch(`/api/patients/${patientId}`, {
+                headers: getAuthHeaders()
+            });
+            if (response.ok) {
+                const patient = await response.json();
+
+                // Fill in patient fields
+                document.getElementById('manual_owner_last_name').value = patient.owner_last_name || '';
+                document.getElementById('manual_owner_first_name').value = patient.owner_first_name || '';
+                document.getElementById('manual_pet_name').value = patient.pet_name || '';
+                document.getElementById('manual_date_of_birth').value = patient.date_of_birth || '';
+                document.getElementById('manual_patient_gender').value = patient.gender || '';
+                document.getElementById('manual_medical_record_number').value = patient.medical_record_number || '';
+                document.getElementById('manual_patient_phone').value = patient.phone || '';
+                document.getElementById('manual_patient_email').value = patient.email || '';
+                document.getElementById('manual_patient_address').value = patient.address || '';
+
+                // Store selected patient ID
+                manualSelectedPatientId = patientId;
+
+                // Hide the lookup results
+                document.getElementById('manual_patient_lookup_results').style.display = 'none';
+
+                showToast('Patient loaded successfully', 'success');
+            }
+        } catch (error) {
+            console.error('Error loading patient:', error);
+            showToast('Error loading patient details', 'error');
+        }
+    }
+
+    // Create EPR for human patient
+    async function manualCreateEPR() {
+        const patientType = document.getElementById('manual_patient_type').value;
+        if (patientType !== 'Human') {
+            showToast('EPR is only for human patients', 'warning');
+            return;
+        }
+
+        // Validate required patient info
+        const lastName = document.getElementById('manual_owner_last_name').value.trim();
+        const firstName = document.getElementById('manual_owner_first_name').value.trim();
+        const dob = document.getElementById('manual_date_of_birth').value;
+
+        if (!lastName || !firstName || !dob) {
+            showToast('Please fill in patient name and date of birth before creating EPR', 'warning');
+            return;
+        }
+
+        // Generate EPR ID (in production this would come from LIMS)
+        const eprId = 'EPR-' + Date.now().toString(36).toUpperCase();
+        document.getElementById('manual_epr_id').value = eprId;
+        document.getElementById('manual_epr_status').value = 'created';
+
+        showToast(`EPR created: ${eprId}`, 'success');
+    }
+
+    function addManualTestRow() {
+        const tableBody = document.getElementById('manualTestsTableBody');
+        const rowIndex = tableBody.rows.length;
+        const row = tableBody.insertRow();
+        row.innerHTML = `
+            <td>
+                <input type="text" class="form-control" id="test_input_${rowIndex}" placeholder="Type test name..." autocomplete="off">
+                <input type="hidden" id="test_value_${rowIndex}">
+            </td>
+            <td>
+                <select class="form-select" id="specimen_type_${rowIndex}">
+                    <option value="">Select...</option>
+                    <option value="Urine">Urine</option>
+                    <option value="Serum">Serum</option>
+                    <option value="Plasma">Plasma</option>
+                    <option value="CSF">CSF</option>
+                    <option value="BAL">BAL</option>
+                </select>
+            </td>
+            <td><input type="number" class="form-control" name="volume_${rowIndex}" step="0.1"></td>
+            <td><button type="button" class="action-btn" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+        `;
+
+        // Simple test autocomplete
+        const input = document.getElementById(`test_input_${rowIndex}`);
+        const hidden = document.getElementById(`test_value_${rowIndex}`);
+        input.addEventListener('input', function() {
+            hidden.value = this.value;
+        });
+    }
+
+    function collectManualTestsData() {
+        const tableBody = document.getElementById('manualTestsTableBody');
+        const tests = [];
+        for (let i = 0; i < tableBody.rows.length; i++) {
+            const testName = document.getElementById(`test_value_${i}`)?.value || document.getElementById(`test_input_${i}`)?.value;
+            const specimenType = document.getElementById(`specimen_type_${i}`)?.value;
+            if (testName && testName.trim()) {
+                tests.push({ test_name: testName.trim(), specimen_type: specimenType || null });
+            }
+        }
+        return tests;
+    }
+
+    async function submitManualOrder() {
+        const form = document.getElementById('manualOrderForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const tests = collectManualTestsData();
+        if (tests.length === 0) {
+            showToast('Please add at least one test', 'warning');
+            return;
+        }
+
+        // Get ordering physician from dropdown or text input
+        const physicianSelect = document.getElementById('manual_ordering_physician_select');
+        const physicianInput = document.getElementById('manual_ordering_physician');
+        let orderingPhysician = '';
+
+        if (physicianInput.style.display !== 'none' && physicianInput.value) {
+            orderingPhysician = physicianInput.value;
+        } else if (physicianSelect.value) {
+            const selectedPhysician = manualFacilityPhysicians.find(p => p.id == physicianSelect.value);
+            orderingPhysician = selectedPhysician ? selectedPhysician.name : '';
+        }
+
+        // Build patient name from components (for backwards compatibility)
+        const ownerLastName = document.getElementById('manual_owner_last_name').value;
+        const ownerFirstName = document.getElementById('manual_owner_first_name').value;
+        const petName = document.getElementById('manual_pet_name').value;
+        const patientName = petName
+            ? `${ownerLastName}, ${ownerFirstName} (${petName})`
+            : `${ownerLastName}, ${ownerFirstName}`;
+
+        const orderData = {
+            facility_id: document.getElementById('manual_facility_id').value || null,
+            facility_name: document.getElementById('manual_facility_name').value,
+            facility_address: document.getElementById('manual_facility_address').value || null,
+            facility_city: document.getElementById('manual_facility_city').value || null,
+            facility_state: document.getElementById('manual_facility_state').value || null,
+            facility_zipcode: document.getElementById('manual_facility_zipcode').value || null,
+            facility_phone: document.getElementById('manual_facility_phone').value || null,
+            facility_fax: document.getElementById('manual_facility_fax').value || null,
+            facility_email: document.getElementById('manual_facility_email').value || null,
+            laboratory_contact: document.getElementById('manual_laboratory_contact').value || null,
+            matched_facility_id: manualMatchedFacilityId,
+            patient_type: document.getElementById('manual_patient_type').value || null,
+            species: document.getElementById('manual_species').value || null,
+            patient_name: patientName,
+            owner_last_name: ownerLastName,
+            owner_first_name: ownerFirstName,
+            pet_name: petName || null,
+            date_of_birth: document.getElementById('manual_date_of_birth').value,
+            patient_gender: document.getElementById('manual_patient_gender').value || null,
+            medical_record_number: document.getElementById('manual_medical_record_number').value || null,
+            patient_phone: document.getElementById('manual_patient_phone').value || null,
+            patient_email: document.getElementById('manual_patient_email').value || null,
+            patient_address: document.getElementById('manual_patient_address').value || null,
+            patient_id: manualSelectedPatientId,
+            ordering_physician: orderingPhysician,
+            collection_date: document.getElementById('manual_collection_date').value,
+            storage_temperature: document.getElementById('manual_storage_temperature').value || null,
+            epr_status: document.getElementById('manual_epr_status')?.value || null,
+            epr_id: document.getElementById('manual_epr_id')?.value || null,
+            tests_requested: tests.map(t => t.test_name),
+            specimen_type: tests[0]?.specimen_type || null,
+            special_instructions: document.getElementById('manual_special_instructions').value || null
+        };
+
+        try {
+            const response = await fetch('/api/documents/manual', {
+                method: 'POST',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+
+            if (response.ok) {
+                showToast('Order created!', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('manualEntryModal')).hide();
+                // Reset form state
+                manualMatchedFacilityId = null;
+                manualFacilityPhysicians = [];
+                manualSelectedPatientId = null;
+                refreshQueue();
+            } else {
+                const data = await response.json();
+                showToast('Failed: ' + (data.detail || 'Unknown error'), 'error');
+            }
+        } catch (error) {
+            showToast('Error: ' + error.message, 'error');
+        }
+    }
+
+    // Error handling helpers
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML.replace(/'/g, "\\'").replace(/"/g, '\\"');
+    }
+
+    function showDocumentError(docId, accessionNumber, errorMessage) {
+        showErrorDetail(
+            `Document: ${accessionNumber}`,
+            errorMessage,
+            '<span class="badge bg-danger"><i class="bi bi-x"></i> Failed</span>',
+            function() { reExtractDoc(docId); }
+        );
+    }
+
+    async function reExtractDoc(documentId) {
+        try {
+            const response = await fetch(`/api/documents/${documentId}/re-extract`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                showToast('Document queued for re-extraction', 'success');
+                loadQueue();
+            } else {
+                const data = await response.json();
+                showToast('Failed: ' + (data.detail || 'Unknown error'), 'error');
+            }
+        } catch (error) {
+            showToast('Error: ' + error.message, 'error');
+        }
+    }
+</script>
+{% endblock %}

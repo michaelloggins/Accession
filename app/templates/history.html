@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}History - Lab Document Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Card styling */
+    .card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .card-header {
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .card-body {
+        color: var(--text-primary);
+    }
+
+    /* Table styling */
+    .table {
+        color: var(--text-primary);
+    }
+
+    .table thead th {
+        background: var(--table-header-bg);
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .table td {
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .table-striped > tbody > tr:nth-of-type(odd) {
+        background-color: var(--bg-tertiary);
+    }
+
+    .table-striped > tbody > tr:nth-of-type(odd) > * {
+        --bs-table-accent-bg: transparent;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5><i class="bi bi-clock-history"></i> Document History</h5>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary btn-sm" onclick="loadHistory()" title="Refresh">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="btn btn-outline-primary btn-sm" onclick="exportToCSV()">
+                <i class="bi bi-download"></i> Export CSV
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Filters -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <input type="date" class="form-control" id="startDate" placeholder="Start Date">
+            </div>
+            <div class="col-md-3">
+                <input type="date" class="form-control" id="endDate" placeholder="End Date">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="statusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="auto_approved">Auto-Approved</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary" onclick="applyFilters()">
+                    <i class="bi bi-filter"></i> Apply Filters
+                </button>
+            </div>
+        </div>
+
+        <!-- History Table -->
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Patient Name (Masked)</th>
+                        <th>Upload Date</th>
+                        <th>Review Date</th>
+                        <th>Reviewer</th>
+                        <th>Status</th>
+                        <th>Lab Confirmation</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTable">
+                    <tr>
+                        <td colspan="8" class="text-center">Loading history...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadHistory();
+    });
+
+    async function loadHistory() {
+        // Placeholder - would fetch from /api/documents/history
+        const tbody = document.getElementById('historyTable');
+        tbody.innerHTML = `
+            <tr>
+                <td>12345</td>
+                <td>J*** D**</td>
+                <td>2025-01-17 10:30</td>
+                <td>2025-01-17 10:35</td>
+                <td>reviewer@example.com</td>
+                <td><span class="badge bg-success">Approved</span></td>
+                <td>LAB-12345-20250117103045</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+
+    function applyFilters() {
+        loadHistory();
+    }
+
+    function exportToCSV() {
+        alert('Exporting to CSV...');
+    }
+</script>
+{% endblock %}

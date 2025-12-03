@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Initialize theme FIRST before any CSS loads to prevent flash -->
+    <script>
+        (function() {
+            var savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Lab Document Intelligence</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
+    <style>
+        body {
+            background: var(--bg-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* WILD animated background with multiple layers */
+        .bg-layer {
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            pointer-events: none;
+        }
+
+        .bg-layer-1 {
+            z-index: 0;
+            animation: rotate1 60s linear infinite;
+        }
+
+        .bg-layer-2 {
+            z-index: 0;
+            animation: rotate2 45s linear infinite reverse;
+        }
+
+        .bg-layer-3 {
+            z-index: 0;
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        @keyframes rotate1 {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes rotate2 {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+
+        /* Light mode layers */
+        [data-theme="light"] .bg-layer-1 {
+            background: url('/static/images/white.jpg');
+            background-size: 250px;
+            opacity: 0.6;
+        }
+
+        [data-theme="light"] .bg-layer-2 {
+            background: url('/static/images/white.jpg');
+            background-size: 400px;
+            opacity: 0.3;
+        }
+
+        [data-theme="light"] .bg-layer-3 {
+            background: radial-gradient(circle at 30% 30%, rgba(139, 197, 63, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 70%, rgba(139, 197, 63, 0.1) 0%, transparent 40%);
+        }
+
+        /* Dark mode - DRAMATIC glowing effect */
+        [data-theme="dark"] .bg-layer-1 {
+            background: url('/static/images/dark.jpg');
+            background-size: 200px;
+            opacity: 1;
+        }
+
+        [data-theme="dark"] .bg-layer-2 {
+            background: url('/static/images/dark.jpg');
+            background-size: 350px;
+            opacity: 0.5;
+            filter: blur(1px);
+        }
+
+        [data-theme="dark"] .bg-layer-3 {
+            background: radial-gradient(circle at 20% 20%, rgba(139, 197, 63, 0.3) 0%, transparent 40%),
+                        radial-gradient(circle at 80% 80%, rgba(139, 197, 63, 0.25) 0%, transparent 35%),
+                        radial-gradient(circle at 50% 50%, rgba(139, 197, 63, 0.15) 0%, transparent 60%);
+            animation: pulseGlow 6s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Spotlight effect following the card */
+        .login-container::before {
+            content: '';
+            position: fixed;
+            top: 50%; left: 50%;
+            width: 800px; height: 800px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 1;
+            border-radius: 50%;
+        }
+
+        [data-theme="light"] .login-container::before {
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.5) 30%, transparent 70%);
+        }
+
+        [data-theme="dark"] .login-container::before {
+            background: radial-gradient(circle, rgba(139, 197, 63, 0.08) 0%, rgba(139, 197, 63, 0.03) 30%, transparent 60%);
+            animation: breathe 4s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.7; }
+        }
+
+        .login-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            width: 100%;
+            max-width: 420px;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .login-card:hover {
+            transform: translateY(-8px) scale(1.02);
+        }
+
+        [data-theme="light"] .login-card {
+            box-shadow: 0 10px 40px rgba(139, 197, 63, 0.15),
+                        0 0 0 1px rgba(139, 197, 63, 0.1);
+        }
+
+        [data-theme="light"] .login-card:hover {
+            box-shadow: 0 20px 60px rgba(139, 197, 63, 0.25),
+                        0 0 0 1px rgba(139, 197, 63, 0.2);
+        }
+
+        [data-theme="dark"] .login-card {
+            background: rgba(26, 35, 50, 0.95);
+            border: 1px solid rgba(139, 197, 63, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
+                        0 0 80px rgba(139, 197, 63, 0.15),
+                        inset 0 1px 0 rgba(139, 197, 63, 0.1);
+        }
+
+        [data-theme="dark"] .login-card:hover {
+            border-color: rgba(139, 197, 63, 0.4);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6),
+                        0 0 120px rgba(139, 197, 63, 0.25),
+                        inset 0 1px 0 rgba(139, 197, 63, 0.2);
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, var(--mv-green) 0%, var(--mv-green-light) 100%);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .login-header img {
+            height: 50px;
+            margin-bottom: 1rem;
+        }
+
+        .login-header h1 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .login-header p {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.875rem;
+            margin: 0.5rem 0 0 0;
+        }
+
+        .login-body {
+            padding: 2rem;
+        }
+
+        .form-label {
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.9375rem;
+        }
+
+        .form-control {
+            background-color: var(--input-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            font-size: 0.9375rem;
+        }
+
+        .form-control:focus {
+            background-color: var(--input-bg);
+            border-color: var(--mv-green);
+            box-shadow: 0 0 0 3px rgba(139, 197, 63, 0.15);
+            color: var(--text-primary);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .btn-sso {
+            background: var(--bg-secondary);
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-sso:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--mv-green);
+            color: var(--text-primary);
+        }
+
+        .btn-login {
+            background: var(--mv-green);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-login:hover {
+            background: var(--mv-green-dark);
+            color: white;
+        }
+
+        .btn-login:disabled {
+            opacity: 0.7;
+        }
+
+        .divider {
+            color: var(--text-secondary);
+        }
+
+        .divider hr {
+            border-color: var(--border-color);
+        }
+
+        .form-check-input:checked {
+            background-color: var(--mv-green);
+            border-color: var(--mv-green);
+        }
+
+        .form-check-label {
+            color: var(--text-secondary);
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+            border-radius: 8px;
+        }
+
+        .forgot-link {
+            color: var(--mv-green);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .forgot-link:hover {
+            color: var(--mv-green-dark);
+            text-decoration: underline;
+        }
+
+        .login-footer {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.8125rem;
+        }
+
+        .login-footer i {
+            color: var(--mv-green);
+        }
+
+        /* Theme toggle in corner */
+        .theme-toggle-corner {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            z-index: 100;
+        }
+
+        .theme-toggle-corner i {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .theme-toggle-corner .toggle-switch {
+            width: 36px;
+            height: 20px;
+            background: var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.3s ease;
+        }
+
+        .theme-toggle-corner .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: var(--bg-secondary);
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s ease;
+        }
+
+        [data-theme="dark"] .theme-toggle-corner .toggle-switch {
+            background: var(--mv-green);
+        }
+
+        [data-theme="dark"] .theme-toggle-corner .toggle-switch::after {
+            transform: translateX(16px);
+        }
+
+        /* Break glass section styling */
+        .breakglass-section {
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+
+        .breakglass-toggle {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.2s;
+        }
+
+        .breakglass-toggle:hover {
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .breakglass-toggle:focus {
+            box-shadow: none;
+        }
+
+        .breakglass-toggle .toggle-icon {
+            transition: transform 0.2s ease;
+            font-size: 0.75rem;
+        }
+
+        .breakglass-toggle[aria-expanded="true"] .toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        #emailLoginSection {
+            border-left: 2px solid var(--border-color);
+            margin-left: 0.5rem;
+            padding-left: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background Layers -->
+    <div class="bg-layer bg-layer-1"></div>
+    <div class="bg-layer bg-layer-2"></div>
+    <div class="bg-layer bg-layer-3"></div>
+
+    <!-- Theme Toggle -->
+    <div class="theme-toggle-corner">
+        <i class="bi bi-sun-fill"></i>
+        <div class="toggle-switch" onclick="toggleTheme()"></div>
+        <i class="bi bi-moon-fill"></i>
+    </div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <img src="/static/images/miravista_logo_transparent.png" alt="MiraVista Diagnostics">
+                <h1>Lab Intelligence Platform</h1>
+                <p>HIPAA-Compliant Document Processing</p>
+            </div>
+
+            <div class="login-body">
+                <!-- SSO Login Button -->
+                <div id="ssoSection">
+                    <a href="/api/auth/sso/login" class="btn btn-sso w-100 mb-3" id="ssoBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 23 23" class="me-2">
+                            <path fill="#f3f3f3" d="M0 0h11v11H0z"/>
+                            <path fill="#f35325" d="M0 0h11v11H0z"/>
+                            <path fill="#81bc06" d="M12 0h11v11H12z"/>
+                            <path fill="#05a6f0" d="M0 12h11v11H0z"/>
+                            <path fill="#ffba08" d="M12 12h11v11H12z"/>
+                        </svg>
+                        Sign in with Microsoft
+                    </a>
+                </div>
+
+                <!-- SSO Error Display -->
+                <div id="ssoError" class="alert alert-danger d-none"></div>
+
+                <!-- Collapsible Email/Password Login (Break Glass) -->
+                <div class="breakglass-section mt-4">
+                    <button class="btn btn-link breakglass-toggle w-100 text-start p-0"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#emailLoginSection"
+                            aria-expanded="false"
+                            aria-controls="emailLoginSection">
+                        <i class="bi bi-chevron-right toggle-icon"></i>
+                        <span>Sign in with email</span>
+                    </button>
+
+                    <div class="collapse" id="emailLoginSection">
+                        <div class="pt-3">
+                            <form id="loginForm" onsubmit="handleLogin(event)">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="email"
+                                           placeholder="user@example.com" autocomplete="username">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="password"
+                                           autocomplete="current-password">
+                                </div>
+
+                                <div class="mb-3" id="mfaField" style="display: none;">
+                                    <label for="mfaCode" class="form-label">MFA Code</label>
+                                    <input type="text" class="form-control" id="mfaCode"
+                                           placeholder="123456" maxlength="6" autocomplete="one-time-code">
+                                </div>
+
+                                <div id="loginError" class="alert alert-danger d-none"></div>
+
+                                <button type="submit" class="btn btn-login w-100" id="loginBtn">
+                                    <i class="bi bi-box-arrow-in-right"></i> Sign In
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="login-footer">
+        <i class="bi bi-shield-check"></i>
+        Secured with TLS encryption and MFA
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Theme management
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Check for SSO errors in URL
+        document.addEventListener('DOMContentLoaded', async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            const errorDesc = urlParams.get('error_description');
+
+            if (error) {
+                const ssoError = document.getElementById('ssoError');
+                let message = 'Sign in failed';
+
+                switch(error) {
+                    case 'access_denied':
+                        message = 'Access denied. Please contact your administrator.';
+                        break;
+                    case 'invalid_state':
+                        message = 'Session expired. Please try again.';
+                        break;
+                    case 'account_inactive':
+                        message = 'Your account is inactive. Please contact your administrator.';
+                        break;
+                    case 'sso_failed':
+                        message = errorDesc || 'Single sign-on failed. Please try again or use email login.';
+                        break;
+                    default:
+                        message = errorDesc || `Sign in error: ${error}`;
+                }
+
+                ssoError.textContent = message;
+                ssoError.classList.remove('d-none');
+
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
+            // Check SSO configuration status
+            try {
+                // First check SAML status, then fall back to OIDC
+                let ssoConfigured = false;
+                let ssoMethod = 'oidc';
+
+                try {
+                    const samlResponse = await fetch('/api/auth/saml/status');
+                    const samlStatus = await samlResponse.json();
+
+                    if (samlStatus.sso_enabled && samlStatus.saml_configured && samlStatus.sso_method === 'saml') {
+                        ssoConfigured = true;
+                        ssoMethod = 'saml';
+                        // Update SSO button to use SAML endpoint
+                        const ssoBtn = document.getElementById('ssoBtn');
+                        if (ssoBtn) {
+                            ssoBtn.href = '/api/auth/saml/login';
+                        }
+                    }
+                } catch (samlErr) {
+                    // SAML not configured, check OIDC
+                }
+
+                if (!ssoConfigured) {
+                    const response = await fetch('/api/auth/sso/status');
+                    const status = await response.json();
+
+                    if (status.sso_enabled && status.entra_id_configured) {
+                        ssoConfigured = true;
+                        ssoMethod = 'oidc';
+                    }
+                }
+
+                if (!ssoConfigured) {
+                    // Hide SSO section if not configured
+                    document.getElementById('ssoSection').style.display = 'none';
+                    // Expand email login section by default when SSO not available
+                    const emailSection = document.getElementById('emailLoginSection');
+                    const emailToggle = document.querySelector('.breakglass-toggle');
+                    if (emailSection) {
+                        emailSection.classList.add('show');
+                        emailToggle.setAttribute('aria-expanded', 'true');
+                    }
+                }
+            } catch (e) {
+                // SSO status check failed, hide SSO option and show email login
+                document.getElementById('ssoSection').style.display = 'none';
+                const emailSection = document.getElementById('emailLoginSection');
+                const emailToggle = document.querySelector('.breakglass-toggle');
+                if (emailSection) {
+                    emailSection.classList.add('show');
+                    emailToggle.setAttribute('aria-expanded', 'true');
+                }
+            }
+
+            // Check for successful SSO login (from cookie)
+            const userInfoCookie = getCookie('user_info');
+            const jsAccessToken = getCookie('js_access_token');
+
+            if (userInfoCookie && jsAccessToken) {
+                try {
+                    const user = JSON.parse(decodeURIComponent(userInfoCookie));
+                    localStorage.setItem('user', JSON.stringify(user));
+                    localStorage.setItem('access_token', jsAccessToken);
+
+                    // Redirect to dashboard if we have valid user info
+                    if (urlParams.get('sso') === 'success') {
+                        window.location.href = '/dashboard';
+                    }
+                } catch (e) {
+                    console.error('Failed to parse user info cookie:', e);
+                }
+            }
+        });
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const loginBtn = document.getElementById('loginBtn');
+            const errorDiv = document.getElementById('loginError');
+
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Signing in...';
+            errorDiv.classList.add('d-none');
+
+            const payload = {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                mfa_code: document.getElementById('mfaCode').value || null
+            };
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Store token
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+
+                    // Redirect to dashboard
+                    window.location.href = '/dashboard';
+                } else {
+                    errorDiv.textContent = data.detail || 'Login failed';
+                    errorDiv.classList.remove('d-none');
+
+                    // Show MFA field if needed
+                    if (data.detail && data.detail.includes('MFA')) {
+                        document.getElementById('mfaField').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection error. Please try again.';
+                errorDiv.classList.remove('d-none');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
+            }
+        }
+    </script>
+</body>
+</html>

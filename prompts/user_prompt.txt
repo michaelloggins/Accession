@@ -1,0 +1,348 @@
+Extract information from this laboratory requisition form.
+
+## STEP 1: VISUAL INSPECTION - IDENTIFY MARKED TESTS
+
+⚠️ **STOP AND READ THIS FIRST - MOST CRITICAL STEP** ⚠️
+
+**BEFORE extracting ANY data, you MUST perform this visual inspection:**
+
+1. **Scan the ENTIRE form** - Laboratory requisition forms are pre-printed with 10-50 test options
+2. **Identify ONLY marked tests** - Look for checkmarks (✓, ✗, ☑), circles, X marks, or handwriting
+3. **Verify EACH checkbox individually** - A checkbox must have a visible mark INSIDE it, not near it
+   - Empty checkbox = NOT SELECTED = DO NOT EXTRACT
+   - If you cannot see an X, checkmark, or filled box, DO NOT EXTRACT THAT TEST
+4. **Count the marks** - Typically only 1-3 tests are actually ordered
+5. **Note specimen types** - Each selected test has its OWN specimen type checkbox marked
+6. **Ignore administrative stamps** - "RECEIVED" stamps, date/time stamps, barcodes are NOT test selections
+7. **Ignore everything else** - Empty checkboxes, pre-printed text, and blank lines are NOT orders
+
+🚨 **CHECKBOX VERIFICATION RULE** 🚨
+For EVERY test you consider extracting, ask:
+- "Can I see an X, checkmark, or filled square INSIDE a checkbox for THIS SPECIFIC TEST?"
+- If NO → DO NOT extract it, even if other nearby tests are marked
+- Proximity to a marked test DOES NOT mean the test is selected
+
+**❌ COMMON MISTAKES TO AVOID:**
+
+1. **Extracting all visible test names** - Lab forms show 20-50 test options, but the doctor only selects 1-3
+2. **Confusing administrative stamps with selections** - "RECEIVED", date stamps, time stamps, and barcodes are added by the lab/facility AFTER the form is filled out by the doctor. These are NOT test selections!
+3. **Interpreting stamp overlap as selection** - If a "RECEIVED" stamp overlaps a checkbox area, the stamp is NOT a checkmark
+
+**✅ CORRECT BEHAVIOR:**
+Only extract tests that have an explicit selection mark that YOU CAN SEE in the image.
+
+**🔍 ADMINISTRATIVE MARKINGS TO IGNORE:**
+- "RECEIVED" stamps (often stamped at loading dock)
+- Date/time stamps showing when document was received
+- Barcodes or tracking numbers
+- Initials or signatures from receiving staff
+- "PROCESSED", "FILED", "PAID", or other administrative stamps
+- Any stamps that appear to be added AFTER the original form was filled out
+
+**Remember**: If you cannot see a checkmark, X, circle, or handwriting indicating selection, DO NOT extract that test - no matter how important it seems.
+
+## STEP 2: DOCUMENT TYPE DETECTION
+
+First, determine if this is a HUMAN or VETERINARY requisition:
+
+**HUMAN Indicators:**
+- Contains "physician", "MD", "DO", "PA", "NP"
+- Contains "patient" (without "pet" or animal species)
+- Medical terminology: "Medicare", "Medicaid", "SSN"
+- Human-specific tests or procedures
+
+**VETERINARY Indicators:**
+- Contains "veterinarian", "DVM", "VMD"
+- Contains "pet name", "owner name"
+- Contains animal species: Dog, Cat, Horse, etc.
+- Veterinary-specific terminology
+
+## FIELDS TO EXTRACT:
+
+### FACILITY INFORMATION:
+- **facility_name**: Name of clinic, hospital, or veterinary practice
+- **address**: Street address of facility
+- **city**: City
+- **state**: State abbreviation (e.g., "IN", "CA")
+- **zipcode**: ZIP code
+- **laboratory_contact**: Primary lab contact person name
+- **phone**: Facility phone number - format: (XXX) XXX-XXXX
+- **fax**: Facility fax number - format: (XXX) XXX-XXXX
+- **email**: Facility email address
+
+### PATIENT INFORMATION:
+
+**For HUMAN Patients:**
+- **species**: Set to "Human"
+- **owner_first_name**: Patient's first name
+- **owner_middle_name**: Patient's middle name or initial
+- **owner_last_name**: Patient's last name
+- **pet_name**: Set to null
+- **date_of_birth**: Patient's DOB in YYYY-MM-DD format
+- **gender**: M, F, or Other
+- **medical_record_number**: MRN, Patient ID, Account #
+- **patient_id**: Alternative patient identifier
+- **phone**: Patient's phone - format: (XXX) XXX-XXXX
+- **email**: Patient's email address
+- **address**: Patient's street address
+- **city**: Patient's city
+- **state**: Patient's state abbreviation
+- **zipcode**: Patient's ZIP code
+
+**For VETERINARY Patients:**
+- **species**: Animal species (Canine, Feline, Equine, Bovine, Ovine, Caprine, Porcine, Avian, Reptilian, Rodent, Aquatic)
+- **owner_first_name**: Owner's first name
+- **owner_middle_name**: Owner's middle name or initial
+- **owner_last_name**: Owner's last name
+- **pet_name**: Pet's name (e.g., "Fluffy", "Max")
+- **date_of_birth**: Pet's DOB in YYYY-MM-DD format
+- **gender**: M, F, Neutered Male (MN), Spayed Female (SF)
+- **medical_record_number**: Medical record number (optional for vet)
+- **patient_id**: Patient identifier (optional for vet)
+- **phone**: Owner's phone (optional) - format: (XXX) XXX-XXXX
+- **email**: Owner's email (optional)
+- **address**: Owner's address (optional)
+- **city**: Owner's city (optional)
+- **state**: Owner's state (optional)
+- **zipcode**: Owner's ZIP (optional)
+
+### ORDER INFORMATION:
+- **ordering_veterinarian**: Name of ordering physician/veterinarian with credentials
+  - Examples: "Dr. Jane Williams, DVM" or "Dr. John Smith, MD"
+- **specimen_collection_date**: Date specimen collected - format: YYYY-MM-DD
+- **specimen_collection_time**: Time of collection - format: HH:MM (24-hour)
+- **specimen_storage_temperature**: Storage conditions
+  - Examples: "Stored Refrigerated", "Stored Frozen", "Stored Ambient", "Room Temperature"
+- **priority**: "STAT" (urgent) or "Routine" (only if explicitly marked)
+- **special_instructions**: Any special handling notes or instructions
+
+### TESTS REQUESTED (Array):
+
+🚨 **ULTRA-CRITICAL - THIS IS THE MOST IMPORTANT FIELD** 🚨
+
+**MANDATORY VERIFICATION PROCESS:**
+Before returning your JSON, count how many tests you extracted. If the count is greater than 5, you have made an ERROR. Go back and re-examine the form to find ONLY the tests with visible selection marks.
+
+**REQUIRED VISUAL INDICATORS (you must see at least ONE of these for EACH test):**
+- ☑️ **Checkbox mark**: An X, checkmark (✓), filled square, or checkmark INSIDE the box
+- ✏️ **Handwriting**: Test name/code written in by hand (not pre-printed)
+- ⭕ **Encircled**: Test name is circled, boxed, or highlighted
+- 📝 **Filled fields**: Specimen type, volume, or other details filled in next to THIS specific test
+- ✅ **Other marks**: Arrows, asterisks, or underlining specifically pointing to this test
+
+**ABSOLUTE "DO NOT EXTRACT" RULES:**
+- ❌ Empty checkbox (□) - even if the test name is visible
+- ❌ Pre-printed text with no marks - just because it's on the form doesn't mean it's ordered
+- ❌ Tests near a marked test - proximity doesn't mean selection
+- ❌ All tests in a category - if you see "Fungal Tests" with 10 options, they didn't order all 10
+- ❌ When uncertain - if you're not 100% sure there's a mark, DO NOT include it
+- ❌ **ADMINISTRATIVE STAMPS** - "RECEIVED", date stamps, time stamps, or barcodes are NOT test selections
+- ❌ **Stamps over test areas** - If "RECEIVED" or other administrative stamps overlap checkboxes, ignore the stamp
+- ❌ **Post-receipt markings** - Any stamps, initials, or dates added after the form was filled out
+
+**REALITY CHECK:**
+- Forms show 20-50 test options (pre-printed)
+- Doctors typically order 1-3 tests (marked by hand)
+- If you extracted more than 5 tests, you made a mistake
+- Empty the array and start over - look ONLY for marked boxes
+
+**SELF-VERIFICATION:**
+Before finalizing, ask yourself: "Can I see a visual mark (checkmark, X, circle, handwriting) for EACH test I extracted?"
+If the answer is NO for any test, remove it from the array.
+
+**EXAMPLE SCENARIO 1 - Basic Selection:**
+Form shows:
+```
+☐ 310 - Histoplasma EIA  ☐UR ☐SER ☐PLS ☐CSF ☐BAL ← NO MARKS = NOT SELECTED
+☑ 316 - Blastomyces EIA  ☑UR ☐SER ☐PLS ☐CSF ☐BAL ← TEST MARKED + UR MARKED = SELECTED
+☐ 315 - Coccidioides EIA ☐UR ☐SER ☐PLS ☐CSF ☐BAL ← NO MARKS = NOT SELECTED
+☐ 324 - Aspergillus EIA  ☐UR ☐SER ☐PLS ☐CSF ☐BAL ← NO MARKS = NOT SELECTED
+```
+**✅ CORRECT**: Extract ONLY test 316 with specimen type "Urine"
+```json
+{
+  "test_name": "Blastomyces EIA",
+  "test_number": "316",
+  "specimen_type": "Urine",
+  "specimen_volume_ml": null,
+  "specimen_notes": null
+}
+```
+- Test 316 has a checkmark/X in its test checkbox
+- The UR specimen checkbox is marked for test 316 → Convert "UR" to "Urine"
+- All other tests (310, 315, 324) have empty checkboxes → DO NOT extract
+
+**❌ WRONG**: Extract tests 310, 315, or 324 just because they appear near test 316
+**❌ WRONG**: Extract all 4 tests because they're grouped together
+**❌ WRONG**: Extract 316 with BAL specimen type (the UR box is marked, not BAL)
+**❌ WRONG**: Extract 316 with "UR" as specimen type (must convert to full name "Urine")
+
+**EXAMPLE SCENARIO 2 - Administrative Stamp:**
+Form shows:
+```
+                    [RECEIVED]
+                    JAN 15 2025
+☐ 310 - Histoplasma EIA (BAL)  ← Stamp overlaps this area
+☑ 316 - Blastomyces EIA (Ur) ← CHECKED/MARKED
+☐ 315 - Coccidioides EIA (BAL)
+```
+**✅ CORRECT**: Extract ONLY test 316. Ignore the "RECEIVED" stamp - it's administrative, not a selection
+**❌ WRONG**: Extract test 310 because the RECEIVED stamp appears near it
+**❌ WRONG**: Extract both 310 and 316
+
+**Each test has its own specimen type** - look at what's written/marked specifically for the selected test, NOT what appears near other tests.
+
+For each test that HAS CLEAR VISUAL INDICATORS, extract:
+- **test_name**: Full test name as written on form
+  - Examples: "MVista Histoplasma Ag", "CBC", "Chemistry Panel"
+- **test_number**: Test code/number if visible
+  - Examples: "310", "316", "85025"
+- **specimen_type**: Specimen type for THIS SPECIFIC TEST (each test has its own marked specimen checkbox)
+  - **CRITICAL**: Look at which specimen checkbox is marked FOR THIS TEST (not nearby tests)
+  - Common abbreviations and their conversions:
+    - UR → "Urine"
+    - SER → "Serum"
+    - PLS → "Plasma"
+    - CSF → "CSF"
+    - BAL → "BAL"
+    - BLD → "Blood"
+    - EDTA → "Blood"
+  - Valid values: Blood, Urine, Serum, Plasma, CSF, BAL, Tissue, Swab, Stool, Saliva, Other
+  - If no specimen checkbox is marked, set to null
+- **specimen_volume_ml**: Actual volume collected (if specified) as a number
+  - Example: 1.0, 2.5, 0.5
+- **specimen_notes**: Any notes about this specimen
+  - Examples: "EDTA tube", "Fasting", "First morning void"
+
+### METADATA:
+- **confidence_score**: Overall extraction confidence (0.0 to 1.0)
+  - 0.95-1.0: All fields clear, printed text, no ambiguity
+  - 0.85-0.94: Minor ambiguity in 1-2 non-critical fields
+  - 0.70-0.84: Some handwritten text but readable
+  - 0.60-0.69: Multiple unclear fields, poor handwriting
+  - 0.50-0.59: Significant legibility issues
+  - <0.50: Document barely readable
+- **extraction_notes**: Brief notes about extraction quality, ambiguities, challenges
+- **field_confidence**: Object mapping each extracted field to its individual confidence (0.0 to 1.0)
+  - Use dot notation for nested fields (e.g., "facility.facility_name": 0.95)
+  - Only include fields that were actually extracted (non-null)
+  - Lower confidence (<0.80) indicates uncertainty - be honest about unclear fields
+  - Examples: "tests_requested": 0.65 (if tests are ambiguous), "patient.species": 0.98 (if clear)
+
+## OUTPUT FORMAT:
+
+Return ONLY this JSON structure (see output_format.txt for complete example):
+
+{
+  "facility": {
+    "facility_name": "string or null",
+    "address": "string or null",
+    "city": "string or null",
+    "state": "string or null",
+    "zipcode": "string or null",
+    "laboratory_contact": "string or null",
+    "phone": "string or null",
+    "fax": "string or null",
+    "email": "string or null"
+  },
+
+  "patient": {
+    "species": "Human or Canine or Feline or Equine or Bovine or Ovine or Caprine or Porcine or Avian or Reptilian or Rodent or Aquatic",
+    "owner_first_name": "string or null",
+    "owner_last_name": "string or null",
+    "owner_middle_name": "string or null",
+    "pet_name": "string or null (NULL for humans)",
+    "date_of_birth": "YYYY-MM-DD or null",
+    "gender": "string or null",
+    "medical_record_number": "string or null",
+    "patient_id": "string or null",
+    "phone": "string or null",
+    "email": "string or null",
+    "address": "string or null",
+    "city": "string or null",
+    "state": "string or null",
+    "zipcode": "string or null"
+  },
+
+  "order": {
+    "ordering_veterinarian": "string or null",
+    "specimen_collection_date": "YYYY-MM-DD or null",
+    "specimen_collection_time": "HH:MM or null",
+    "specimen_storage_temperature": "string or null",
+    "priority": "STAT/Routine or null",
+    "special_instructions": "string or null"
+  },
+
+  "tests_requested": [
+    {
+      "test_name": "string",
+      "test_number": "string or null",
+      "specimen_type": "string",
+      "specimen_volume_ml": number or null,
+      "specimen_notes": "string or null"
+    }
+  ],
+
+  "metadata": {
+    "confidence_score": 0.0-1.0,
+    "extraction_notes": "string",
+    "field_confidence": {
+      "facility.facility_name": 0.0-1.0,
+      "facility.address": 0.0-1.0,
+      "patient.species": 0.0-1.0,
+      "tests_requested": 0.0-1.0,
+      "...": "... (include all extracted fields)"
+    }
+  }
+}
+
+## CRITICAL RULES:
+1. Return ONLY valid JSON - no markdown code blocks, no explanatory text
+2. Do not wrap JSON in ```json``` tags
+3. All dates must be in YYYY-MM-DD format
+4. All phone numbers in (XXX) XXX-XXXX format
+5. Specimen type must be one of the exact valid values listed above
+6. For HUMAN patients: species="Human", pet_name=null, patient name goes in owner_first_name/owner_last_name
+7. For VETERINARY patients: species=actual animal species, pet_name=pet's name, owner's name goes in owner_first_name/owner_last_name
+8. **TESTS REQUESTED - FINAL CHECK**: Before you return JSON, count tests_requested array length. If > 5, you made an ERROR. Lab forms have 20-50 pre-printed tests but doctors mark only 1-3. Go back and extract ONLY tests with visible checkmarks/X marks. If you cannot see a mark, DO NOT extract it. Set tests_requested confidence to <0.50 if you extracted >5 tests.
+9. Include extraction_notes in metadata to document any ambiguities or low-confidence fields
+10. Include field_confidence for ALL extracted fields to indicate certainty level
+11. Ensure all nested objects are properly formatted with correct field names
+
+## ⚠️ FINAL VERIFICATION BEFORE RETURNING JSON ⚠️
+
+**MANDATORY PRE-SUBMISSION CHECK:**
+Before you return your JSON response, perform this verification:
+
+1. **Count tests_requested array**: How many tests did you extract?
+   - If 0-3 tests: ✅ Proceed (this is normal)
+   - If 4-5 tests: ⚠️ Double-check each one has a visible mark
+   - If 6+ tests: 🚫 ERROR - You extracted pre-printed options, not actual orders
+
+2. **Individual checkbox verification**: For EACH test in your array, examine the form and verify:
+   - "Can I see an X, checkmark, or filled square in a checkbox for THIS SPECIFIC test?"
+   - "Is the mark INSIDE the checkbox, not just near it?"
+   - "Did I confuse an empty checkbox (☐) with a marked one (☑ or ☒)?"
+   - If the answer to ANY of these is NO → Remove that test from the array immediately
+
+3. **Specimen type verification**: For EACH test in your array:
+   - "Which specific specimen checkbox is marked for THIS test?"
+   - "Did I convert the abbreviation to the full name?" (UR→Urine, SER→Serum, etc.)
+   - "Did I use the correct specimen type, or did I copy it from a nearby test?"
+   - "If no specimen checkbox is marked for this test, did I set specimen_type to null?"
+   - Each test has its OWN specimen type - never assume multiple tests share the same specimen
+
+4. **Proximity trap check**: Ask yourself:
+   - "Did I extract tests just because they appear near a marked test?"
+   - "Did I extract an entire group of tests when only one was marked?"
+   - If YES → Remove all unmarked tests, keep ONLY the ones with visible marks
+
+5. **Confidence adjustment**: If you extracted >5 tests:
+   - Set "tests_requested" field_confidence to 0.40
+   - Add note in extraction_notes: "High test count suggests possible over-extraction"
+
+6. **Empty is better than wrong**: If unsure about ANY test:
+   - Remove it from the array
+   - It's better to extract 0 tests than to extract unmarked pre-printed options
+
+**Only after passing ALL these verification steps should you return the JSON.**

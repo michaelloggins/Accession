@@ -1,0 +1,3067 @@
+{% extends "base.html" %}
+
+{% block title %}Review Document - Lab Document Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #0d6efd;
+        --success-color: #198754;
+        --danger-color: #dc3545;
+        --light-bg: var(--bg-tertiary);
+        --review-card-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        --border-radius: 12px;
+    }
+
+    body {
+        background: var(--bg-primary) !important;
+        min-height: 100vh;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 9999;
+    }
+
+    .custom-toast {
+        min-width: 300px;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        box-shadow: var(--card-shadow);
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        animation: slideIn 0.3s ease-out;
+        border-left: 4px solid var(--primary-color);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--text-primary);
+    }
+
+    .custom-toast.success {
+        border-left-color: var(--mv-green);
+    }
+
+    .custom-toast.error {
+        border-left-color: var(--danger);
+    }
+
+    .custom-toast.warning {
+        border-left-color: var(--warning);
+    }
+
+    .custom-toast i {
+        font-size: 1.25rem;
+    }
+
+    .custom-toast.success i {
+        color: var(--mv-green);
+    }
+
+    .custom-toast.error i {
+        color: var(--danger);
+    }
+
+    .custom-toast.warning i {
+        color: var(--warning);
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    /* Custom Modal */
+    .custom-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 9998;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .custom-modal {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        animation: scaleIn 0.3s ease-out;
+    }
+
+    @keyframes scaleIn {
+        from {
+            transform: scale(0.9);
+            opacity: 0;
+        }
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .custom-modal h4 {
+        margin-top: 0;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+
+    .custom-modal p {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    .custom-modal input[type="text"] {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1.5px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        margin-bottom: 1.5rem;
+        background: var(--input-bg);
+        color: var(--text-primary);
+    }
+
+    .custom-modal input[type="text"]:focus {
+        outline: none;
+        border-color: var(--mv-green);
+        box-shadow: 0 0 0 3px rgba(139, 197, 63, 0.15);
+    }
+
+    .custom-modal-buttons {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+    }
+
+    .main-content {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-right: 0;
+        padding-right: 0;
+    }
+
+    .main-content.preview-open {
+        margin-right: 0;
+        padding-right: 420px;
+    }
+
+    .preview-sidebar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 400px;
+        height: 100vh;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(10px);
+        border-left: 1px solid var(--border-color);
+        box-shadow: -4px 0 30px rgba(0,0,0,0.3);
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .preview-sidebar.open {
+        transform: translateX(0);
+    }
+
+    .preview-sidebar::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .preview-sidebar::-webkit-scrollbar-track {
+        background: var(--bg-tertiary);
+    }
+
+    .preview-sidebar::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 4px;
+    }
+
+    .preview-sidebar::-webkit-scrollbar-thumb:hover {
+        background: var(--text-secondary);
+    }
+
+    .preview-toggle {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 1050;
+        border-radius: 8px;
+        padding: 0.625rem 1.25rem;
+        box-shadow: var(--card-shadow);
+        background: var(--bg-secondary) !important;
+        color: var(--mv-green) !important;
+        border: 2px solid var(--mv-green) !important;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .preview-toggle:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        background: var(--mv-green) !important;
+        color: white !important;
+    }
+
+    .preview-sidebar .card {
+        border-radius: 0 !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    .preview-sidebar .card-header {
+        background: linear-gradient(135deg, var(--mv-green-dark) 0%, var(--mv-green) 100%);
+        color: white;
+        border: none;
+        padding: 1.25rem;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .preview-sidebar .card-header .btn {
+        color: white;
+        border-color: rgba(255,255,255,0.3);
+        transition: all 0.2s ease;
+    }
+
+    .preview-sidebar .card-header .btn:hover {
+        background: rgba(255,255,255,0.15);
+        border-color: rgba(255,255,255,0.5);
+        color: white;
+    }
+
+    .preview-sidebar .card-header h5 {
+        margin: 0;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .preview-sidebar .card-body {
+        padding: 0;
+        flex: 1;
+        background: var(--bg-secondary);
+    }
+
+    .document-viewer {
+        height: 80vh;
+        border: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+        overflow: auto;
+        border-radius: var(--border-radius);
+    }
+
+    #docImage {
+        transition: transform 0.3s ease;
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* Modern Card Layout */
+    .info-card {
+        background: var(--bg-secondary);
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .info-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--mv-green) 0%, var(--mv-green-light) 100%);
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+
+    .info-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--mv-green);
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 3px solid var(--mv-green);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .card-title i {
+        color: var(--mv-green-light);
+        font-size: 1.15rem;
+    }
+
+    /* Form Grid Layout */
+    .form-grid {
+        display: grid;
+        gap: 1.25rem;
+    }
+
+    .form-grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .form-grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .form-grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    @media (max-width: 992px) {
+        .form-grid-2, .form-grid-3, .form-grid-4 {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .form-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-field label {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--text-primary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .confidence-badge-field {
+        font-size: 0.75rem;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-weight: 600;
+        background: var(--mv-green);
+        color: white;
+    }
+
+    .confidence-badge-field.warning {
+        background: var(--warning);
+        color: #000;
+    }
+
+    .confidence-badge-field.danger {
+        background: var(--danger);
+        color: white;
+    }
+
+    .form-field input[type="text"],
+    .form-field input[type="date"],
+    .form-field input[type="email"],
+    .form-field input[type="number"],
+    .form-field select,
+    .form-field textarea {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.9375rem;
+        border: 1.5px solid var(--border-color);
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        background: var(--input-bg);
+        color: var(--text-primary);
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+        outline: none;
+        border-color: var(--mv-green);
+        box-shadow: 0 0 0 3px rgba(139, 197, 63, 0.15);
+    }
+
+    /* Confidence-based field coloring */
+    .field-confidence-warning {
+        background-color: rgba(245, 158, 11, 0.15) !important;
+        border-color: var(--warning) !important;
+    }
+
+    .field-confidence-danger {
+        background-color: rgba(239, 68, 68, 0.15) !important;
+        border-color: var(--danger) !important;
+    }
+
+    /* Checkbox Group */
+    .checkbox-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+    }
+
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .checkbox-item label {
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        margin: 0 !important;
+        cursor: pointer;
+        color: var(--text-primary);
+    }
+
+    /* Test Table */
+    .test-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.9rem;
+    }
+
+    .test-table thead th {
+        background: var(--bg-tertiary);
+        font-weight: 600;
+        color: var(--text-secondary);
+        padding: 0.75rem;
+        border-bottom: 2px solid var(--border-color);
+        font-size: 0.875rem;
+        text-align: left;
+    }
+
+    .test-table thead th:first-child {
+        border-top-left-radius: 8px;
+    }
+
+    .test-table thead th:last-child {
+        border-top-right-radius: 8px;
+    }
+
+    .test-table tbody td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+
+    .test-table input,
+    .test-table select {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        border: 1.5px solid var(--border-color);
+        border-radius: 6px;
+        width: 100%;
+        background: var(--input-bg);
+        color: var(--text-primary);
+    }
+
+    .test-table input:focus,
+    .test-table select:focus {
+        outline: none;
+        border-color: var(--mv-green);
+    }
+
+    /* Action Buttons */
+    .action-bar {
+        background: var(--bg-secondary);
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        position: relative;
+        transition: all 0.3s ease;
+    }
+
+    .action-bar::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--mv-green) 0%, var(--mv-green-light) 100%);
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+
+    .btn {
+        border-radius: 8px;
+        padding: 0.625rem 1.25rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border: none;
+    }
+
+    .btn-success {
+        background: var(--mv-green);
+        position: relative;
+    }
+
+    .btn-success:hover {
+        background: var(--mv-green-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(139, 197, 63, 0.3);
+    }
+
+    .btn-danger {
+        background: var(--danger);
+    }
+
+    .btn-danger:hover {
+        background: #bb2d3b;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    }
+
+    .btn-secondary:hover,
+    .btn-outline-secondary:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn-add-test {
+        border-radius: 8px;
+        font-weight: 500;
+        border: 2px dashed var(--border-color);
+        background: transparent;
+        color: var(--mv-green);
+        padding: 0.75rem 1.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-add-test:hover {
+        border-color: var(--mv-green);
+        background: rgba(139, 197, 63, 0.1);
+    }
+
+    /* Confidence Badge */
+    .confidence-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    /* Header Section */
+    .page-header {
+        background: var(--bg-secondary);
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+        position: sticky;
+        top: 20px;
+        z-index: 100;
+        transition: all 0.3s ease;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--mv-green) 0%, var(--mv-green-light) 100%);
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+
+    .page-header h4 {
+        margin: 0;
+        font-weight: 600;
+        color: var(--mv-green);
+    }
+
+    .container-fluid {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    /* Smooth animations */
+    * {
+        transition: border-color 0.2s ease;
+    }
+
+    /* Searchable Test Dropdown */
+    .searchable-select-wrapper {
+        position: relative;
+        z-index: 1;
+    }
+
+    .searchable-test-input {
+        width: 100%;
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        border: 1.5px solid var(--border-color);
+        border-radius: 6px;
+        position: relative;
+        z-index: 1;
+        background: var(--input-bg);
+        color: var(--text-primary);
+    }
+
+    .searchable-test-input:focus {
+        outline: none;
+        border-color: var(--mv-green);
+    }
+
+    .searchable-dropdown {
+        position: fixed;
+        max-height: 300px;
+        overflow-y: auto;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: var(--card-shadow);
+        z-index: 999999 !important;
+        display: none;
+        margin-top: 2px;
+    }
+
+    .searchable-dropdown-item {
+        padding: 0.625rem 0.875rem;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.875rem;
+        color: var(--text-primary);
+    }
+
+    .searchable-dropdown-item:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .searchable-dropdown-item:last-child {
+        border-bottom: none;
+    }
+
+    .searchable-dropdown-item.selected {
+        background: rgba(139, 197, 63, 0.15);
+        color: var(--mv-green);
+        font-weight: 500;
+    }
+
+    .searchable-dropdown-header {
+        padding: 0.5rem 0.875rem;
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    /* Modal styling */
+    .modal-content {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .modal-header {
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        color: var(--text-primary);
+    }
+
+    .modal-body pre {
+        background: var(--bg-tertiary) !important;
+        color: var(--text-primary);
+    }
+
+    .modal-footer {
+        border-top: 1px solid var(--border-color);
+    }
+
+    /* Facility Matching Styles */
+    .facility-match-container {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .facility-match-result {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+    }
+
+    .facility-match-result.selected {
+        border: 2px solid var(--mv-green);
+        background: rgba(139, 197, 63, 0.1);
+    }
+
+    .match-confidence {
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+
+    .match-confidence.high {
+        background: var(--mv-green);
+        color: white;
+    }
+
+    .match-confidence.medium {
+        background: var(--warning);
+        color: #000;
+    }
+
+    .match-confidence.low {
+        background: var(--danger);
+        color: white;
+    }
+
+    /* Discrepancy highlighting */
+    .field-discrepancy {
+        background-color: rgba(220, 53, 69, 0.15) !important;
+        border-color: var(--danger) !important;
+    }
+
+    .discrepancy-indicator {
+        color: var(--danger);
+        font-weight: 600;
+        font-size: 0.8rem;
+        margin-left: 0.5rem;
+    }
+
+    .discrepancy-db-value {
+        color: var(--danger);
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
+    /* Match alternatives radio group */
+    .match-alternatives {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .match-alternative-item {
+        display: flex;
+        align-items: flex-start;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .match-alternative-item:hover {
+        border-color: var(--mv-green);
+        background: rgba(139, 197, 63, 0.05);
+    }
+
+    .match-alternative-item input[type="radio"] {
+        margin-right: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .match-alternative-details {
+        flex: 1;
+    }
+
+    .match-alternative-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .match-alternative-address {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    /* Reprocess button */
+    .btn-reprocess {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+    }
+
+    /* EPR Button */
+    .epr-section {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: linear-gradient(135deg, rgba(139, 197, 63, 0.1) 0%, rgba(139, 197, 63, 0.05) 100%);
+        border: 1px solid var(--mv-green);
+        border-radius: 8px;
+    }
+
+    .epr-status {
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+
+    .epr-status.pending {
+        background: var(--warning);
+        color: #000;
+    }
+
+    .epr-status.created {
+        background: var(--mv-green);
+        color: white;
+    }
+
+    .epr-status.sent {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    /* Patient search dropdown */
+    .patient-search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 250px;
+        overflow-y: auto;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: var(--card-shadow);
+        z-index: 1000;
+        display: none;
+    }
+
+    .patient-search-item {
+        padding: 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .patient-search-item:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .patient-search-item:last-child {
+        border-bottom: none;
+    }
+
+    /* Physician dropdown styling */
+    .physician-select-wrapper {
+        position: relative;
+    }
+
+    .btn-add-physician {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Skip to main content link for accessibility -->
+<a href="#main-form" class="visually-hidden-focusable btn btn-primary" style="position: absolute; top: 10px; left: 10px; z-index: 10000;">Skip to main content</a>
+
+<!-- Preview Toggle Button -->
+<button class="btn btn-primary preview-toggle" onclick="togglePreview()" aria-label="Toggle document preview" aria-expanded="false" aria-controls="previewSidebar">
+    <i class="bi bi-file-image" id="previewIcon" aria-hidden="true"></i> <span id="previewText">Show Preview</span>
+</button>
+
+<!-- Document Preview Sidebar -->
+<div class="preview-sidebar" id="previewSidebar">
+    <div class="card" style="border: none; border-radius: 0;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-file-pdf"></i> Document Preview</h5>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="zoomIn()">
+                    <i class="bi bi-zoom-in"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="zoomOut()">
+                    <i class="bi bi-zoom-out"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="rotateDoc()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="togglePreview()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body document-viewer" id="documentViewer">
+            <div class="text-center mt-5">
+                <div class="spinner-border text-primary"></div>
+                <p>Loading document...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Main Content -->
+<div class="main-content" id="mainContent">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h4><i class="bi bi-clipboard-check"></i> Review Lab Requisition <span id="accessionNumber" class="text-muted"></span></h4>
+                    <span class="confidence-badge mt-2" id="confidenceBadge">Loading...</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-warning" onclick="reExtractDocument()" title="Re-run AI extraction" id="reExtractBtn">
+                        <i class="bi bi-arrow-clockwise"></i> Re-Extract with AI
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewJSON()" title="View Full JSON">
+                        <i class="bi bi-code-square"></i> View Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <form id="main-form" role="form" aria-label="Document review form">
+            <!-- Facility Information -->
+            <div class="info-card">
+                <div class="card-title d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-building"></i>
+                        Ordering Facility
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-reprocess" onclick="matchFacility()" title="Find matching facility">
+                            <i class="bi bi-search"></i> Match Facility
+                        </button>
+                    </div>
+                </div>
+                <!-- Facility Match Status -->
+                <div id="facilityMatchStatus" class="facility-match-container" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong><i class="bi bi-check-circle-fill text-success"></i> Matched Facility</strong>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearFacilityMatch()">
+                            <i class="bi bi-x"></i> Clear
+                        </button>
+                    </div>
+                    <div id="matchedFacilityInfo"></div>
+                </div>
+                <!-- Hidden field for matched facility ID -->
+                <input type="hidden" id="matched_facility_id" value="">
+                <div class="form-grid form-grid-2">
+                    <div class="form-field">
+                        <label>Facility Name <span id="facility_name_discrepancy" class="discrepancy-indicator" style="display:none;"></span></label>
+                        <input type="text" id="facility_name" placeholder="Enter facility name">
+                    </div>
+                    <div class="form-field">
+                        <label>Facility ID</label>
+                        <input type="text" id="facility_id" placeholder="Enter facility ID" onblur="lookupFacilityById()">
+                    </div>
+                </div>
+                <div class="form-grid form-grid-2 mt-3">
+                    <div class="form-field">
+                        <label>Address <span id="facility_address_discrepancy" class="discrepancy-indicator" style="display:none;"></span></label>
+                        <input type="text" id="facility_address" placeholder="Street address">
+                    </div>
+                    <div class="form-field">
+                        <label>Laboratory Contact</label>
+                        <input type="text" id="laboratory_contact" placeholder="Contact name">
+                    </div>
+                </div>
+                <div class="form-grid form-grid-3 mt-3">
+                    <div class="form-field">
+                        <label>City <span id="facility_city_discrepancy" class="discrepancy-indicator" style="display:none;"></span></label>
+                        <input type="text" id="facility_city" placeholder="City">
+                    </div>
+                    <div class="form-field">
+                        <label>State <span id="facility_state_discrepancy" class="discrepancy-indicator" style="display:none;"></span></label>
+                        <input type="text" id="facility_state" placeholder="State" maxlength="2">
+                    </div>
+                    <div class="form-field">
+                        <label>Zip Code <span id="facility_zipcode_discrepancy" class="discrepancy-indicator" style="display:none;"></span></label>
+                        <input type="text" id="facility_zipcode" placeholder="Zip code">
+                    </div>
+                </div>
+                <div class="form-grid form-grid-3 mt-3">
+                    <div class="form-field">
+                        <label>Email</label>
+                        <input type="email" id="facility_email" placeholder="email@example.com">
+                    </div>
+                    <div class="form-field">
+                        <label>Phone <span id="facility_phone_discrepancy" class="discrepancy-indicator" style="display:none;"></span></label>
+                        <input type="text" id="facility_phone" placeholder="(555) 123-4567">
+                    </div>
+                    <div class="form-field">
+                        <label>Fax <span id="facility_fax_discrepancy" class="discrepancy-indicator" style="display:none;"></span></label>
+                        <input type="text" id="facility_fax" placeholder="(555) 123-4567">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patient Information -->
+            <div class="info-card">
+                <div class="card-title d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-person"></i>
+                        Patient Information
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="lookupPatient()" title="Search for existing patient">
+                            <i class="bi bi-search"></i> Lookup Patient
+                        </button>
+                    </div>
+                </div>
+                <!-- Hidden field for matched patient ID -->
+                <input type="hidden" id="matched_patient_id" value="">
+                <div class="form-grid form-grid-2">
+                    <div class="form-field" style="position: relative;">
+                        <label>Owner Last Name</label>
+                        <input type="text" id="owner_last_name" placeholder="Last name" oninput="handlePatientSearch(this.value)">
+                        <div id="patientSearchResults" class="patient-search-results"></div>
+                    </div>
+                    <div class="form-field">
+                        <label>Pet Name</label>
+                        <input type="text" id="pet_name" placeholder="Pet name (or patient name for humans)">
+                    </div>
+                </div>
+                <div class="form-grid form-grid-3 mt-3">
+                    <div class="form-field">
+                        <label>Species</label>
+                        <select id="species" onchange="handleSpeciesChange(this.value)">
+                            <option value="">Select species...</option>
+                            <option value="Human">Human</option>
+                            <option value="Canine">Canine (Dog)</option>
+                            <option value="Feline">Feline (Cat)</option>
+                            <option value="Equine">Equine (Horse)</option>
+                            <option value="Bovine">Bovine (Cattle)</option>
+                            <option value="Ovine">Ovine (Sheep)</option>
+                            <option value="Caprine">Caprine (Goat)</option>
+                            <option value="Porcine">Porcine (Pig)</option>
+                            <option value="Avian">Avian (Bird)</option>
+                            <option value="Reptilian">Reptilian</option>
+                            <option value="Rodent">Rodent</option>
+                            <option value="Aquatic">Aquatic</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Date of Birth</label>
+                        <input type="date" id="date_of_birth">
+                    </div>
+                    <div class="form-field">
+                        <label>Specimen ID (Optional)</label>
+                        <input type="text" id="specimen_id" placeholder="Specimen ID">
+                    </div>
+                </div>
+                <!-- EPR Section (shown only for Human patients) -->
+                <div id="eprSection" class="epr-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong><i class="bi bi-file-earmark-medical"></i> Electronic Patient Record</strong>
+                            <span id="eprStatus" class="epr-status ms-2" style="display: none;">Pending</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success" onclick="createEPR()" id="createEprBtn">
+                            <i class="bi bi-plus-circle"></i> Create EPR
+                        </button>
+                    </div>
+                    <p class="text-muted mt-2 mb-0" style="font-size: 0.85rem;">
+                        Create an Electronic Patient Record for human patients to facilitate integration with healthcare systems.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Order Information -->
+            <div class="info-card">
+                <div class="card-title">
+                    <i class="bi bi-clipboard-pulse"></i>
+                    Order Information
+                </div>
+                <div class="form-grid form-grid-2">
+                    <div class="form-field physician-select-wrapper">
+                        <label>Ordering Physician/Veterinarian</label>
+                        <div class="d-flex gap-2">
+                            <select id="ordering_physician_select" class="form-select" style="flex: 1;" onchange="handlePhysicianSelect(this.value)" disabled>
+                                <option value="">Match facility first...</option>
+                            </select>
+                            <input type="text" id="ordering_veterinarian" placeholder="Or enter name manually" style="flex: 1;">
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-add-physician mt-2" onclick="addNewPhysician()" style="display: none;" id="addPhysicianBtn">
+                            <i class="bi bi-plus-circle"></i> Add New Physician
+                        </button>
+                    </div>
+                    <div class="form-field">
+                        <label>Specimen Collection Date</label>
+                        <input type="date" id="collection_date">
+                    </div>
+                </div>
+                <div class="form-field mt-3">
+                    <label>Specimen Storage Temperature</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="temp_ambient" value="Stored Ambient">
+                            <label for="temp_ambient">Stored Ambient</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="temp_frozen" value="Stored Frozen">
+                            <label for="temp_frozen">Stored Frozen</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="temp_refrigerated" value="Stored Refrigerated">
+                            <label for="temp_refrigerated">Stored Refrigerated</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tests Requested -->
+            <div class="info-card">
+                <div class="card-title">
+                    <i class="bi bi-list-check"></i>
+                    Tests Requested
+                </div>
+                <div class="table-responsive">
+                    <table class="test-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50%;">Test</th>
+                                <th style="width: 30%;">Specimen Type</th>
+                                <th style="width: 15%;">Volume (mL)</th>
+                                <th style="width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="testsTableBody">
+                            <!-- Tests will be dynamically added here -->
+                        </tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn btn-add-test mt-3" onclick="addTestRow()">
+                    <i class="bi bi-plus-circle"></i> Add Test
+                </button>
+            </div>
+
+            <!-- Reviewer Notes -->
+            <div class="info-card">
+                <div class="card-title">
+                    <i class="bi bi-chat-left-text"></i>
+                    Reviewer Notes
+                </div>
+                <div class="form-field">
+                    <textarea class="form-control" id="reviewer_notes" rows="4"
+                              placeholder="Add any notes about corrections made or observations..." style="border: 1.5px solid #dee2e6; border-radius: 8px;"></textarea>
+                </div>
+            </div>
+        </form>
+
+        <!-- Action Buttons -->
+        <div class="action-bar mb-5">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-2">
+                    <a href="/dashboard" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                    <button class="btn btn-danger" onclick="rejectDocument()">
+                        <i class="bi bi-x-circle"></i> Reject
+                    </button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-secondary" onclick="saveCorrections()">
+                        <i class="bi bi-save"></i> Save Draft
+                    </button>
+                    <button class="btn btn-success" onclick="approveDocument()">
+                        <i class="bi bi-check-circle"></i> Approve & Submit
+                        <small class="d-block" style="font-size: 0.75rem; opacity: 0.9;">Ctrl+Enter</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JSON Viewer Modal -->
+<div class="modal fade" id="jsonModal" tabindex="-1" aria-labelledby="jsonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="jsonModalLabel">
+                    <i class="bi bi-code-square"></i> Extracted Data JSON
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyJSON()">
+                        <i class="bi bi-clipboard"></i> Copy to Clipboard
+                    </button>
+                </div>
+                <pre id="jsonContent" style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; max-height: 60vh; overflow: auto;"><code></code></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const documentId = {{ document_id }};
+    let documentData = null;
+    let currentZoom = 1.0;
+    let currentRotation = 0;
+
+    // Test Database - Loaded from API
+    // All MiraVista tests are 3-digit codes
+    // Specimen types: UR (Urine), SER (Serum), PLS (Plasma), CSF, BAL
+    let ALL_TESTS = [
+        // Antigen Tests
+        { code: "309", name: "Aspergillus EIA", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS", "BAL"] },
+        { code: "310", name: "Histoplasma EIA", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER", "PLS", "CSF", "BAL"] },
+        { code: "315", name: "Coccidioides EIA", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER", "PLS", "CSF"] },
+        { code: "316", name: "Blastomyces EIA", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER", "PLS"] },
+        { code: "317", name: "Beta-D-Glucan (BDG)", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+        { code: "319", name: "Cryptococcus LA", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "CSF"] },
+
+        // Antibody Tests
+        { code: "320", name: "Coccidioides ID (Any)", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+        { code: "321", name: "Histoplasma ID (Any)", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+        { code: "322", name: "Blastomyces ID", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+        { code: "324", name: "Aspergillus ID (Any)", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+        { code: "327", name: "Histoplasma IgG EIA (K9)", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+        { code: "328", name: "Histoplasma IgG EIA (Fel)", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+        { code: "329", name: "Coccidioides IgG EIA (K9)", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+        { code: "330", name: "Blastomyces IgG EIA (K9)", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+        { code: "332", name: "Pythium IgG EIA (K9/Fel)", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+
+        // Bioassay Test
+        { code: "312", name: "Itraconazole", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "PLS"] },
+
+        // Panel Tests - Feline
+        { code: "900", name: "Fel Fungal, Ext", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "903", name: "Fel Fungal West", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "907", name: "Fel Fungal East", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "909", name: "Fel Fungal, Comp", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "913", name: "Fel Histoplasmosis", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "917", name: "Fel Fungal GI", defaultSpecimen: "UR", eligibleSpecimens: ["UR"] },
+        { code: "920", name: "Fel Fungal Bone West", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "921", name: "Fel Fungal Bone East", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+
+        // Panel Tests - Canine (K9)
+        { code: "901", name: "K9 Fungal West, Ext", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "902", name: "K9 Fungal East, Ext", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "904", name: "K9 Fungal West", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "905", name: "K9 Fungal East", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "908", name: "K9 Fungal, Comp", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "910", name: "K9 Blastomycosis", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "911", name: "K9 Histoplasmosis", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "912", name: "K9 Coccidioidomycosis", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "UR"] },
+        { code: "916", name: "K9 Fungal GI", defaultSpecimen: "UR", eligibleSpecimens: ["UR"] },
+        { code: "918", name: "K9 Fungal Bone East", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+        { code: "919", name: "K9 Fungal Bone West", defaultSpecimen: "UR", eligibleSpecimens: ["UR", "SER"] },
+
+        // Panel Tests - K9 & Feline
+        { code: "914", name: "K9 & Fel Mold-Hyphae", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "BAL"] },
+        { code: "915", name: "K9 & Fel Fungal Nasal", defaultSpecimen: "SER", eligibleSpecimens: ["SER", "BAL"] }
+    ];
+
+    // Load tests from API
+    async function loadTestsFromAPI() {
+        try {
+            const response = await fetch('/api/tests');
+            if (!response.ok) {
+                console.error('Failed to load tests from API, using cached data');
+                return;
+            }
+
+            const tests = await response.json();
+
+            // Convert API format to UI format with test type
+            ALL_TESTS = tests.map(test => ({
+                code: test.test_number,
+                name: test.test_name,
+                testType: test.test_type || 'Other',
+                defaultSpecimen: test.eligible_specimens[0] || 'SER',
+                eligibleSpecimens: test.eligible_specimens
+            }));
+
+            // Sort by test type, then by numeric test code
+            ALL_TESTS.sort((a, b) => {
+                // First sort by test type
+                const typeA = a.testType || 'ZZZ';
+                const typeB = b.testType || 'ZZZ';
+                if (typeA !== typeB) {
+                    return typeA.localeCompare(typeB);
+                }
+                // Then sort by numeric test code
+                const numA = parseInt(a.code) || 0;
+                const numB = parseInt(b.code) || 0;
+                return numA - numB;
+            });
+
+            console.log('Loaded', tests.length, 'tests from API for review page');
+        } catch (error) {
+            console.error('Error loading tests from API:', error);
+        }
+    }
+
+    // Toast notification helper
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `custom-toast ${type}`;
+
+        const icon = type === 'success' ? 'bi-check-circle-fill' :
+                     type === 'error' ? 'bi-exclamation-circle-fill' :
+                     type === 'warning' ? 'bi-exclamation-triangle-fill' :
+                     'bi-info-circle-fill';
+
+        toast.innerHTML = `
+            <i class="bi ${icon}"></i>
+            <div>${message}</div>
+        `;
+
+        container.appendChild(toast);
+
+        // Auto remove after 4 seconds
+        setTimeout(() => {
+            toast.style.animation = 'slideIn 0.3s ease-out reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // Custom confirm dialog
+    function showConfirm(title, message, onConfirm, onCancel = null) {
+        const overlay = document.createElement('div');
+        overlay.className = 'custom-modal-overlay';
+
+        overlay.innerHTML = `
+            <div class="custom-modal">
+                <h4>${title}</h4>
+                <p>${message}</p>
+                <div class="custom-modal-buttons">
+                    <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+                    <button class="btn btn-primary" id="modalConfirm">Confirm</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        document.getElementById('modalConfirm').onclick = () => {
+            overlay.remove();
+            if (onConfirm) onConfirm();
+        };
+
+        document.getElementById('modalCancel').onclick = () => {
+            overlay.remove();
+            if (onCancel) onCancel();
+        };
+
+        // Click outside to close
+        overlay.onclick = (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+                if (onCancel) onCancel();
+            }
+        };
+    }
+
+    // Custom prompt dialog
+    function showPrompt(title, message, defaultValue = '', onConfirm, onCancel = null) {
+        const overlay = document.createElement('div');
+        overlay.className = 'custom-modal-overlay';
+
+        overlay.innerHTML = `
+            <div class="custom-modal">
+                <h4>${title}</h4>
+                <p>${message}</p>
+                <input type="text" id="promptInput" value="${defaultValue}" placeholder="Enter text...">
+                <div class="custom-modal-buttons">
+                    <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+                    <button class="btn btn-primary" id="modalConfirm">OK</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const input = document.getElementById('promptInput');
+        input.focus();
+        input.select();
+
+        document.getElementById('modalConfirm').onclick = () => {
+            const value = input.value;
+            overlay.remove();
+            if (onConfirm) onConfirm(value);
+        };
+
+        document.getElementById('modalCancel').onclick = () => {
+            overlay.remove();
+            if (onCancel) onCancel();
+        };
+
+        // Enter to confirm
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                const value = input.value;
+                overlay.remove();
+                if (onConfirm) onConfirm(value);
+            } else if (e.key === 'Escape') {
+                overlay.remove();
+                if (onCancel) onCancel();
+            }
+        };
+
+        // Click outside to close
+        overlay.onclick = (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+                if (onCancel) onCancel();
+            }
+        };
+    }
+
+    // Helper function to get auth headers - checks localStorage first, then js_access_token cookie (for SAML SSO)
+    function getAuthHeaders() {
+        let token = localStorage.getItem('access_token');
+
+        // If no token in localStorage, check for js_access_token cookie (set by SAML SSO)
+        if (!token) {
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'js_access_token' && value) {
+                    token = value;
+                    // Cache in localStorage for future requests
+                    localStorage.setItem('access_token', token);
+                    break;
+                }
+            }
+        }
+
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadTestsFromAPI(); // Load tests from API
+        loadDocumentData();
+    });
+
+    // Keyboard shortcut for approve
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            approveDocument();
+        }
+    });
+
+    async function loadDocumentData() {
+        try {
+            const response = await fetch(`/api/documents/${documentId}`, {
+                headers: getAuthHeaders()
+            });
+            documentData = await response.json();
+
+            // Set accession number
+            const accessionSpan = document.getElementById('accessionNumber');
+            if (documentData.accession_number) {
+                accessionSpan.textContent = `(${documentData.accession_number})`;
+            }
+
+            // Set confidence badge
+            const badge = document.getElementById('confidenceBadge');
+            const score = documentData.confidence_score || 0;
+            badge.textContent = `AI Confidence: ${(score * 100).toFixed(1)}%`;
+            badge.className = `confidence-badge ${getConfidenceClass(score)}`;
+
+            // Load document viewer
+            const viewer = document.getElementById('documentViewer');
+            const reExtractBtn = document.getElementById('reExtractBtn');
+
+            if (documentData.document_url) {
+                const token = localStorage.getItem('access_token');
+                const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+                if (!token && !isDevelopment) {
+                    viewer.innerHTML = `
+                        <div class="text-center mt-5">
+                            <i class="bi bi-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+                            <p class="text-muted mt-3">
+                                <strong>Authentication Required</strong><br>
+                                Please log in to view the document
+                            </p>
+                        </div>
+                    `;
+                    // Don't return - continue to populate form fields
+                } else {
+                    // In development mode, use empty token if not available
+                    const documentUrl = documentData.document_url.replace('{token}', token || 'dev');
+
+                    if (documentData.filename.toLowerCase().endsWith('.pdf')) {
+                        viewer.innerHTML = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:auto;">
+                                                <iframe src="${documentUrl}" id="docFrame"
+                                                    style="width:100%; height:80vh; border:none; transition: transform 0.3s ease;"
+                                                    onload="console.log('PDF loaded successfully')"
+                                                    onerror="console.error('PDF failed to load')"></iframe>
+                                            </div>`;
+                    } else {
+                        viewer.innerHTML = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:auto;">
+                                                <img src="${documentUrl}" id="docImage"
+                                                    style="max-width:100%; height:auto; transition: transform 0.3s ease;"
+                                                    onload="console.log('Image loaded successfully')"
+                                                    onerror="console.error('Image failed to load')">
+                                            </div>`;
+                    }
+                }
+            } else {
+                // Manually created order - hide re-extract button
+                if (reExtractBtn) {
+                    reExtractBtn.style.display = 'none';
+                }
+                viewer.innerHTML = `
+                    <div class="text-center mt-5">
+                        <i class="bi bi-file-earmark-text text-muted" style="font-size: 4rem;"></i>
+                        <p class="text-muted mt-3">
+                            <strong>Manually Created Order</strong><br>
+                            No document file available
+                        </p>
+                    </div>
+                `;
+            }
+
+            // Populate form with extracted data
+            const data = documentData.extracted_data || {};
+
+            // Extract field confidence from metadata
+            const fieldConfidence = (data.metadata && data.metadata.field_confidence) || {};
+
+            // Facility info
+            const facility = data.facility || {};
+            setField('facility_name', facility.facility_name, fieldConfidence['facility.facility_name']);
+            setField('facility_address', facility.address, fieldConfidence['facility.address']);
+            setField('facility_city', facility.city, fieldConfidence['facility.city']);
+            setField('facility_state', facility.state, fieldConfidence['facility.state']);
+            setField('facility_zipcode', facility.zipcode, fieldConfidence['facility.zipcode']);
+            setField('facility_email', facility.email, fieldConfidence['facility.email']);
+            setField('facility_phone', facility.phone, fieldConfidence['facility.phone']);
+            setField('facility_fax', facility.fax, fieldConfidence['facility.fax']);
+            setField('laboratory_contact', facility.laboratory_contact, fieldConfidence['facility.laboratory_contact']);
+
+            // Patient info
+            const patient = data.patient || {};
+            setField('owner_last_name', patient.owner_last_name, fieldConfidence['patient.owner_last_name']);
+            setField('pet_name', patient.pet_name, fieldConfidence['patient.pet_name']);
+            setField('species', patient.species, fieldConfidence['patient.species']);
+            setField('date_of_birth', patient.date_of_birth, fieldConfidence['patient.date_of_birth']);
+
+            // Order info
+            const order = data.order || {};
+            setField('ordering_veterinarian', order.ordering_veterinarian, fieldConfidence['order.ordering_veterinarian']);
+            setField('collection_date', order.specimen_collection_date, fieldConfidence['order.specimen_collection_date']);
+
+            // Handle storage temperature checkboxes
+            const storageTemp = order.specimen_storage_temperature || '';
+            document.getElementById('temp_ambient').checked = storageTemp.includes('Ambient');
+            document.getElementById('temp_frozen').checked = storageTemp.includes('Frozen');
+            document.getElementById('temp_refrigerated').checked = storageTemp.includes('Refrigerated');
+
+            // Tests requested
+            if (Array.isArray(data.tests_requested) && data.tests_requested.length > 0) {
+                const tableBody = document.getElementById('testsTableBody');
+                tableBody.innerHTML = '';
+                data.tests_requested.forEach((test, index) => {
+                    addTestRow(test);
+                });
+
+                // Apply confidence to tests requested section
+                const testsConfidence = fieldConfidence['tests_requested'];
+                if (testsConfidence !== undefined) {
+                    const testsTitle = document.querySelector('.info-card .card-title:has(i.bi-list-check)');
+                    if (testsTitle) {
+                        // Remove existing badge
+                        const existingBadge = testsTitle.querySelector('.confidence-badge-field');
+                        if (existingBadge) existingBadge.remove();
+
+                        // Add confidence badge
+                        const badge = document.createElement('span');
+                        badge.className = 'confidence-badge-field';
+                        badge.textContent = `${(testsConfidence * 100).toFixed(0)}%`;
+
+                        if (testsConfidence < 0.80) {
+                            badge.classList.add('danger');
+                        } else if (testsConfidence >= 0.80 && testsConfidence < 0.95) {
+                            badge.classList.add('warning');
+                        }
+
+                        testsTitle.appendChild(badge);
+                    }
+                }
+            } else {
+                addTestRow();
+            }
+
+        } catch (error) {
+            console.error('Failed to load document:', error);
+            showToast('Failed to load document data', 'error');
+        }
+    }
+
+    function setField(fieldId, value, confidence = null) {
+        const input = document.getElementById(fieldId);
+        if (input) {
+            input.value = value || '';
+
+            // Apply confidence-based styling if provided
+            if (confidence !== null) {
+                applyFieldConfidence(fieldId, confidence);
+            }
+        }
+    }
+
+    function applyFieldConfidence(fieldId, confidence) {
+        const input = document.getElementById(fieldId);
+        if (!input) return;
+
+        // Remove existing confidence classes
+        input.classList.remove('field-confidence-warning', 'field-confidence-danger');
+
+        // Apply color based on confidence
+        if (confidence < 0.80) {
+            input.classList.add('field-confidence-danger');
+        } else if (confidence >= 0.80 && confidence < 0.95) {
+            input.classList.add('field-confidence-warning');
+        }
+
+        // Add confidence badge to label
+        const label = input.closest('.form-field')?.querySelector('label');
+        if (label) {
+            // Remove existing badge if any
+            const existingBadge = label.querySelector('.confidence-badge-field');
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+
+            // Add new badge
+            const badge = document.createElement('span');
+            badge.className = 'confidence-badge-field';
+            badge.textContent = `${(confidence * 100).toFixed(0)}%`;
+
+            if (confidence < 0.80) {
+                badge.classList.add('danger');
+            } else if (confidence >= 0.80 && confidence < 0.95) {
+                badge.classList.add('warning');
+            }
+
+            label.appendChild(badge);
+        }
+    }
+
+    function getConfidenceClass(score) {
+        if (score >= 0.90) return 'bg-success text-white';
+        if (score >= 0.70) return 'bg-warning text-dark';
+        return 'bg-danger text-white';
+    }
+
+    async function approveDocument() {
+        const form = document.getElementById('main-form');
+        if (!form || !form.checkValidity()) {
+            if (form) form.reportValidity();
+            return;
+        }
+
+        // Helper to safely get element value
+        const getValue = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value : '';
+        };
+
+        // Helper to get checkbox values
+        const getCheckboxValues = (ids) => {
+            return ids.filter(id => {
+                const el = document.getElementById(id);
+                return el && el.checked;
+            }).map(id => document.getElementById(id).value);
+        };
+
+        // Collect corrected data from form (veterinary format)
+        const correctedData = {
+            // Facility info
+            facility_name: getValue('facility_name'),
+            facility_id: getValue('facility_id'),
+            facility_address: getValue('facility_address'),
+            facility_city: getValue('facility_city'),
+            facility_state: getValue('facility_state'),
+            facility_zipcode: getValue('facility_zipcode'),
+            facility_email: getValue('facility_email'),
+            facility_phone: getValue('facility_phone'),
+            facility_fax: getValue('facility_fax'),
+            laboratory_contact: getValue('laboratory_contact'),
+
+            // Patient (pet) info
+            owner_last_name: getValue('owner_last_name'),
+            patient_name: getValue('pet_name'),  // Map pet_name to patient_name for API
+            pet_name: getValue('pet_name'),
+            species: getValue('species'),
+            date_of_birth: getValue('date_of_birth'),
+            specimen_id: getValue('specimen_id'),
+
+            // Order info
+            ordering_physician: getValue('ordering_veterinarian'),  // Map to ordering_physician for API
+            ordering_veterinarian: getValue('ordering_veterinarian'),
+            collection_date: getValue('collection_date'),
+            storage_conditions: getCheckboxValues(['temp_ambient', 'temp_frozen', 'temp_refrigerated']),
+
+            // Tests
+            tests_requested: collectTestsData()
+        };
+
+        try {
+            const response = await fetch(`/api/documents/${documentId}/review`, {
+                method: 'POST',
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    corrected_data: correctedData,
+                    reviewer_notes: document.getElementById('reviewer_notes').value,
+                    approved: true
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                const confirmationId = result.lab_result?.confirmation_id || 'Pending';
+                showToast(`✅ Document approved and submitted to lab! Confirmation: ${confirmationId}`, 'success');
+                setTimeout(() => window.location.href = '/dashboard', 2500);
+            } else {
+                showToast('Failed to approve: ' + (result.detail || 'Unknown error'), 'error');
+            }
+        } catch (error) {
+            showToast('Error: ' + error.message, 'error');
+        }
+    }
+
+    async function rejectDocument() {
+        showPrompt('Reject Document', 'Please enter rejection reason:', '', async (reason) => {
+            if (!reason || !reason.trim()) {
+                showToast('Rejection reason is required', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/documents/${documentId}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        ...getAuthHeaders(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ reason: reason })
+                });
+
+                if (response.ok) {
+                    showToast('Document rejected', 'success');
+                    setTimeout(() => window.location.href = '/dashboard', 1500);
+                } else {
+                    const result = await response.json();
+                    showToast('Failed to reject: ' + (result.detail || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        });
+    }
+
+    function saveCorrections() {
+        showToast('Corrections saved (not submitted)', 'success');
+    }
+
+    function zoomIn() {
+        currentZoom = Math.min(currentZoom * 1.2, 3.0);
+        applyTransform();
+    }
+
+    function zoomOut() {
+        currentZoom = Math.max(currentZoom * 0.8, 0.5);
+        applyTransform();
+    }
+
+    function rotateDoc() {
+        currentRotation = (currentRotation + 90) % 360;
+        applyTransform();
+    }
+
+    function applyTransform() {
+        const img = document.getElementById('docImage');
+        const frame = document.getElementById('docFrame');
+
+        const transformValue = `scale(${currentZoom}) rotate(${currentRotation}deg)`;
+
+        if (img && img.tagName === 'IMG') {
+            // For images, apply transform directly
+            img.style.transform = transformValue;
+        } else if (frame) {
+            // For PDFs in iframe, apply transform to iframe
+            frame.style.transform = transformValue;
+        }
+    }
+
+    function togglePreview() {
+        const sidebar = document.getElementById('previewSidebar');
+        const mainContent = document.getElementById('mainContent');
+        const icon = document.getElementById('previewIcon');
+        const text = document.getElementById('previewText');
+        const button = document.querySelector('.preview-toggle');
+
+        sidebar.classList.toggle('open');
+        mainContent.classList.toggle('preview-open');
+
+        if (sidebar.classList.contains('open')) {
+            text.textContent = 'Hide Preview';
+            icon.className = 'bi bi-x-lg';
+            button.setAttribute('aria-expanded', 'true');
+        } else {
+            text.textContent = 'Show Preview';
+            icon.className = 'bi bi-file-image';
+            button.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function addTestRow(test = null) {
+        const tableBody = document.getElementById('testsTableBody');
+        const rowIndex = tableBody.rows.length;
+
+        // Combine test code and name into single field
+        let testDisplay = '';
+        let testCode = '';
+        if (test) {
+            if (test.test_number && test.test_name) {
+                testDisplay = `${test.test_number} - ${test.test_name}`;
+                testCode = test.test_number;
+            } else if (test.test_name) {
+                testDisplay = test.test_name;
+            } else if (test.test_number) {
+                testDisplay = test.test_number;
+                testCode = test.test_number;
+            }
+        }
+
+        // Determine if we have a test selected (for specimen type dropdown state)
+        const hasTest = testDisplay !== '';
+
+        const row = tableBody.insertRow();
+        row.innerHTML = `
+            <td>
+                <div class="searchable-select-wrapper">
+                    <input type="text"
+                           class="searchable-test-input"
+                           id="test_input_${rowIndex}"
+                           data-row="${rowIndex}"
+                           value="${testDisplay}"
+                           placeholder="Type test # or name..."
+                           autocomplete="off"
+                           required>
+                    <input type="hidden"
+                           name="test_${rowIndex}"
+                           id="test_value_${rowIndex}"
+                           value="${testDisplay}">
+                    <div class="searchable-dropdown" id="test_dropdown_${rowIndex}" style="display: none;"></div>
+                </div>
+            </td>
+            <td>
+                <select class="form-select form-select-sm"
+                        name="specimen_type_${rowIndex}"
+                        id="specimen_type_${rowIndex}"
+                        ${hasTest ? '' : 'disabled'}
+                        required>
+                    <option value="">${hasTest ? 'Select...' : 'Select test first...'}</option>
+                </select>
+            </td>
+            <td><input type="number" class="form-control form-control-sm" name="volume_${rowIndex}" value="${test?.specimen_volume_ml || ''}" placeholder="0.0" step="0.1" min="0"></td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTestRow(this)"><i class="bi bi-trash"></i></button></td>
+        `;
+
+        // Set up searchable dropdown functionality
+        setupTestSearchableDropdown(rowIndex);
+
+        // If we have existing test data, populate the specimen type dropdown
+        if (hasTest && testCode) {
+            const specimenSelect = document.getElementById(`specimen_type_${rowIndex}`);
+            // Find the test in ALL_TESTS to get eligible specimens
+            const catalogTest = ALL_TESTS.find(t => t.code === testCode);
+            if (catalogTest) {
+                populateSpecimenDropdown(specimenSelect, catalogTest, test?.specimen_type);
+            } else {
+                // Test not found in catalog, show all specimens with current value selected
+                populateAllSpecimens(specimenSelect, test?.specimen_type);
+            }
+        }
+    }
+
+    function removeTestRow(button) {
+        const row = button.closest('tr');
+        row.remove();
+
+        // Ensure at least one row
+        const tableBody = document.getElementById('testsTableBody');
+        if (tableBody.rows.length === 0) {
+            addTestRow();
+        }
+    }
+
+    function setupTestSearchableDropdown(rowIndex) {
+        const input = document.getElementById(`test_input_${rowIndex}`);
+        const dropdown = document.getElementById(`test_dropdown_${rowIndex}`);
+        const hiddenValue = document.getElementById(`test_value_${rowIndex}`);
+        const specimenSelect = document.getElementById(`specimen_type_${rowIndex}`);
+
+        // Move dropdown to body to escape any stacking context issues
+        document.body.appendChild(dropdown);
+
+        let selectedIndex = -1;
+        let filteredTests = [];
+
+        // Show dropdown on focus or input
+        input.addEventListener('focus', function() {
+            showDropdown();
+        });
+
+        input.addEventListener('input', function() {
+            showDropdown();
+        });
+
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.style.display = 'none';
+                selectedIndex = -1;
+            }
+        });
+
+        // Reposition dropdown on scroll
+        window.addEventListener('scroll', function() {
+            if (dropdown.style.display === 'block') {
+                const rect = input.getBoundingClientRect();
+                dropdown.style.top = (rect.bottom + 2) + 'px';
+                dropdown.style.left = rect.left + 'px';
+            }
+        }, true);
+
+        // Keyboard navigation
+        input.addEventListener('keydown', function(e) {
+            const items = dropdown.querySelectorAll('.searchable-dropdown-item');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, 0);
+                updateSelection(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedIndex >= 0 && selectedIndex < filteredTests.length) {
+                    selectTest(filteredTests[selectedIndex]);
+                }
+            } else if (e.key === 'Escape') {
+                dropdown.style.display = 'none';
+                selectedIndex = -1;
+            }
+        });
+
+        function showDropdown() {
+            const searchTerm = input.value.toLowerCase();
+
+            // Filter and prioritize tests - code matches first, then name matches
+            const codeMatches = [];
+            const nameMatches = [];
+
+            ALL_TESTS.forEach(test => {
+                const code = test.code.toLowerCase();
+                const name = test.name.toLowerCase();
+
+                if (code.startsWith(searchTerm)) {
+                    // Exact code prefix match - highest priority
+                    codeMatches.unshift(test);
+                } else if (code.includes(searchTerm)) {
+                    // Code contains search term
+                    codeMatches.push(test);
+                } else if (name.includes(searchTerm)) {
+                    // Name contains search term
+                    nameMatches.push(test);
+                }
+            });
+
+            // Combine: code matches first, then name matches
+            filteredTests = [...codeMatches, ...nameMatches];
+
+            // Build dropdown HTML with test type headers
+            if (filteredTests.length === 0) {
+                dropdown.innerHTML = '<div class="searchable-dropdown-item" style="color: #999; cursor: default;">No matching tests found.</div>';
+            } else {
+                // Group tests by type for rendering with headers
+                let html = '';
+                let currentType = null;
+
+                filteredTests.forEach((test, index) => {
+                    // Add header when test type changes
+                    if (test.testType !== currentType) {
+                        currentType = test.testType;
+                        html += `<div class="searchable-dropdown-header">${currentType || 'Other'}</div>`;
+                    }
+                    html += `
+                        <div class="searchable-dropdown-item"
+                             data-index="${index}"
+                             onmousedown="event.preventDefault();"
+                             onclick="selectTestFromDropdown(${rowIndex}, ${index})">
+                            <strong>${test.code}</strong> - ${test.name}
+                        </div>
+                    `;
+                });
+
+                dropdown.innerHTML = html;
+            }
+
+            // Position dropdown below the input field using fixed positioning
+            const rect = input.getBoundingClientRect();
+            dropdown.style.top = (rect.bottom + 2) + 'px'; // 2px gap
+            dropdown.style.left = rect.left + 'px';
+            dropdown.style.width = rect.width + 'px';
+            dropdown.style.display = 'block';
+            selectedIndex = -1;
+        }
+
+        function updateSelection(items) {
+            items.forEach((item, index) => {
+                if (index === selectedIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        function selectTest(test) {
+            input.value = `${test.code} - ${test.name}`;
+            hiddenValue.value = `${test.code} - ${test.name}`;
+
+            // Update specimen type dropdown with eligible specimens for this test
+            updateSpecimenDropdown(specimenSelect, test);
+
+            dropdown.style.display = 'none';
+            selectedIndex = -1;
+
+            // Move focus to specimen type dropdown
+            specimenSelect.focus();
+        }
+
+        // Store selectTest function on window for onclick handler
+        window[`selectTestForRow${rowIndex}`] = selectTest;
+    }
+
+    // Global function to select test from dropdown (called by onclick)
+    function selectTestFromDropdown(rowIndex, testIndex) {
+        const input = document.getElementById(`test_input_${rowIndex}`);
+        const dropdown = document.getElementById(`test_dropdown_${rowIndex}`);
+        const hiddenValue = document.getElementById(`test_value_${rowIndex}`);
+        const specimenSelect = document.getElementById(`specimen_type_${rowIndex}`);
+
+        // Get filtered tests based on current input
+        const searchTerm = input.value.toLowerCase();
+        const codeMatches = [];
+        const nameMatches = [];
+
+        ALL_TESTS.forEach(test => {
+            const code = test.code.toLowerCase();
+            const name = test.name.toLowerCase();
+
+            if (code.startsWith(searchTerm)) {
+                codeMatches.unshift(test);
+            } else if (code.includes(searchTerm)) {
+                codeMatches.push(test);
+            } else if (name.includes(searchTerm)) {
+                nameMatches.push(test);
+            }
+        });
+
+        const filteredTests = [...codeMatches, ...nameMatches];
+
+        if (testIndex >= 0 && testIndex < filteredTests.length) {
+            const test = filteredTests[testIndex];
+            input.value = `${test.code} - ${test.name}`;
+            hiddenValue.value = `${test.code} - ${test.name}`;
+
+            // Update specimen type dropdown with eligible specimens for this test
+            updateSpecimenDropdown(specimenSelect, test);
+
+            dropdown.style.display = 'none';
+
+            // Move focus to specimen type dropdown
+            specimenSelect.focus();
+        }
+    }
+
+    // All available specimen types
+    const ALL_SPECIMEN_TYPES = [
+        { value: "UR", label: "UR (Urine)" },
+        { value: "SER", label: "SER (Serum)" },
+        { value: "PLS", label: "PLS (Plasma)" },
+        { value: "CSF", label: "CSF" },
+        { value: "BAL", label: "BAL" }
+    ];
+
+    // Helper function to populate specimen dropdown with eligible specimens for a test
+    function populateSpecimenDropdown(specimenSelect, test, selectedValue = null) {
+        // Enable the dropdown
+        specimenSelect.disabled = false;
+
+        // Clear current options
+        specimenSelect.innerHTML = '<option value="">Select...</option>';
+
+        const eligibleSpecimens = test?.eligibleSpecimens || [];
+
+        if (eligibleSpecimens.length === 0) {
+            // If no eligible specimens defined, show all options
+            populateAllSpecimens(specimenSelect, selectedValue);
+            return;
+        }
+
+        // Add only eligible specimen options
+        ALL_SPECIMEN_TYPES.forEach(specimen => {
+            if (eligibleSpecimens.includes(specimen.value)) {
+                const option = document.createElement('option');
+                option.value = specimen.value;
+                option.textContent = specimen.label;
+                if (specimen.value === selectedValue || specimen.value === normalizeSpecimenType(selectedValue)) {
+                    option.selected = true;
+                }
+                specimenSelect.appendChild(option);
+            }
+        });
+
+        // Auto-select first option if only one eligible and nothing selected
+        if (eligibleSpecimens.length === 1 && !selectedValue) {
+            specimenSelect.value = eligibleSpecimens[0];
+        }
+    }
+
+    // Helper function to populate all specimen types
+    function populateAllSpecimens(specimenSelect, selectedValue = null) {
+        specimenSelect.disabled = false;
+        specimenSelect.innerHTML = '<option value="">Select...</option>';
+
+        ALL_SPECIMEN_TYPES.forEach(specimen => {
+            const option = document.createElement('option');
+            option.value = specimen.value;
+            option.textContent = specimen.label;
+            if (specimen.value === selectedValue || specimen.value === normalizeSpecimenType(selectedValue)) {
+                option.selected = true;
+            }
+            specimenSelect.appendChild(option);
+        });
+    }
+
+    // Normalize specimen type values (e.g., "Urine" -> "UR", "Serum" -> "SER")
+    function normalizeSpecimenType(value) {
+        if (!value) return null;
+        const mapping = {
+            'urine': 'UR',
+            'serum': 'SER',
+            'plasma': 'PLS'
+        };
+        return mapping[value.toLowerCase()] || value;
+    }
+
+    // Helper function to reset specimen dropdown to disabled state
+    function resetSpecimenDropdown(specimenSelect) {
+        specimenSelect.disabled = true;
+        specimenSelect.innerHTML = '<option value="">Select test first...</option>';
+    }
+
+    // Helper function to update specimen type dropdown based on selected test
+    function updateSpecimenDropdown(specimenSelect, test) {
+        if (!test) {
+            resetSpecimenDropdown(specimenSelect);
+            return;
+        }
+
+        populateSpecimenDropdown(specimenSelect, test);
+
+        // Auto-populate with default specimen if available
+        if (test.defaultSpecimen) {
+            specimenSelect.value = test.defaultSpecimen;
+        }
+    }
+
+    function collectTestsData() {
+        const tableBody = document.getElementById('testsTableBody');
+        const tests = [];
+
+        for (let i = 0; i < tableBody.rows.length; i++) {
+            const row = tableBody.rows[i];
+            const testValue = row.querySelector(`[name="test_${i}"]`)?.value;
+
+            if (testValue && testValue.trim()) {
+                tests.push(testValue.trim());
+            }
+        }
+
+        return tests;
+    }
+
+    function viewJSON() {
+        if (!documentData || !documentData.extracted_data) {
+            showToast('No data available', 'warning');
+            return;
+        }
+
+        const jsonString = JSON.stringify(documentData.extracted_data, null, 2);
+        const jsonElement = document.querySelector('#jsonContent code');
+        jsonElement.textContent = jsonString;
+
+        const modal = new bootstrap.Modal(document.getElementById('jsonModal'));
+        modal.show();
+    }
+
+    function copyJSON() {
+        const jsonString = JSON.stringify(documentData.extracted_data, null, 2);
+        navigator.clipboard.writeText(jsonString).then(() => {
+            showToast('JSON copied to clipboard!', 'success');
+        }).catch(err => {
+            showToast('Failed to copy: ' + err, 'error');
+        });
+    }
+
+    async function reExtractDocument() {
+        if (!documentData || !documentData.document_url) {
+            showToast('Cannot re-extract: This document was manually created.', 'warning');
+            return;
+        }
+
+        showConfirm(
+            'Re-run AI Extraction?',
+            'This will replace the current extracted data and reset any reviews. Are you sure?',
+            async () => {
+                const reExtractBtn = document.getElementById('reExtractBtn');
+                const originalBtnHtml = reExtractBtn.innerHTML;
+
+                try {
+                    // Disable button and show loading state
+                    reExtractBtn.disabled = true;
+                    reExtractBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Extracting...';
+
+                    const response = await fetch(`/api/documents/${documentId}/re-extract`, {
+                        method: 'POST',
+                        headers: getAuthHeaders()
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        // Check if extraction completed immediately or was queued
+                        if (result.confidence_score != null) {
+                            showToast(`Re-extraction complete! Confidence: ${(result.confidence_score * 100).toFixed(1)}%`, 'success');
+                        } else {
+                            showToast(result.message || 'Document queued for re-extraction. Refresh to see results.', 'success');
+                        }
+                        // Reload the page to show new data
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                        showToast('Re-extraction failed: ' + (result.detail || 'Unknown error'), 'error');
+                        reExtractBtn.disabled = false;
+                        reExtractBtn.innerHTML = originalBtnHtml;
+                    }
+                } catch (error) {
+                    console.error('Re-extraction error:', error);
+                    showToast('Error during re-extraction: ' + error.message, 'error');
+                    reExtractBtn.disabled = false;
+                    reExtractBtn.innerHTML = originalBtnHtml;
+                }
+            }
+        );
+    }
+
+    // =====================================================
+    // FACILITY MATCHING FUNCTIONS
+    // =====================================================
+
+    let currentFacilityMatch = null;
+    let facilityPhysicians = [];
+
+    // Auto-populate facility fields when Facility ID is entered
+    async function lookupFacilityById() {
+        const facilityIdInput = document.getElementById('facility_id');
+        const facilityId = facilityIdInput.value.trim();
+        if (!facilityId) return;
+
+        try {
+            const response = await fetch(`/api/facilities/by-facility-id/${encodeURIComponent(facilityId)}`, {
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const facility = await response.json();
+                // Auto-fill all facility fields
+                document.getElementById('facility_name').value = facility.facility_name || '';
+                document.getElementById('facility_address').value = facility.address || '';
+                document.getElementById('facility_city').value = facility.city || '';
+                document.getElementById('facility_state').value = facility.state || '';
+                document.getElementById('facility_zipcode').value = facility.zipcode || '';
+                document.getElementById('facility_phone').value = facility.phone || '';
+                document.getElementById('facility_fax').value = facility.fax || '';
+                document.getElementById('facility_email').value = facility.email || '';
+
+                // Store the matched facility info
+                currentFacilityMatch = {
+                    facility_id: facility.id,
+                    facility_name: facility.facility_name,
+                    confidence: 1.0,
+                    method: 'facility_id_lookup'
+                };
+
+                // Load physicians for this facility
+                await loadFacilityPhysicians(facility.id);
+
+                showToast(`Loaded facility: ${facility.facility_name}`, 'success');
+            } else if (response.status === 404) {
+                showToast('Facility ID not found in database', 'warning');
+            }
+        } catch (error) {
+            console.error('Facility ID lookup error:', error);
+        }
+    }
+
+    async function matchFacility() {
+        const facilityName = document.getElementById('facility_name').value;
+        const facilityAddress = document.getElementById('facility_address').value;
+        const facilityCity = document.getElementById('facility_city').value;
+        const facilityState = document.getElementById('facility_state').value;
+        const facilityZipcode = document.getElementById('facility_zipcode').value;
+        const facilityFax = document.getElementById('facility_fax').value;
+        const facilityPhone = document.getElementById('facility_phone').value;
+
+        if (!facilityName && !facilityFax && !facilityPhone) {
+            showToast('Please enter facility name, fax, or phone to search', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/facilities/match', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    facility_name: facilityName,
+                    address: facilityAddress,
+                    city: facilityCity,
+                    state: facilityState,
+                    zipcode: facilityZipcode,
+                    fax: facilityFax,
+                    phone: facilityPhone,
+                    document_id: documentId
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                displayFacilityMatchResults(result);
+            } else {
+                showToast('Facility match failed: ' + (result.detail || 'Unknown error'), 'error');
+            }
+        } catch (error) {
+            console.error('Facility match error:', error);
+            showToast('Error matching facility: ' + error.message, 'error');
+        }
+    }
+
+    function displayFacilityMatchResults(result) {
+        const statusContainer = document.getElementById('facilityMatchStatus');
+        const infoContainer = document.getElementById('matchedFacilityInfo');
+
+        if (!result.best_match && result.alternatives.length === 0) {
+            showToast('No matching facilities found', 'info');
+            return;
+        }
+
+        statusContainer.style.display = 'block';
+
+        // If single high-confidence match, select it automatically
+        if (result.best_match && result.best_match.confidence >= 0.9 && result.alternatives.length === 0) {
+            selectFacilityMatch(result.best_match);
+            return;
+        }
+
+        // Show all matches with radio selection
+        const allMatches = result.best_match
+            ? [result.best_match, ...result.alternatives]
+            : result.alternatives;
+
+        let html = '<div class="match-alternatives">';
+
+        allMatches.forEach((match, index) => {
+            const confidenceClass = match.confidence >= 0.9 ? 'high' : match.confidence >= 0.7 ? 'medium' : 'low';
+
+            html += `
+                <label class="match-alternative-item">
+                    <input type="radio" name="facility_match" value="${match.facility_id}"
+                           onchange="selectFacilityById(${match.facility_id})"
+                           ${index === 0 ? 'checked' : ''}>
+                    <div class="match-alternative-details">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="match-alternative-name">${match.facility_name}</span>
+                            <span class="match-confidence ${confidenceClass}">${(match.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="match-alternative-address">
+                            ${match.address || ''} ${match.city || ''}, ${match.state || ''} ${match.zipcode || ''}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.75rem;">
+                            ${match.details}
+                        </div>
+                        ${renderDiscrepancies(match.discrepancies)}
+                    </div>
+                </label>
+            `;
+        });
+
+        html += '</div>';
+        html += `
+            <div class="mt-3">
+                <button type="button" class="btn btn-sm btn-success" onclick="confirmFacilitySelection()">
+                    <i class="bi bi-check-circle"></i> Confirm Selection
+                </button>
+            </div>
+        `;
+
+        infoContainer.innerHTML = html;
+
+        // Auto-select first match
+        if (allMatches.length > 0) {
+            selectFacilityById(allMatches[0].facility_id);
+        }
+    }
+
+    function renderDiscrepancies(discrepancies) {
+        if (!discrepancies || Object.keys(discrepancies).length === 0) {
+            return '';
+        }
+
+        let html = '<div class="mt-2" style="font-size: 0.8rem;">';
+        for (const [field, info] of Object.entries(discrepancies)) {
+            html += `
+                <div class="text-danger">
+                    <strong>${field}:</strong> "${info.extracted}"
+                    <i class="bi bi-arrow-right"></i>
+                    <span class="discrepancy-db-value">"${info.database}"</span>
+                </div>
+            `;
+        }
+        html += '</div>';
+        return html;
+    }
+
+    async function selectFacilityById(facilityId) {
+        try {
+            const response = await fetch(`/api/facilities/${facilityId}`, {
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const facility = await response.json();
+                currentFacilityMatch = {
+                    facility_id: facility.id,
+                    facility_name: facility.facility_name,
+                    address: facility.address,
+                    city: facility.city,
+                    state: facility.state,
+                    zipcode: facility.zipcode,
+                    fax: facility.fax,
+                    phone: facility.phone
+                };
+
+                // Update hidden field
+                document.getElementById('matched_facility_id').value = facilityId;
+
+                // Load physicians for this facility
+                loadFacilityPhysicians(facilityId);
+
+                // Highlight discrepancies on form fields
+                highlightFieldDiscrepancies(facility);
+            }
+        } catch (error) {
+            console.error('Error fetching facility:', error);
+        }
+    }
+
+    function selectFacilityMatch(match) {
+        currentFacilityMatch = match;
+        document.getElementById('matched_facility_id').value = match.facility_id;
+
+        const infoContainer = document.getElementById('matchedFacilityInfo');
+        const statusContainer = document.getElementById('facilityMatchStatus');
+
+        statusContainer.style.display = 'block';
+
+        const confidenceClass = match.confidence >= 0.9 ? 'high' : match.confidence >= 0.7 ? 'medium' : 'low';
+
+        infoContainer.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${match.facility_name}</strong>
+                    <div class="text-muted" style="font-size: 0.85rem;">
+                        ${match.address || ''} ${match.city || ''}, ${match.state || ''} ${match.zipcode || ''}
+                    </div>
+                </div>
+                <span class="match-confidence ${confidenceClass}">${(match.confidence * 100).toFixed(0)}%</span>
+            </div>
+            ${renderDiscrepancies(match.discrepancies)}
+        `;
+
+        // Load physicians for this facility
+        loadFacilityPhysicians(match.facility_id);
+
+        // Highlight discrepancies
+        highlightFieldDiscrepancies(match);
+
+        showToast('Facility matched: ' + match.facility_name, 'success');
+    }
+
+    async function confirmFacilitySelection() {
+        const selectedRadio = document.querySelector('input[name="facility_match"]:checked');
+        if (!selectedRadio) {
+            showToast('Please select a facility', 'warning');
+            return;
+        }
+
+        const facilityId = parseInt(selectedRadio.value);
+
+        try {
+            const response = await fetch('/api/facilities/confirm-match', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    document_id: documentId,
+                    facility_id: facilityId
+                })
+            });
+
+            if (response.ok) {
+                showToast('Facility match confirmed', 'success');
+                // Refresh display with confirmed match
+                selectFacilityById(facilityId);
+            } else {
+                const result = await response.json();
+                showToast('Failed to confirm match: ' + (result.detail || 'Unknown error'), 'error');
+            }
+        } catch (error) {
+            console.error('Confirm match error:', error);
+            showToast('Error confirming match: ' + error.message, 'error');
+        }
+    }
+
+    function highlightFieldDiscrepancies(facility) {
+        // Clear existing discrepancy indicators
+        document.querySelectorAll('.discrepancy-indicator').forEach(el => {
+            el.style.display = 'none';
+            el.textContent = '';
+        });
+        document.querySelectorAll('.field-discrepancy').forEach(el => {
+            el.classList.remove('field-discrepancy');
+        });
+
+        // Compare form values with database values
+        const fieldsToCompare = [
+            { formId: 'facility_name', dbValue: facility.facility_name },
+            { formId: 'facility_address', dbValue: facility.address },
+            { formId: 'facility_city', dbValue: facility.city },
+            { formId: 'facility_state', dbValue: facility.state },
+            { formId: 'facility_zipcode', dbValue: facility.zipcode },
+            { formId: 'facility_phone', dbValue: facility.phone },
+            { formId: 'facility_fax', dbValue: facility.fax }
+        ];
+
+        fieldsToCompare.forEach(({ formId, dbValue }) => {
+            const input = document.getElementById(formId);
+            const indicator = document.getElementById(formId + '_discrepancy');
+
+            if (!input) return;
+
+            const formValue = input.value.trim().toLowerCase();
+            const dbValueNorm = (dbValue || '').trim().toLowerCase();
+
+            // Skip if both empty
+            if (!formValue && !dbValueNorm) return;
+
+            // Compare (normalize phone/fax by removing non-digits)
+            let areEqual = formValue === dbValueNorm;
+            if (!areEqual && (formId.includes('phone') || formId.includes('fax'))) {
+                const formDigits = formValue.replace(/\D/g, '');
+                const dbDigits = dbValueNorm.replace(/\D/g, '');
+                areEqual = formDigits === dbDigits;
+            }
+
+            if (!areEqual && formValue && dbValueNorm) {
+                input.classList.add('field-discrepancy');
+                if (indicator) {
+                    indicator.style.display = 'inline';
+                    indicator.innerHTML = `<i class="bi bi-exclamation-circle"></i> DB: <span class="discrepancy-db-value">${dbValue}</span>`;
+                }
+            }
+        });
+    }
+
+    function clearFacilityMatch() {
+        currentFacilityMatch = null;
+        document.getElementById('matched_facility_id').value = '';
+        document.getElementById('facilityMatchStatus').style.display = 'none';
+        document.getElementById('matchedFacilityInfo').innerHTML = '';
+
+        // Clear discrepancy highlights
+        document.querySelectorAll('.discrepancy-indicator').forEach(el => {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('.field-discrepancy').forEach(el => {
+            el.classList.remove('field-discrepancy');
+        });
+
+        // Reset physician dropdown
+        const physicianSelect = document.getElementById('ordering_physician_select');
+        physicianSelect.disabled = true;
+        physicianSelect.innerHTML = '<option value="">Match facility first...</option>';
+        document.getElementById('addPhysicianBtn').style.display = 'none';
+    }
+
+    // =====================================================
+    // PHYSICIAN FUNCTIONS
+    // =====================================================
+
+    async function loadFacilityPhysicians(facilityId) {
+        const physicianSelect = document.getElementById('ordering_physician_select');
+        const addBtn = document.getElementById('addPhysicianBtn');
+
+        try {
+            const response = await fetch(`/api/facilities/${facilityId}/physicians`, {
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                facilityPhysicians = await response.json();
+
+                physicianSelect.disabled = false;
+                physicianSelect.innerHTML = '<option value="">Select physician...</option>';
+
+                facilityPhysicians.forEach(physician => {
+                    const option = document.createElement('option');
+                    option.value = physician.id;
+                    option.textContent = physician.name + (physician.specialty ? ` (${physician.specialty})` : '');
+                    physicianSelect.appendChild(option);
+                });
+
+                physicianSelect.innerHTML += '<option value="other">-- Other (Enter manually) --</option>';
+                addBtn.style.display = 'inline-block';
+
+                // Try to match existing ordering_veterinarian value
+                const currentVet = document.getElementById('ordering_veterinarian').value;
+                if (currentVet) {
+                    const match = facilityPhysicians.find(p =>
+                        p.name.toLowerCase().includes(currentVet.toLowerCase()) ||
+                        currentVet.toLowerCase().includes(p.name.toLowerCase())
+                    );
+                    if (match) {
+                        physicianSelect.value = match.id;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading physicians:', error);
+        }
+    }
+
+    function handlePhysicianSelect(value) {
+        const vetInput = document.getElementById('ordering_veterinarian');
+
+        if (value === 'other' || !value) {
+            vetInput.focus();
+            return;
+        }
+
+        const physician = facilityPhysicians.find(p => p.id == value);
+        if (physician) {
+            vetInput.value = physician.name;
+        }
+    }
+
+    async function addNewPhysician() {
+        if (!currentFacilityMatch) {
+            showToast('Please match a facility first', 'warning');
+            return;
+        }
+
+        showPrompt('Add New Physician', 'Enter physician name:', '', async (name) => {
+            if (!name || !name.trim()) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/facilities/${currentFacilityMatch.facility_id}/physicians`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ name: name.trim() })
+                });
+
+                if (response.ok) {
+                    const newPhysician = await response.json();
+                    showToast('Physician added: ' + newPhysician.name, 'success');
+
+                    // Reload physicians dropdown
+                    await loadFacilityPhysicians(currentFacilityMatch.facility_id);
+
+                    // Select the new physician
+                    document.getElementById('ordering_physician_select').value = newPhysician.id;
+                    document.getElementById('ordering_veterinarian').value = newPhysician.name;
+                } else {
+                    const result = await response.json();
+                    showToast('Failed to add physician: ' + (result.detail || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Add physician error:', error);
+                showToast('Error adding physician: ' + error.message, 'error');
+            }
+        });
+    }
+
+    // =====================================================
+    // PATIENT LOOKUP FUNCTIONS
+    // =====================================================
+
+    let patientSearchTimeout = null;
+    let currentPatientMatch = null;
+
+    async function lookupPatient() {
+        const facilityId = document.getElementById('matched_facility_id').value;
+        const ownerLastName = document.getElementById('owner_last_name').value;
+        const petName = document.getElementById('pet_name').value;
+        const species = document.getElementById('species').value;
+
+        if (!facilityId) {
+            showToast('Please match a facility first to lookup patients', 'warning');
+            return;
+        }
+
+        if (!ownerLastName && !petName) {
+            showToast('Please enter owner last name or pet name to search', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/patients/lookup', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    facility_id: parseInt(facilityId),
+                    owner_last_name: ownerLastName,
+                    pet_name: petName,
+                    species_id: null // We'd need to convert species name to ID
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                displayPatientLookupResults(result);
+            } else {
+                showToast('Patient lookup failed: ' + (result.detail || 'Unknown error'), 'error');
+            }
+        } catch (error) {
+            console.error('Patient lookup error:', error);
+            showToast('Error looking up patient: ' + error.message, 'error');
+        }
+    }
+
+    function displayPatientLookupResults(result) {
+        const searchResults = document.getElementById('patientSearchResults');
+
+        if (result.matches.length === 0) {
+            searchResults.innerHTML = '<div class="patient-search-item text-muted">No matching patients found</div>';
+            searchResults.style.display = 'block';
+            setTimeout(() => { searchResults.style.display = 'none'; }, 3000);
+            return;
+        }
+
+        if (result.is_exact_match && result.matches.length === 1) {
+            // Auto-select exact match
+            selectPatient(result.matches[0]);
+            return;
+        }
+
+        // Display multiple matches
+        let html = '';
+        result.matches.forEach(match => {
+            const confidenceClass = match.confidence >= 0.9 ? 'high' : match.confidence >= 0.7 ? 'medium' : 'low';
+            html += `
+                <div class="patient-search-item" onclick="selectPatientById(${match.patient_id})">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong>${match.owner_last_name}, ${match.owner_first_name}</strong>
+                        <span class="match-confidence ${confidenceClass}" style="font-size: 0.7rem;">${(match.confidence * 100).toFixed(0)}%</span>
+                    </div>
+                    ${match.pet_name ? `<div class="text-muted" style="font-size: 0.85rem;">Pet: ${match.pet_name}</div>` : ''}
+                    <div class="text-muted" style="font-size: 0.75rem;">${match.match_details}</div>
+                </div>
+            `;
+        });
+
+        searchResults.innerHTML = html;
+        searchResults.style.display = 'block';
+    }
+
+    function handlePatientSearch(value) {
+        // Debounced auto-search while typing
+        if (patientSearchTimeout) {
+            clearTimeout(patientSearchTimeout);
+        }
+
+        if (!value || value.length < 2) {
+            document.getElementById('patientSearchResults').style.display = 'none';
+            return;
+        }
+
+        const facilityId = document.getElementById('matched_facility_id').value;
+        if (!facilityId) {
+            return; // Don't search without facility
+        }
+
+        patientSearchTimeout = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/patients/search?facility_id=${facilityId}&q=${encodeURIComponent(value)}&limit=5`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (response.ok) {
+                    const patients = await response.json();
+                    displayPatientSearchResults(patients);
+                }
+            } catch (error) {
+                console.error('Patient search error:', error);
+            }
+        }, 300);
+    }
+
+    function displayPatientSearchResults(patients) {
+        const searchResults = document.getElementById('patientSearchResults');
+
+        if (patients.length === 0) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        let html = '';
+        patients.forEach(patient => {
+            html += `
+                <div class="patient-search-item" onclick="selectPatientById(${patient.patient_id})">
+                    <strong>${patient.display_name}</strong>
+                    ${patient.medical_record_number ? `<div class="text-muted" style="font-size: 0.75rem;">MRN: ${patient.medical_record_number}</div>` : ''}
+                </div>
+            `;
+        });
+
+        searchResults.innerHTML = html;
+        searchResults.style.display = 'block';
+    }
+
+    async function selectPatientById(patientId) {
+        try {
+            const response = await fetch(`/api/patients/${patientId}`, {
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const patient = await response.json();
+                selectPatient(patient);
+            }
+        } catch (error) {
+            console.error('Error fetching patient:', error);
+        }
+    }
+
+    function selectPatient(patient) {
+        currentPatientMatch = patient;
+        document.getElementById('matched_patient_id').value = patient.patient_id;
+
+        // Auto-fill patient fields
+        document.getElementById('owner_last_name').value = patient.owner_last_name || '';
+        document.getElementById('pet_name').value = patient.pet_name || patient.owner_first_name || '';
+
+        if (patient.species_name) {
+            document.getElementById('species').value = patient.species_name;
+            handleSpeciesChange(patient.species_name);
+        }
+
+        if (patient.date_of_birth) {
+            document.getElementById('date_of_birth').value = patient.date_of_birth;
+        }
+
+        // Hide search results
+        document.getElementById('patientSearchResults').style.display = 'none';
+
+        showToast('Patient selected: ' + patient.owner_last_name + (patient.pet_name ? ' (' + patient.pet_name + ')' : ''), 'success');
+    }
+
+    // Hide patient search results when clicking outside
+    document.addEventListener('click', function(e) {
+        const searchResults = document.getElementById('patientSearchResults');
+        const ownerLastName = document.getElementById('owner_last_name');
+        if (!searchResults.contains(e.target) && e.target !== ownerLastName) {
+            searchResults.style.display = 'none';
+        }
+    });
+
+    // =====================================================
+    // EPR (Electronic Patient Record) FUNCTIONS
+    // =====================================================
+
+    function handleSpeciesChange(value) {
+        const eprSection = document.getElementById('eprSection');
+
+        // Show EPR section only for Human patients
+        if (value && value.toLowerCase() === 'human') {
+            eprSection.style.display = 'block';
+            updateEPRStatus();
+        } else {
+            eprSection.style.display = 'none';
+        }
+    }
+
+    function updateEPRStatus() {
+        const statusBadge = document.getElementById('eprStatus');
+        const createBtn = document.getElementById('createEprBtn');
+
+        const eprStatus = documentData?.epr_status;
+
+        if (!eprStatus) {
+            statusBadge.style.display = 'none';
+            createBtn.disabled = false;
+            createBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Create EPR';
+        } else {
+            statusBadge.style.display = 'inline';
+            statusBadge.textContent = eprStatus.charAt(0).toUpperCase() + eprStatus.slice(1);
+            statusBadge.className = `epr-status ${eprStatus}`;
+
+            if (eprStatus === 'created' || eprStatus === 'sent') {
+                createBtn.disabled = true;
+                createBtn.innerHTML = '<i class="bi bi-check-circle"></i> EPR Created';
+            }
+        }
+    }
+
+    async function createEPR() {
+        if (!currentPatientMatch && !document.getElementById('owner_last_name').value) {
+            showToast('Please enter patient information first', 'warning');
+            return;
+        }
+
+        const createBtn = document.getElementById('createEprBtn');
+        const originalBtnHtml = createBtn.innerHTML;
+
+        try {
+            createBtn.disabled = true;
+            createBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating...';
+
+            // Collect patient data for EPR
+            const eprData = {
+                document_id: documentId,
+                patient: {
+                    last_name: document.getElementById('owner_last_name').value,
+                    first_name: document.getElementById('pet_name').value, // For humans, pet_name field holds first name
+                    date_of_birth: document.getElementById('date_of_birth').value,
+                    species: 'Human'
+                },
+                facility_id: document.getElementById('matched_facility_id').value || null,
+                ordering_physician: document.getElementById('ordering_veterinarian').value
+            };
+
+            const response = await fetch(`/api/documents/${documentId}/create-epr`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(eprData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                showToast('EPR created successfully!', 'success');
+
+                // Update status
+                documentData.epr_status = 'created';
+                updateEPRStatus();
+            } else {
+                const result = await response.json();
+                showToast('Failed to create EPR: ' + (result.detail || 'Unknown error'), 'error');
+                createBtn.disabled = false;
+                createBtn.innerHTML = originalBtnHtml;
+            }
+        } catch (error) {
+            console.error('Create EPR error:', error);
+            showToast('Error creating EPR: ' + error.message, 'error');
+            createBtn.disabled = false;
+            createBtn.innerHTML = originalBtnHtml;
+        }
+    }
+
+    // Initialize species change handler on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const speciesSelect = document.getElementById('species');
+        if (speciesSelect && speciesSelect.value) {
+            handleSpeciesChange(speciesSelect.value);
+        }
+    });
+</script>
+{% endblock %}
