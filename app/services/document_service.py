@@ -102,13 +102,20 @@ class DocumentService:
                 detail="Failed to upload file to storage"
             )
 
-    async def upload_bytes_to_blob(self, content: bytes, filename: str, source: str = "scanner") -> str:
+    async def upload_bytes_to_blob(
+        self,
+        content: bytes,
+        filename: str,
+        source: str = "scanner",
+        metadata: dict = None
+    ) -> str:
         """Upload raw bytes to Azure Blob Storage.
 
         Args:
             content: The file content as bytes
             filename: The filename to use
             source: The source of the upload (default: scanner)
+            metadata: Additional metadata to store with the blob
 
         Returns:
             The blob name/path
@@ -132,16 +139,25 @@ class DocumentService:
             # Generate blob name with date-based organization
             blob_name = f"{datetime.utcnow().strftime('%Y/%m')}/{filename}"
 
-            # Upload with metadata
-            blob_client = container_client.get_blob_client(blob_name)
-            metadata = {
+            # Build metadata - start with base metadata
+            blob_metadata = {
                 "import_date": datetime.utcnow().isoformat(),
                 "source": source
             }
 
-            blob_client.upload_blob(content, overwrite=True, metadata=metadata)
+            # Add any additional metadata (filter out None/empty values)
+            if metadata:
+                for key, value in metadata.items():
+                    if value is not None and value != "":
+                        # Azure blob metadata keys must be valid C# identifiers
+                        safe_key = key.replace("-", "_").replace(" ", "_")
+                        blob_metadata[safe_key] = str(value)
 
-            logger.info(f"Bytes uploaded to blob: {blob_name}")
+            # Upload with metadata
+            blob_client = container_client.get_blob_client(blob_name)
+            blob_client.upload_blob(content, overwrite=True, metadata=blob_metadata)
+
+            logger.info(f"Bytes uploaded to blob: {blob_name} with metadata: {list(blob_metadata.keys())}")
             return blob_name
 
         except Exception as e:

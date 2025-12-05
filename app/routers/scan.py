@@ -16,6 +16,7 @@ from app.services.audit_service import AuditService
 from app.services.config_service import ConfigService
 from app.services.document_intelligence_service import get_document_intelligence_service
 from app.models.document import Document
+from app.models.workstation import UserWorkstationPreference, ScanningStation
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -29,6 +30,31 @@ def get_ai_service_config(db: Session) -> dict:
         return json.loads(config_json)
     except Exception:
         return {"doc_intel_classify": True, "openai_extract": True}
+
+
+def get_user_scan_station(db: Session, user_id: str) -> dict:
+    """Get the user's preferred scanning station."""
+    try:
+        pref = db.query(UserWorkstationPreference).filter(
+            UserWorkstationPreference.user_id == user_id
+        ).first()
+
+        if pref and pref.scanning_station_id:
+            station = db.query(ScanningStation).filter(
+                ScanningStation.id == pref.scanning_station_id,
+                ScanningStation.is_active == True
+            ).first()
+
+            if station:
+                return {
+                    "id": station.id,
+                    "name": station.name,
+                    "location": station.location
+                }
+
+        return {"id": None, "name": None, "location": None}
+    except Exception:
+        return {"id": None, "name": None, "location": None}
 
 
 @router.post("/process-batch")
@@ -64,7 +90,12 @@ async def process_scan_batch(
     use_doc_intel = ai_config.get("doc_intel_classify", True) and doc_intel_service.is_configured
     use_openai_extract = ai_config.get("openai_extract", True)
 
-    logger.info(f"Processing scan batch: {len(files)} pages from {current_user['user_email']}")
+    # Get user's scan station
+    scan_station = get_user_scan_station(db, current_user.get("user_id", current_user["user_email"]))
+    scanned_by = current_user["user_email"]
+
+    logger.info(f"Processing scan batch: {len(files)} pages from {scanned_by}")
+    logger.info(f"Scan station: {scan_station.get('name', 'None')}")
     logger.info(f"AI config: doc_intel={use_doc_intel}, openai_extract={use_openai_extract}")
 
     try:
@@ -128,12 +159,25 @@ async def process_scan_batch(
                 doc_content = page_contents[first_page] if first_page < len(page_contents) else page_contents[0]
                 logger.info(f"Multi-page document detected (pages {page_indices}), using first page for now")
 
-            # Generate filename
+            # Generate filename with station name if available
             timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-            filename = f"scan_{batch_id}_{doc_idx + 1:03d}_{timestamp}.png"
+            station_prefix = scan_station.get("name", "").replace(" ", "_")[:20] if scan_station.get("name") else ""
+            if station_prefix:
+                filename = f"scan_{station_prefix}_{batch_id}_{doc_idx + 1:03d}_{timestamp}.png"
+            else:
+                filename = f"scan_{batch_id}_{doc_idx + 1:03d}_{timestamp}.png"
 
-            # Upload to blob storage
-            blob_name = await doc_service.upload_bytes_to_blob(doc_content, filename, source="scanner")
+            # Upload to blob storage with metadata
+            blob_metadata = {
+                "scanned_by": scanned_by,
+                "scan_station_id": str(scan_station.get("id", "")),
+                "scan_station_name": scan_station.get("name", ""),
+                "batch_id": batch_id,
+                "document_type": doc_type
+            }
+            blob_name = await doc_service.upload_bytes_to_blob(
+                doc_content, filename, source="scanner", metadata=blob_metadata
+            )
 
             # Determine processing status based on config
             if use_openai_extract:
@@ -145,12 +189,15 @@ async def process_scan_batch(
                 doc_status = "pending"
                 queued_at = None
 
-            # Create document record
+            # Create document record with scan station metadata
             document = Document(
                 filename=filename,
                 blob_name=blob_name,
                 source="scanner",
-                uploaded_by=current_user["user_email"],
+                uploaded_by=scanned_by,
+                scanned_by=scanned_by,
+                scan_station_id=scan_station.get("id"),
+                scan_station_name=scan_station.get("name"),
                 processing_status=processing_status,
                 status=doc_status,
                 queued_at=queued_at,
@@ -159,7 +206,7 @@ async def process_scan_batch(
 
             # Store classification info in notes or metadata
             if doc_type != "unknown":
-                document.notes = f"Classified as: {doc_type} (confidence: {confidence:.2f})"
+                document.reviewer_notes = f"Classified as: {doc_type} (confidence: {confidence:.2f})"
 
             db.add(document)
             db.commit()
