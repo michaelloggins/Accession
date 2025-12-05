@@ -100,6 +100,7 @@ async def process_scan_batch(
 
     try:
         batch_id = str(uuid.uuid4())[:8]
+        scan_timestamp = datetime.utcnow()
         documents_created = []
 
         # Read all page contents
@@ -170,6 +171,7 @@ async def process_scan_batch(
             # Upload to blob storage with metadata
             blob_metadata = {
                 "scanned_by": scanned_by,
+                "scanned_at": scan_timestamp.isoformat(),
                 "scan_station_id": str(scan_station.get("id", "")),
                 "scan_station_name": scan_station.get("name", ""),
                 "batch_id": batch_id,
@@ -196,6 +198,7 @@ async def process_scan_batch(
                 source="scanner",
                 uploaded_by=scanned_by,
                 scanned_by=scanned_by,
+                scanned_at=scan_timestamp,
                 scan_station_id=scan_station.get("id"),
                 scan_station_name=scan_station.get("name"),
                 processing_status=processing_status,

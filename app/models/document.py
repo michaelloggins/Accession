@@ -59,6 +59,7 @@ class Document(Base):
     scan_station_id = Column(Integer, ForeignKey("scanning_stations.id"), nullable=True)
     scan_station_name = Column(String(100), nullable=True)  # Denormalized for easy filtering
     scanned_by = Column(String(100), nullable=True)  # Username who performed the scan
+    scanned_at = Column(DateTime, nullable=True)  # Timestamp when document was scanned
 
     # Facility matching
     matched_facility_id = Column(Integer, ForeignKey("facilities.id"), nullable=True, index=True)
