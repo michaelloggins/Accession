@@ -102,6 +102,55 @@ class DocumentService:
                 detail="Failed to upload file to storage"
             )
 
+    async def upload_bytes_to_blob(self, content: bytes, filename: str, source: str = "scanner") -> str:
+        """Upload raw bytes to Azure Blob Storage.
+
+        Args:
+            content: The file content as bytes
+            filename: The filename to use
+            source: The source of the upload (default: scanner)
+
+        Returns:
+            The blob name/path
+        """
+        # Use mock storage if Azure not configured
+        if not settings.AZURE_STORAGE_CONNECTION_STRING:
+            logger.info("Using mock storage (Azure not configured)")
+            mock_storage = self._get_mock_storage()
+            # Create a simple mock upload for bytes
+            blob_name = f"{datetime.utcnow().strftime('%Y/%m')}/{filename}"
+            return blob_name
+
+        try:
+            blob_service_client = BlobServiceClient.from_connection_string(
+                settings.AZURE_STORAGE_CONNECTION_STRING
+            )
+            container_client = blob_service_client.get_container_client(
+                settings.AZURE_STORAGE_CONTAINER
+            )
+
+            # Generate blob name with date-based organization
+            blob_name = f"{datetime.utcnow().strftime('%Y/%m')}/{filename}"
+
+            # Upload with metadata
+            blob_client = container_client.get_blob_client(blob_name)
+            metadata = {
+                "import_date": datetime.utcnow().isoformat(),
+                "source": source
+            }
+
+            blob_client.upload_blob(content, overwrite=True, metadata=metadata)
+
+            logger.info(f"Bytes uploaded to blob: {blob_name}")
+            return blob_name
+
+        except Exception as e:
+            logger.error(f"Blob upload error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to upload file to storage"
+            )
+
     def set_blob_metadata(self, blob_name: str, accession_number: str, import_date: datetime = None) -> bool:
         """Set metadata on an existing blob (e.g., after document creation from blob watcher).
 

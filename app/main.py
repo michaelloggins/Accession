@@ -14,7 +14,7 @@ import traceback
 
 from app.config import settings
 from app.database import engine, Base
-from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation
+from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation, scan
 from app.middleware.audit import AuditMiddleware
 from app.middleware.auth import AuthMiddleware
 from app.middleware.security import (
@@ -203,6 +203,7 @@ app.include_router(queue.router, tags=["Queue Management"])
 app.include_router(integrations.router, tags=["Integrations"])
 app.include_router(patients.router, prefix="/api/patients", tags=["Patients"])
 app.include_router(workstation.router, prefix="/api/workstation", tags=["Workstation Equipment"])
+app.include_router(scan.router, prefix="/api/scan", tags=["Scanner"])
 
 
 @app.get("/")
@@ -290,6 +291,15 @@ async def documents_page(request: Request):
 async def queue_management_page(request: Request):
     """Queue management page for power users."""
     return templates.TemplateResponse("queue.html", {
+        "request": request,
+        "environment": settings.ENVIRONMENT
+    })
+
+
+@app.get("/scan")
+async def scan_page(request: Request):
+    """Document scanning page for power users."""
+    return templates.TemplateResponse("scan.html", {
         "request": request,
         "environment": settings.ENVIRONMENT
     })

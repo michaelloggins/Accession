@@ -1,0 +1,673 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Documents - Lab Document Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+    .scan-container {
+        display: flex;
+        gap: 1.5rem;
+        height: calc(100vh - 200px);
+        min-height: 500px;
+    }
+
+    .scanner-panel {
+        flex: 0 0 300px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .preview-panel {
+        flex: 1;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .thumbnail-strip {
+        flex: 0 0 120px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 0.75rem;
+        overflow-y: auto;
+    }
+
+    .panel-header {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .scanner-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .control-group label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    #dwtcontrolContainer {
+        flex: 1;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        position: relative;
+    }
+
+    .thumbnail-item {
+        width: 80px;
+        height: 100px;
+        border: 2px solid var(--border-color);
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        overflow: hidden;
+        position: relative;
+        background: var(--bg-tertiary);
+    }
+
+    .thumbnail-item:hover {
+        border-color: var(--mv-green);
+    }
+
+    .thumbnail-item.selected {
+        border-color: var(--mv-green);
+        box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+    }
+
+    .thumbnail-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .thumbnail-item .page-number {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        font-size: 0.7rem;
+        padding: 1px 4px;
+        border-radius: 3px;
+    }
+
+    .scan-actions {
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .batch-info {
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+    }
+
+    .batch-info .label {
+        color: var(--text-secondary);
+    }
+
+    .batch-info .value {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .no-scanner-message {
+        text-align: center;
+        color: var(--text-secondary);
+        padding: 2rem;
+    }
+
+    .no-scanner-message i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .upload-progress {
+        display: none;
+        margin-top: 1rem;
+    }
+
+    .upload-progress.active {
+        display: block;
+    }
+
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+    }
+
+    .status-indicator.ready {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--mv-green);
+    }
+
+    .status-indicator.scanning {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    .status-indicator.error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .status-indicator.no-scanner {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4><i class="bi bi-upc-scan"></i> Document Scanner</h4>
+            <div id="scannerStatus" class="status-indicator no-scanner">
+                <i class="bi bi-exclamation-circle"></i>
+                <span>Initializing scanner...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="scan-container">
+    <!-- Scanner Controls Panel -->
+    <div class="scanner-panel">
+        <div class="panel-header">
+            <i class="bi bi-sliders"></i> Scanner Settings
+        </div>
+
+        <div class="scanner-controls">
+            <div class="control-group">
+                <label>Scanner</label>
+                <select class="form-select form-select-sm" id="scannerSelect" disabled>
+                    <option value="">Loading scanners...</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Color Mode</label>
+                <select class="form-select form-select-sm" id="colorMode">
+                    <option value="0">Black & White</option>
+                    <option value="1">Grayscale</option>
+                    <option value="2" selected>Color</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Resolution (DPI)</label>
+                <select class="form-select form-select-sm" id="resolution">
+                    <option value="150">150 DPI (Fast)</option>
+                    <option value="200">200 DPI</option>
+                    <option value="300" selected>300 DPI (Recommended)</option>
+                    <option value="600">600 DPI (High Quality)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Page Size</label>
+                <select class="form-select form-select-sm" id="pageSize">
+                    <option value="1" selected>Letter (8.5 x 11)</option>
+                    <option value="2">Legal (8.5 x 14)</option>
+                    <option value="3">A4</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="useADF" checked>
+                    <label class="form-check-label" for="useADF">
+                        Use Document Feeder (ADF)
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="duplexScan">
+                    <label class="form-check-label" for="duplexScan">
+                        Duplex (Two-sided)
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="batch-info">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="label">Pages Scanned:</span>
+                <span class="value" id="pageCount">0</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="label">Documents Detected:</span>
+                <span class="value" id="docCount">0</span>
+            </div>
+        </div>
+
+        <div class="scan-actions">
+            <button class="btn btn-primary" id="btnScan" onclick="acquireImage()" disabled>
+                <i class="bi bi-camera"></i> Scan
+            </button>
+            <button class="btn btn-outline-secondary" id="btnClear" onclick="clearAllImages()" disabled>
+                <i class="bi bi-trash"></i> Clear All
+            </button>
+            <button class="btn btn-success" id="btnUpload" onclick="uploadDocuments()" disabled>
+                <i class="bi bi-cloud-upload"></i> Process & Upload
+            </button>
+        </div>
+
+        <div class="upload-progress" id="uploadProgress">
+            <div class="progress">
+                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar" style="width: 0%" id="uploadProgressBar"></div>
+            </div>
+            <small class="text-muted mt-1 d-block" id="uploadStatus">Uploading...</small>
+        </div>
+    </div>
+
+    <!-- Preview Panel -->
+    <div class="preview-panel">
+        <div class="panel-header">
+            <i class="bi bi-image"></i> Preview
+            <div class="ms-auto btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" onclick="zoomIn()" title="Zoom In">
+                    <i class="bi bi-zoom-in"></i>
+                </button>
+                <button class="btn btn-outline-secondary" onclick="zoomOut()" title="Zoom Out">
+                    <i class="bi bi-zoom-out"></i>
+                </button>
+                <button class="btn btn-outline-secondary" onclick="rotateImage()" title="Rotate">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button class="btn btn-outline-danger" onclick="deleteCurrentImage()" title="Delete Page">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Dynamic Web TWAIN Container -->
+        <div id="dwtcontrolContainer">
+            <div class="no-scanner-message" id="noScannerMessage">
+                <i class="bi bi-upc-scan d-block"></i>
+                <p>No scanner detected or Web TWAIN not initialized</p>
+                <small>Please ensure a TWAIN-compatible scanner is connected</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thumbnail Strip -->
+    <div class="thumbnail-strip">
+        <div class="panel-header">
+            <i class="bi bi-images"></i> Pages
+        </div>
+        <div id="thumbnailContainer">
+            <!-- Thumbnails will be dynamically added here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Dynamic Web TWAIN SDK - Replace with your licensed version -->
+<script src="https://unpkg.com/dwt@18.4.2/dist/dynamsoft.webtwain.min.js"></script>
+
+<script>
+    // Dynamic Web TWAIN configuration
+    // IMPORTANT: Replace with your actual license key from Dynamsoft
+    Dynamsoft.DWT.ProductKey = 'YOUR-LICENSE-KEY-HERE';
+    Dynamsoft.DWT.ResourcesPath = 'https://unpkg.com/dwt@18.4.2/dist';
+
+    let DWObject = null;
+    let currentImageIndex = -1;
+
+    // Get auth headers
+    function getAuthHeaders() {
+        let token = localStorage.getItem('access_token');
+        if (!token) {
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'js_access_token' && value) {
+                    token = value;
+                    localStorage.setItem('access_token', token);
+                    break;
+                }
+            }
+        }
+        return {
+            'Authorization': token ? `Bearer ${token}` : ''
+        };
+    }
+
+    // Initialize Web TWAIN when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initDWT();
+    });
+
+    function initDWT() {
+        Dynamsoft.DWT.CreateDWTObjectEx(
+            { WebTwainId: 'dwtObject' },
+            function(dwt) {
+                DWObject = dwt;
+                DWObject.Viewer.bind(document.getElementById('dwtcontrolContainer'));
+                DWObject.Viewer.show();
+                DWObject.Viewer.width = '100%';
+                DWObject.Viewer.height = '100%';
+
+                // Load available scanners
+                loadScanners();
+
+                // Set up event handlers
+                DWObject.RegisterEvent('OnPostTransfer', onScanComplete);
+                DWObject.RegisterEvent('OnPostAllTransfers', onAllScansComplete);
+
+                document.getElementById('noScannerMessage').style.display = 'none';
+                updateStatus('ready', 'Scanner ready');
+            },
+            function(errorString) {
+                console.error('DWT Init Error:', errorString);
+                updateStatus('error', 'Failed to initialize scanner');
+            }
+        );
+    }
+
+    function loadScanners() {
+        if (!DWObject) return;
+
+        const select = document.getElementById('scannerSelect');
+        select.innerHTML = '';
+
+        const count = DWObject.SourceCount;
+        if (count === 0) {
+            select.innerHTML = '<option value="">No scanners found</option>';
+            updateStatus('no-scanner', 'No scanners detected');
+            return;
+        }
+
+        for (let i = 0; i < count; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.text = DWObject.GetSourceNameItems(i);
+            select.appendChild(option);
+        }
+
+        select.disabled = false;
+        document.getElementById('btnScan').disabled = false;
+        updateStatus('ready', `${count} scanner(s) found`);
+    }
+
+    function updateStatus(type, message) {
+        const status = document.getElementById('scannerStatus');
+        status.className = 'status-indicator ' + type;
+
+        const icons = {
+            'ready': 'bi-check-circle',
+            'scanning': 'bi-hourglass-split',
+            'error': 'bi-exclamation-circle',
+            'no-scanner': 'bi-exclamation-triangle'
+        };
+
+        status.innerHTML = `<i class="bi ${icons[type] || 'bi-info-circle'}"></i><span>${message}</span>`;
+    }
+
+    function acquireImage() {
+        if (!DWObject) {
+            alert('Scanner not initialized');
+            return;
+        }
+
+        const scannerIndex = document.getElementById('scannerSelect').value;
+        if (scannerIndex === '') {
+            alert('Please select a scanner');
+            return;
+        }
+
+        // Select the scanner
+        DWObject.SelectSourceByIndex(parseInt(scannerIndex));
+
+        // Configure scan settings
+        DWObject.OpenSource();
+        DWObject.PixelType = parseInt(document.getElementById('colorMode').value);
+        DWObject.Resolution = parseInt(document.getElementById('resolution').value);
+        DWObject.IfFeederEnabled = document.getElementById('useADF').checked;
+        DWObject.IfDuplexEnabled = document.getElementById('duplexScan').checked;
+        DWObject.IfDisableSourceAfterAcquire = true;
+
+        updateStatus('scanning', 'Scanning...');
+        document.getElementById('btnScan').disabled = true;
+
+        // Start scanning
+        DWObject.AcquireImage(
+            function() {
+                // Success callback handled by OnPostTransfer
+            },
+            function(errorCode, errorString) {
+                console.error('Scan error:', errorCode, errorString);
+                updateStatus('error', 'Scan failed: ' + errorString);
+                document.getElementById('btnScan').disabled = false;
+            }
+        );
+    }
+
+    function onScanComplete() {
+        updatePageCount();
+        updateThumbnails();
+    }
+
+    function onAllScansComplete() {
+        updateStatus('ready', 'Scan complete');
+        document.getElementById('btnScan').disabled = false;
+        document.getElementById('btnClear').disabled = DWObject.HowManyImagesInBuffer === 0;
+        document.getElementById('btnUpload').disabled = DWObject.HowManyImagesInBuffer === 0;
+    }
+
+    function updatePageCount() {
+        if (!DWObject) return;
+        document.getElementById('pageCount').textContent = DWObject.HowManyImagesInBuffer;
+        // For now, assume 1 document per page - Doc Intelligence will separate later
+        document.getElementById('docCount').textContent = DWObject.HowManyImagesInBuffer;
+    }
+
+    function updateThumbnails() {
+        if (!DWObject) return;
+
+        const container = document.getElementById('thumbnailContainer');
+        container.innerHTML = '';
+
+        for (let i = 0; i < DWObject.HowManyImagesInBuffer; i++) {
+            const thumb = document.createElement('div');
+            thumb.className = 'thumbnail-item' + (i === currentImageIndex ? ' selected' : '');
+            thumb.onclick = () => selectImage(i);
+
+            // Get thumbnail as base64
+            const thumbData = DWObject.GetImageURL(i, 80, 100);
+            thumb.innerHTML = `
+                <img src="${thumbData}" alt="Page ${i + 1}">
+                <span class="page-number">${i + 1}</span>
+            `;
+
+            container.appendChild(thumb);
+        }
+    }
+
+    function selectImage(index) {
+        if (!DWObject) return;
+        currentImageIndex = index;
+        DWObject.CurrentImageIndexInBuffer = index;
+        updateThumbnails();
+    }
+
+    function clearAllImages() {
+        if (!DWObject) return;
+        if (!confirm('Clear all scanned pages?')) return;
+
+        DWObject.RemoveAllImages();
+        currentImageIndex = -1;
+        updatePageCount();
+        updateThumbnails();
+        document.getElementById('btnClear').disabled = true;
+        document.getElementById('btnUpload').disabled = true;
+    }
+
+    function deleteCurrentImage() {
+        if (!DWObject || DWObject.HowManyImagesInBuffer === 0) return;
+
+        DWObject.RemoveImage(DWObject.CurrentImageIndexInBuffer);
+        updatePageCount();
+        updateThumbnails();
+
+        if (DWObject.HowManyImagesInBuffer === 0) {
+            document.getElementById('btnClear').disabled = true;
+            document.getElementById('btnUpload').disabled = true;
+        }
+    }
+
+    function rotateImage() {
+        if (!DWObject || DWObject.HowManyImagesInBuffer === 0) return;
+        DWObject.Rotate(DWObject.CurrentImageIndexInBuffer, 90, true);
+        updateThumbnails();
+    }
+
+    function zoomIn() {
+        if (!DWObject) return;
+        DWObject.Viewer.zoom = DWObject.Viewer.zoom * 1.2;
+    }
+
+    function zoomOut() {
+        if (!DWObject) return;
+        DWObject.Viewer.zoom = DWObject.Viewer.zoom / 1.2;
+    }
+
+    async function uploadDocuments() {
+        if (!DWObject || DWObject.HowManyImagesInBuffer === 0) {
+            alert('No pages to upload');
+            return;
+        }
+
+        const progressDiv = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('uploadProgressBar');
+        const statusText = document.getElementById('uploadStatus');
+
+        progressDiv.classList.add('active');
+        document.getElementById('btnUpload').disabled = true;
+        document.getElementById('btnScan').disabled = true;
+
+        try {
+            const totalPages = DWObject.HowManyImagesInBuffer;
+
+            // Step 1: Upload all pages as a batch for classification/separation
+            statusText.textContent = 'Preparing documents...';
+            progressBar.style.width = '10%';
+
+            // Convert all pages to blobs
+            const pageBlobs = [];
+            for (let i = 0; i < totalPages; i++) {
+                const blob = await getImageBlob(i);
+                pageBlobs.push(blob);
+                progressBar.style.width = `${10 + (i / totalPages) * 30}%`;
+            }
+
+            // Step 2: Send to backend for classification and separation
+            statusText.textContent = 'Classifying documents...';
+            progressBar.style.width = '50%';
+
+            const formData = new FormData();
+            pageBlobs.forEach((blob, index) => {
+                formData.append('files', blob, `page_${index + 1}.png`);
+            });
+
+            const headers = getAuthHeaders();
+
+            const response = await fetch('/api/scan/process-batch', {
+                method: 'POST',
+                headers: headers,
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Upload failed: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            progressBar.style.width = '100%';
+            statusText.textContent = `Success! ${result.documents_created || totalPages} document(s) processed`;
+
+            // Clear scanned images after successful upload
+            setTimeout(() => {
+                DWObject.RemoveAllImages();
+                updatePageCount();
+                updateThumbnails();
+                progressDiv.classList.remove('active');
+                document.getElementById('btnUpload').disabled = true;
+                document.getElementById('btnClear').disabled = true;
+                document.getElementById('btnScan').disabled = false;
+
+                // Optionally redirect to documents page
+                if (confirm('Documents uploaded successfully! View in Documents list?')) {
+                    window.location.href = '/documents';
+                }
+            }, 1500);
+
+        } catch (error) {
+            console.error('Upload error:', error);
+            statusText.textContent = 'Upload failed: ' + error.message;
+            progressBar.classList.add('bg-danger');
+            document.getElementById('btnUpload').disabled = false;
+            document.getElementById('btnScan').disabled = false;
+        }
+    }
+
+    function getImageBlob(index) {
+        return new Promise((resolve, reject) => {
+            DWObject.ConvertToBlob(
+                [index],
+                Dynamsoft.DWT.EnumDWT_ImageType.IT_PNG,
+                function(blob) {
+                    resolve(blob);
+                },
+                function(errorCode, errorString) {
+                    reject(new Error(errorString));
+                }
+            );
+        });
+    }
+</script>
+{% endblock %}
