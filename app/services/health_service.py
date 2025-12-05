@@ -38,6 +38,7 @@ class HealthService:
         checks = await asyncio.gather(
             self._check_database(),
             self._check_azure_openai(),
+            self._check_document_intelligence(),
             self._check_blob_storage(),
             self._check_key_vault(),
             self._check_extraction_worker(),
@@ -52,13 +53,14 @@ class HealthService:
         results = {
             "database": checks[0] if not isinstance(checks[0], Exception) else self._error_result("database", checks[0]),
             "azure_openai": checks[1] if not isinstance(checks[1], Exception) else self._error_result("azure_openai", checks[1]),
-            "blob_storage": checks[2] if not isinstance(checks[2], Exception) else self._error_result("blob_storage", checks[2]),
-            "key_vault": checks[3] if not isinstance(checks[3], Exception) else self._error_result("key_vault", checks[3]),
-            "extraction_worker": checks[4] if not isinstance(checks[4], Exception) else self._error_result("extraction_worker", checks[4]),
-            "blob_watcher": checks[5] if not isinstance(checks[5], Exception) else self._error_result("blob_watcher", checks[5]),
-            "sso_authentication": checks[6] if not isinstance(checks[6], Exception) else self._error_result("sso_authentication", checks[6]),
-            "scim_provisioning": checks[7] if not isinstance(checks[7], Exception) else self._error_result("scim_provisioning", checks[7]),
-            "app_instances": checks[8] if not isinstance(checks[8], Exception) else self._error_result("app_instances", checks[8]),
+            "document_intelligence": checks[2] if not isinstance(checks[2], Exception) else self._error_result("document_intelligence", checks[2]),
+            "blob_storage": checks[3] if not isinstance(checks[3], Exception) else self._error_result("blob_storage", checks[3]),
+            "key_vault": checks[4] if not isinstance(checks[4], Exception) else self._error_result("key_vault", checks[4]),
+            "extraction_worker": checks[5] if not isinstance(checks[5], Exception) else self._error_result("extraction_worker", checks[5]),
+            "blob_watcher": checks[6] if not isinstance(checks[6], Exception) else self._error_result("blob_watcher", checks[6]),
+            "sso_authentication": checks[7] if not isinstance(checks[7], Exception) else self._error_result("sso_authentication", checks[7]),
+            "scim_provisioning": checks[8] if not isinstance(checks[8], Exception) else self._error_result("scim_provisioning", checks[8]),
+            "app_instances": checks[9] if not isinstance(checks[9], Exception) else self._error_result("app_instances", checks[9]),
         }
 
         # Calculate overall status
@@ -212,6 +214,81 @@ class HealthService:
             logger.error(f"Azure OpenAI health check failed: {e}")
             return {
                 "name": "Azure OpenAI (GPT-4 Vision)",
+                "status": HealthStatus.UNHEALTHY,
+                "message": f"Check failed: {str(e)[:100]}",
+                "response_time_ms": round(elapsed, 2)
+            }
+
+    async def _check_document_intelligence(self) -> dict:
+        """Check Azure Document Intelligence service availability."""
+        start = datetime.utcnow()
+        try:
+            if not settings.AZURE_DOC_INTELLIGENCE_ENDPOINT or not settings.AZURE_DOC_INTELLIGENCE_KEY:
+                return {
+                    "name": "Azure Document Intelligence",
+                    "status": HealthStatus.DEGRADED,
+                    "message": "Not configured - credentials missing",
+                    "response_time_ms": 0,
+                    "details": {
+                        "note": "Configure AZURE_DOC_INTELLIGENCE_ENDPOINT and AZURE_DOC_INTELLIGENCE_KEY"
+                    }
+                }
+
+            import httpx
+
+            # Use the info endpoint to check service health
+            test_url = f"{settings.AZURE_DOC_INTELLIGENCE_ENDPOINT}/formrecognizer/info?api-version=2024-02-29-preview"
+
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.get(
+                    test_url,
+                    headers={
+                        "Ocp-Apim-Subscription-Key": settings.AZURE_DOC_INTELLIGENCE_KEY
+                    }
+                )
+
+            elapsed = (datetime.utcnow() - start).total_seconds() * 1000
+
+            if response.status_code == 200:
+                classifier_id = settings.AZURE_DOC_INTELLIGENCE_CLASSIFIER_ID
+                return {
+                    "name": "Azure Document Intelligence",
+                    "status": HealthStatus.HEALTHY,
+                    "message": "Service available and responding",
+                    "response_time_ms": round(elapsed, 2),
+                    "details": {
+                        "endpoint": settings.AZURE_DOC_INTELLIGENCE_ENDPOINT[:50] + "..." if len(settings.AZURE_DOC_INTELLIGENCE_ENDPOINT) > 50 else settings.AZURE_DOC_INTELLIGENCE_ENDPOINT,
+                        "classifier_configured": bool(classifier_id),
+                        "classifier_id": classifier_id[:20] + "..." if classifier_id and len(classifier_id) > 20 else classifier_id
+                    }
+                }
+            elif response.status_code == 401:
+                return {
+                    "name": "Azure Document Intelligence",
+                    "status": HealthStatus.UNHEALTHY,
+                    "message": "Authentication failed - invalid API key",
+                    "response_time_ms": round(elapsed, 2)
+                }
+            elif response.status_code == 404:
+                return {
+                    "name": "Azure Document Intelligence",
+                    "status": HealthStatus.UNHEALTHY,
+                    "message": "Endpoint not found - check URL",
+                    "response_time_ms": round(elapsed, 2)
+                }
+            else:
+                return {
+                    "name": "Azure Document Intelligence",
+                    "status": HealthStatus.DEGRADED,
+                    "message": f"Service returned status {response.status_code}",
+                    "response_time_ms": round(elapsed, 2)
+                }
+
+        except Exception as e:
+            elapsed = (datetime.utcnow() - start).total_seconds() * 1000
+            logger.error(f"Document Intelligence health check failed: {e}")
+            return {
+                "name": "Azure Document Intelligence",
                 "status": HealthStatus.UNHEALTHY,
                 "message": f"Check failed: {str(e)[:100]}",
                 "response_time_ms": round(elapsed, 2)

@@ -624,6 +624,113 @@
                     </div>
                 </div>
 
+                <!-- AI Services Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-robot"></i> AI Services</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Azure Document Intelligence -->
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="text-muted mb-2">Azure Document Intelligence</h6>
+                                                <div id="docIntelStatusBadge">
+                                                    <span class="badge bg-secondary">Checking...</span>
+                                                </div>
+                                            </div>
+                                            <i class="bi bi-file-earmark-text fs-2 text-info"></i>
+                                        </div>
+                                        <hr>
+                                        <small class="text-muted d-block mb-2">Document classification and separation</small>
+
+                                        <!-- Capabilities Checkboxes -->
+                                        <div class="mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="docIntelClassify" onchange="saveAiServiceConfig()">
+                                                <label class="form-check-label" for="docIntelClassify">
+                                                    <strong>Classify / Split</strong>
+                                                    <small class="d-block text-muted">Separate multi-page scans into individual documents</small>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <small class="text-muted d-block mb-1">Endpoint: <code id="docIntelEndpoint" class="small">-</code></small>
+                                        <small class="text-muted d-block">Classifier: <code id="docIntelClassifier" class="small">-</code></small>
+                                    </div>
+                                    <div class="card-footer">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="showDocIntelConfigModal()">
+                                            <i class="bi bi-gear"></i> Configure
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="testDocIntelConnection()">
+                                            <i class="bi bi-check-circle"></i> Test
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Azure OpenAI -->
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="text-muted mb-2">Azure OpenAI (GPT-4 Vision)</h6>
+                                                <div id="openAiStatusBadge">
+                                                    <span class="badge bg-secondary">Checking...</span>
+                                                </div>
+                                            </div>
+                                            <i class="bi bi-stars fs-2 text-purple" style="color: #6f42c1;"></i>
+                                        </div>
+                                        <hr>
+                                        <small class="text-muted d-block mb-2">Data extraction from documents</small>
+
+                                        <!-- Capabilities Checkboxes -->
+                                        <div class="mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="openAiExtract" onchange="saveAiServiceConfig()">
+                                                <label class="form-check-label" for="openAiExtract">
+                                                    <strong>Extract</strong>
+                                                    <small class="d-block text-muted">Extract patient data, tests, and facility info from documents</small>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <small class="text-muted d-block mb-1">Endpoint: <code id="openAiEndpoint" class="small">-</code></small>
+                                        <small class="text-muted d-block">Deployment: <code id="openAiDeployment" class="small">-</code></small>
+                                    </div>
+                                    <div class="card-footer">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="showOpenAiConfigModal()">
+                                            <i class="bi bi-gear"></i> Configure
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="testOpenAiConnection()">
+                                            <i class="bi bi-check-circle"></i> Test
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Workflow Info -->
+                        <div class="alert alert-light mt-3 mb-0 border">
+                            <i class="bi bi-diagram-2"></i>
+                            <strong>Processing Workflow:</strong>
+                            <span class="ms-2">
+                                <span class="badge bg-info">Scan</span>
+                                <i class="bi bi-arrow-right mx-1"></i>
+                                <span class="badge bg-info">Doc Intelligence (Classify/Split)</span>
+                                <i class="bi bi-arrow-right mx-1"></i>
+                                <span class="badge bg-purple" style="background-color: #6f42c1 !important;">OpenAI (Extract)</span>
+                                <i class="bi bi-arrow-right mx-1"></i>
+                                <span class="badge bg-success">Review Queue</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row">
                     <!-- Integration List -->
                     <div class="col-md-4">
@@ -4253,8 +4360,169 @@
     document.addEventListener('DOMContentLoaded', function() {
         if (document.querySelector('#integrations.active')) {
             loadAuthStatus();
+            loadAiServicesStatus();
         }
     });
+
+    // Load AI services status when integrations tab is shown
+    document.querySelector('button[data-bs-target="#integrations"]')?.addEventListener('shown.bs.tab', function() {
+        loadAiServicesStatus();
+    });
+
+    async function loadAiServicesStatus() {
+        try {
+            // Load from health endpoint
+            const response = await fetch('/health/detailed', { headers: getAuthHeaders() });
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const services = data.services || {};
+
+            // Update Document Intelligence status
+            const docIntelService = services.document_intelligence;
+            if (docIntelService) {
+                updateDocIntelStatusDisplay(docIntelService);
+            }
+
+            // Update Azure OpenAI status
+            const openAiService = services.azure_openai;
+            if (openAiService) {
+                updateOpenAiStatusDisplay(openAiService);
+            }
+
+            // Load checkbox states from config
+            const configResponse = await fetch('/api/config/AI_SERVICE_CONFIG', { headers: getAuthHeaders() });
+            if (configResponse.ok) {
+                const configData = await configResponse.json();
+                if (configData.value) {
+                    const config = JSON.parse(configData.value);
+                    document.getElementById('docIntelClassify').checked = config.doc_intel_classify !== false;
+                    document.getElementById('openAiExtract').checked = config.openai_extract !== false;
+                }
+            } else {
+                // Default: both enabled
+                document.getElementById('docIntelClassify').checked = true;
+                document.getElementById('openAiExtract').checked = true;
+            }
+
+        } catch (error) {
+            console.error('Error loading AI services status:', error);
+        }
+    }
+
+    function updateDocIntelStatusDisplay(service) {
+        const statusBadge = document.getElementById('docIntelStatusBadge');
+        const endpointEl = document.getElementById('docIntelEndpoint');
+        const classifierEl = document.getElementById('docIntelClassifier');
+
+        if (service.status === 'healthy') {
+            statusBadge.innerHTML = '<span class="badge bg-success">Connected</span>';
+        } else if (service.status === 'degraded') {
+            statusBadge.innerHTML = '<span class="badge bg-warning text-dark">Not Configured</span>';
+        } else {
+            statusBadge.innerHTML = '<span class="badge bg-danger">Error</span>';
+        }
+
+        const details = service.details || {};
+        endpointEl.textContent = details.endpoint || 'Not configured';
+        classifierEl.textContent = details.classifier_id || 'None';
+    }
+
+    function updateOpenAiStatusDisplay(service) {
+        const statusBadge = document.getElementById('openAiStatusBadge');
+        const endpointEl = document.getElementById('openAiEndpoint');
+        const deploymentEl = document.getElementById('openAiDeployment');
+
+        if (service.status === 'healthy') {
+            statusBadge.innerHTML = '<span class="badge bg-success">Connected</span>';
+        } else if (service.status === 'degraded') {
+            statusBadge.innerHTML = '<span class="badge bg-warning text-dark">Not Configured</span>';
+        } else {
+            statusBadge.innerHTML = '<span class="badge bg-danger">Error</span>';
+        }
+
+        const details = service.details || {};
+        endpointEl.textContent = details.endpoint || 'Not configured';
+        deploymentEl.textContent = details.deployment || '-';
+    }
+
+    async function saveAiServiceConfig() {
+        const config = {
+            doc_intel_classify: document.getElementById('docIntelClassify').checked,
+            openai_extract: document.getElementById('openAiExtract').checked
+        };
+
+        try {
+            const response = await fetch('/api/config/AI_SERVICE_CONFIG', {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ value: JSON.stringify(config) })
+            });
+
+            if (response.ok) {
+                showToast('AI service configuration saved', 'success');
+            } else {
+                showToast('Failed to save configuration', 'danger');
+            }
+        } catch (error) {
+            console.error('Error saving AI config:', error);
+            showToast('Error saving configuration', 'danger');
+        }
+    }
+
+    async function testDocIntelConnection() {
+        const btn = event.target;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+
+        try {
+            const response = await fetch('/health/detailed', { headers: getAuthHeaders() });
+            const data = await response.json();
+            const service = data.services?.document_intelligence;
+
+            if (service?.status === 'healthy') {
+                showToast('Document Intelligence connection successful!', 'success');
+            } else {
+                showToast('Connection failed: ' + (service?.message || 'Unknown error'), 'danger');
+            }
+        } catch (error) {
+            showToast('Test failed: ' + error.message, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> Test';
+        }
+    }
+
+    async function testOpenAiConnection() {
+        const btn = event.target;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+
+        try {
+            const response = await fetch('/health/detailed', { headers: getAuthHeaders() });
+            const data = await response.json();
+            const service = data.services?.azure_openai;
+
+            if (service?.status === 'healthy') {
+                showToast('Azure OpenAI connection successful!', 'success');
+            } else {
+                showToast('Connection failed: ' + (service?.message || 'Unknown error'), 'danger');
+            }
+        } catch (error) {
+            showToast('Test failed: ' + error.message, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> Test';
+        }
+    }
+
+    function showDocIntelConfigModal() {
+        alert('Document Intelligence configuration: Set AZURE_DOC_INTELLIGENCE_ENDPOINT and AZURE_DOC_INTELLIGENCE_KEY in application settings.');
+    }
+
+    function showOpenAiConfigModal() {
+        alert('Azure OpenAI configuration: Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and AZURE_OPENAI_DEPLOYMENT_NAME in application settings.');
+    }
 
     async function loadAuthStatus() {
         try {

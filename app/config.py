@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     AZURE_OPENAI_DEPLOYMENT_NAME: str = "gpt-4-vision"
     AZURE_OPENAI_API_VERSION: str = "2024-02-15-preview"
 
+    # Azure Document Intelligence (Form Recognizer)
+    AZURE_DOC_INTELLIGENCE_ENDPOINT: str = ""
+    AZURE_DOC_INTELLIGENCE_KEY: str = ""
+    AZURE_DOC_INTELLIGENCE_CLASSIFIER_ID: str = ""  # Custom classifier model ID
+
     # Authentication
     JWT_SECRET_KEY: str = "change-this-jwt-secret"
     JWT_ALGORITHM: str = "HS256"
