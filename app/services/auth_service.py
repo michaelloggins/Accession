@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from passlib.context import CryptContext
 import jwt
 import logging
 
@@ -10,6 +11,9 @@ from app.config import settings
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
+
+# Password hashing context for break glass accounts
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AuthService:
@@ -69,9 +73,28 @@ class AuthService:
         return user, token, expires_in
 
     def _verify_password(self, password: str, user: User) -> bool:
-        """Verify user password (placeholder for Azure AD integration)."""
-        # In production, integrate with Azure AD
-        return True
+        """Verify user password for break glass accounts.
+        
+        For break glass accounts, verify against bcrypt-hashed password.
+        For SSO accounts, this should not be called (auth via Entra ID).
+        """
+        # Only break glass accounts can use local password auth
+        if not user.is_break_glass:
+            logger.warning(f"Non-break-glass account {user.email} attempted local password auth")
+            return False
+        
+        # Verify password exists
+        if not user.hashed_password:
+            logger.warning(f"Break glass account {user.email} has no password set")
+            return False
+        
+        # Verify bcrypt password
+        return pwd_context.verify(password, user.hashed_password)
+    
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """Hash a password using bcrypt for break glass accounts."""
+        return pwd_context.hash(password)
 
     def _handle_failed_login(self, user: User):
         """Handle failed login attempt."""

@@ -225,6 +225,15 @@ async def login_page(request: Request):
     })
 
 
+@app.get("/emergency-access")
+async def emergency_access_page(request: Request):
+    """Emergency access page for break glass accounts."""
+    return templates.TemplateResponse("emergency_access.html", {
+        "request": request,
+        "environment": settings.ENVIRONMENT
+    })
+
+
 @app.get("/dashboard")
 async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {

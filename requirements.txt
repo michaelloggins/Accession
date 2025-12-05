@@ -27,6 +27,7 @@ pymupdf>=1.23.0  # PDF processing and conversion
 cryptography==41.0.7
 pyjwt==2.8.0
 passlib[bcrypt]==1.7.4
+bcrypt==4.1.2  # Pin to 4.x - bcrypt 5.0.0 is incompatible with passlib 1.7.4
 msal==1.28.0  # Microsoft Authentication Library for Entra ID OIDC
 python3-saml>=1.16.0  # SAML 2.0 authentication for Entra ID SSO
 

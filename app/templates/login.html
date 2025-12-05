@@ -374,44 +374,30 @@
             transform: translateX(16px);
         }
 
-        /* Break glass section styling */
-        .breakglass-section {
+        /* Emergency Access link styling */
+        .emergency-access-section {
             border-top: 1px solid var(--border-color);
             padding-top: 1rem;
+            text-align: right;
         }
 
-        .breakglass-toggle {
+        .emergency-access-link {
             color: var(--text-secondary);
             text-decoration: none;
-            font-size: 0.875rem;
-            display: flex;
+            font-size: 0.8125rem;
+            display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.375rem;
             transition: color 0.2s;
         }
 
-        .breakglass-toggle:hover {
+        .emergency-access-link:hover {
             color: var(--text-primary);
             text-decoration: none;
         }
 
-        .breakglass-toggle:focus {
-            box-shadow: none;
-        }
-
-        .breakglass-toggle .toggle-icon {
-            transition: transform 0.2s ease;
-            font-size: 0.75rem;
-        }
-
-        .breakglass-toggle[aria-expanded="true"] .toggle-icon {
-            transform: rotate(90deg);
-        }
-
-        #emailLoginSection {
-            border-left: 2px solid var(--border-color);
-            margin-left: 0.5rem;
-            padding-left: 1rem;
+        .emergency-access-link i {
+            font-size: 0.875rem;
         }
     </style>
 </head>
@@ -454,47 +440,12 @@
                 <!-- SSO Error Display -->
                 <div id="ssoError" class="alert alert-danger d-none"></div>
 
-                <!-- Collapsible Email/Password Login (Break Glass) -->
-                <div class="breakglass-section mt-4">
-                    <button class="btn btn-link breakglass-toggle w-100 text-start p-0"
-                            type="button"
-                            data-bs-toggle="collapse"
-                            data-bs-target="#emailLoginSection"
-                            aria-expanded="false"
-                            aria-controls="emailLoginSection">
-                        <i class="bi bi-chevron-right toggle-icon"></i>
-                        <span>Sign in with email</span>
-                    </button>
-
-                    <div class="collapse" id="emailLoginSection">
-                        <div class="pt-3">
-                            <form id="loginForm" onsubmit="handleLogin(event)">
-                                <div class="mb-3">
-                                    <label for="email" class="form-label">Email Address</label>
-                                    <input type="email" class="form-control" id="email"
-                                           placeholder="user@example.com" autocomplete="username">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="password" class="form-label">Password</label>
-                                    <input type="password" class="form-control" id="password"
-                                           autocomplete="current-password">
-                                </div>
-
-                                <div class="mb-3" id="mfaField" style="display: none;">
-                                    <label for="mfaCode" class="form-label">MFA Code</label>
-                                    <input type="text" class="form-control" id="mfaCode"
-                                           placeholder="123456" maxlength="6" autocomplete="one-time-code">
-                                </div>
-
-                                <div id="loginError" class="alert alert-danger d-none"></div>
-
-                                <button type="submit" class="btn btn-login w-100" id="loginBtn">
-                                    <i class="bi bi-box-arrow-in-right"></i> Sign In
-                                </button>
-                            </form>
-                        </div>
-                    </div>
+                <!-- Emergency Access Link -->
+                <div class="emergency-access-section mt-4">
+                    <a href="/emergency-access" class="emergency-access-link">
+                        <i class="bi bi-shield-exclamation"></i>
+                        Emergency Access
+                    </a>
                 </div>
             </div>
         </div>
@@ -583,25 +534,12 @@
                 }
 
                 if (!ssoConfigured) {
-                    // Hide SSO section if not configured
+                    // Hide SSO section if not configured - users can still use Emergency Access
                     document.getElementById('ssoSection').style.display = 'none';
-                    // Expand email login section by default when SSO not available
-                    const emailSection = document.getElementById('emailLoginSection');
-                    const emailToggle = document.querySelector('.breakglass-toggle');
-                    if (emailSection) {
-                        emailSection.classList.add('show');
-                        emailToggle.setAttribute('aria-expanded', 'true');
-                    }
                 }
             } catch (e) {
-                // SSO status check failed, hide SSO option and show email login
+                // SSO status check failed, hide SSO option - users can still use Emergency Access
                 document.getElementById('ssoSection').style.display = 'none';
-                const emailSection = document.getElementById('emailLoginSection');
-                const emailToggle = document.querySelector('.breakglass-toggle');
-                if (emailSection) {
-                    emailSection.classList.add('show');
-                    emailToggle.setAttribute('aria-expanded', 'true');
-                }
             }
 
             // Check for successful SSO login (from cookie)
@@ -629,56 +567,6 @@
             const parts = value.split(`; ${name}=`);
             if (parts.length === 2) return parts.pop().split(';').shift();
             return null;
-        }
-
-        async function handleLogin(event) {
-            event.preventDefault();
-
-            const loginBtn = document.getElementById('loginBtn');
-            const errorDiv = document.getElementById('loginError');
-
-            loginBtn.disabled = true;
-            loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Signing in...';
-            errorDiv.classList.add('d-none');
-
-            const payload = {
-                email: document.getElementById('email').value,
-                password: document.getElementById('password').value,
-                mfa_code: document.getElementById('mfaCode').value || null
-            };
-
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    // Store token
-                    localStorage.setItem('access_token', data.access_token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-
-                    // Redirect to dashboard
-                    window.location.href = '/dashboard';
-                } else {
-                    errorDiv.textContent = data.detail || 'Login failed';
-                    errorDiv.classList.remove('d-none');
-
-                    // Show MFA field if needed
-                    if (data.detail && data.detail.includes('MFA')) {
-                        document.getElementById('mfaField').style.display = 'block';
-                    }
-                }
-            } catch (error) {
-                errorDiv.textContent = 'Connection error. Please try again.';
-                errorDiv.classList.remove('d-none');
-            } finally {
-                loginBtn.disabled = false;
-                loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Sign In';
-            }
         }
     </script>
 </body>

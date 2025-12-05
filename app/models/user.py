@@ -32,6 +32,10 @@ class User(Base):
     failed_login_attempts = Column(Integer, default=0)
     account_locked_until = Column(DateTime, nullable=True)
 
+    # Break Glass Authentication (emergency access when SSO is unavailable)
+    hashed_password = Column(String(255), nullable=True)  # bcrypt hash
+    is_break_glass = Column(Boolean, default=False)  # True for break glass accounts only
+
     # Audit
     created_at = Column(DateTime, server_default=func.now())
     created_by = Column(String(100), nullable=True)
