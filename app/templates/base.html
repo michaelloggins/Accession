@@ -45,6 +45,9 @@
                 <a href="/dashboard" class="nav-link-item {% if request.path == '/dashboard' %}active{% endif %}">
                     <i class="bi bi-grid-1x2-fill"></i> Dashboard
                 </a>
+                <a href="/scan" class="nav-link-item power-user-only {% if request.path == '/scan' %}active{% endif %}" style="display: none;">
+                    <i class="bi bi-upc-scan"></i> Scan
+                </a>
                 <a href="/documents" class="nav-link-item {% if request.path == '/documents' %}active{% endif %}">
                     <i class="bi bi-file-medical"></i> Documents
                 </a>
