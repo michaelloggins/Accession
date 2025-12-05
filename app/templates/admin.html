@@ -275,6 +275,11 @@
                     <i class="bi bi-hdd-stack"></i> Storage Lifecycle
                 </button>
             </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#equipment">
+                    <i class="bi bi-pc-display"></i> Equipment
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content mt-3">
@@ -1276,6 +1281,169 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Equipment Tab -->
+            <div class="tab-pane fade" id="equipment">
+                <div class="row">
+                    <!-- Scanning Stations Card -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5><i class="bi bi-upc-scan"></i> Scanning Stations</h5>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-2" onclick="loadScanningStations()">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                    <button class="btn btn-primary btn-sm" onclick="showAddStationModal()">
+                                        <i class="bi bi-plus-circle"></i> Add Station
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Location</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="stationsTableBody">
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Label Printers Card -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5><i class="bi bi-printer"></i> Label Printers</h5>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-2" onclick="loadLabelPrinters()">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                    <button class="btn btn-primary btn-sm" onclick="showAddPrinterModal()">
+                                        <i class="bi bi-plus-circle"></i> Add Printer
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Location</th>
+                                                <th>Type</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="printersTableBody">
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scanning Station Modal -->
+<div class="modal fade" id="stationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-upc-scan"></i> <span id="stationModalTitle">Add Scanning Station</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="stationId">
+                <div class="mb-3">
+                    <label class="form-label">Station Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="stationName" placeholder="e.g., Front Desk Scanner">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="stationLocation" placeholder="e.g., Reception Area">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="stationDescription" rows="2" placeholder="Optional notes about this station"></textarea>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="stationActive" checked>
+                    <label class="form-check-label" for="stationActive">Active</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveStation()">
+                    <i class="bi bi-check-lg"></i> Save Station
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Label Printer Modal -->
+<div class="modal fade" id="printerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-printer"></i> <span id="printerModalTitle">Add Label Printer</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="printerId">
+                <div class="mb-3">
+                    <label class="form-label">Printer Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="printerName" placeholder="e.g., Lab Label Printer">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="printerLocation" placeholder="e.g., Lab Workstation 1">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Printer Type</label>
+                    <select class="form-select" id="printerType">
+                        <option value="">Select type...</option>
+                        <option value="Zebra">Zebra</option>
+                        <option value="DYMO">DYMO</option>
+                        <option value="Brother">Brother</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Connection String</label>
+                    <input type="text" class="form-control" id="printerConnection" placeholder="e.g., IP address or USB path">
+                    <small class="text-muted">Network address or device path for printing</small>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="printerActive" checked>
+                    <label class="form-check-label" for="printerActive">Active</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="savePrinter()">
+                    <i class="bi bi-check-lg"></i> Save Printer
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -1917,6 +2085,15 @@
         if (testTab) {
             testTab.addEventListener('shown.bs.tab', function() {
                 loadTests();
+            });
+        }
+
+        // Load equipment when Equipment tab is shown
+        const equipmentTab = document.querySelector('button[data-bs-target="#equipment"]');
+        if (equipmentTab) {
+            equipmentTab.addEventListener('shown.bs.tab', function() {
+                loadScanningStations();
+                loadLabelPrinters();
             });
         }
 
@@ -4458,6 +4635,261 @@
             element.type = 'password';
             icon.classList.replace('bi-eye-slash', 'bi-eye');
         }
+    }
+
+    // ============================================
+    // Equipment Management Functions
+    // ============================================
+
+    async function loadScanningStations() {
+        const tableBody = document.getElementById('stationsTableBody');
+        try {
+            const response = await fetch('/api/workstation/stations', { headers: getAuthHeaders() });
+            if (!response.ok) throw new Error('Failed to load stations');
+
+            const stations = await response.json();
+
+            if (!stations || stations.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No scanning stations configured</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = stations.map(station => `
+                <tr>
+                    <td><strong>${escapeHtml(station.name)}</strong></td>
+                    <td>${escapeHtml(station.location || '-')}</td>
+                    <td>
+                        ${station.is_active
+                            ? '<span class="badge bg-success">Active</span>'
+                            : '<span class="badge bg-secondary">Inactive</span>'}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editStation(${station.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteStation(${station.id}, '${escapeHtml(station.name)}')" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading stations:', error);
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load stations</td></tr>';
+        }
+    }
+
+    async function loadLabelPrinters() {
+        const tableBody = document.getElementById('printersTableBody');
+        try {
+            const response = await fetch('/api/workstation/printers', { headers: getAuthHeaders() });
+            if (!response.ok) throw new Error('Failed to load printers');
+
+            const printers = await response.json();
+
+            if (!printers || printers.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No label printers configured</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = printers.map(printer => `
+                <tr>
+                    <td><strong>${escapeHtml(printer.name)}</strong></td>
+                    <td>${escapeHtml(printer.location || '-')}</td>
+                    <td>${escapeHtml(printer.printer_type || '-')}</td>
+                    <td>
+                        ${printer.is_active
+                            ? '<span class="badge bg-success">Active</span>'
+                            : '<span class="badge bg-secondary">Inactive</span>'}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editPrinter(${printer.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deletePrinter(${printer.id}, '${escapeHtml(printer.name)}')" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading printers:', error);
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load printers</td></tr>';
+        }
+    }
+
+    function showAddStationModal() {
+        document.getElementById('stationModalTitle').textContent = 'Add Scanning Station';
+        document.getElementById('stationId').value = '';
+        document.getElementById('stationName').value = '';
+        document.getElementById('stationLocation').value = '';
+        document.getElementById('stationDescription').value = '';
+        document.getElementById('stationActive').checked = true;
+        new bootstrap.Modal(document.getElementById('stationModal')).show();
+    }
+
+    async function editStation(id) {
+        try {
+            const response = await fetch(`/api/workstation/stations/${id}`, { headers: getAuthHeaders() });
+            if (!response.ok) throw new Error('Failed to load station');
+
+            const station = await response.json();
+
+            document.getElementById('stationModalTitle').textContent = 'Edit Scanning Station';
+            document.getElementById('stationId').value = station.id;
+            document.getElementById('stationName').value = station.name;
+            document.getElementById('stationLocation').value = station.location || '';
+            document.getElementById('stationDescription').value = station.description || '';
+            document.getElementById('stationActive').checked = station.is_active;
+
+            new bootstrap.Modal(document.getElementById('stationModal')).show();
+        } catch (error) {
+            console.error('Error loading station:', error);
+            alert('Failed to load station details');
+        }
+    }
+
+    async function saveStation() {
+        const id = document.getElementById('stationId').value;
+        const data = {
+            name: document.getElementById('stationName').value.trim(),
+            location: document.getElementById('stationLocation').value.trim() || null,
+            description: document.getElementById('stationDescription').value.trim() || null,
+            is_active: document.getElementById('stationActive').checked
+        };
+
+        if (!data.name) {
+            alert('Station name is required');
+            return;
+        }
+
+        try {
+            const url = id ? `/api/workstation/stations/${id}` : '/api/workstation/stations';
+            const method = id ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) throw new Error('Failed to save station');
+
+            bootstrap.Modal.getInstance(document.getElementById('stationModal')).hide();
+            loadScanningStations();
+        } catch (error) {
+            console.error('Error saving station:', error);
+            alert('Failed to save scanning station');
+        }
+    }
+
+    async function deleteStation(id, name) {
+        if (!confirm(`Are you sure you want to delete the scanning station "${name}"?`)) return;
+
+        try {
+            const response = await fetch(`/api/workstation/stations/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to delete station');
+            loadScanningStations();
+        } catch (error) {
+            console.error('Error deleting station:', error);
+            alert('Failed to delete scanning station');
+        }
+    }
+
+    function showAddPrinterModal() {
+        document.getElementById('printerModalTitle').textContent = 'Add Label Printer';
+        document.getElementById('printerId').value = '';
+        document.getElementById('printerName').value = '';
+        document.getElementById('printerLocation').value = '';
+        document.getElementById('printerType').value = '';
+        document.getElementById('printerConnection').value = '';
+        document.getElementById('printerActive').checked = true;
+        new bootstrap.Modal(document.getElementById('printerModal')).show();
+    }
+
+    async function editPrinter(id) {
+        try {
+            const response = await fetch(`/api/workstation/printers/${id}`, { headers: getAuthHeaders() });
+            if (!response.ok) throw new Error('Failed to load printer');
+
+            const printer = await response.json();
+
+            document.getElementById('printerModalTitle').textContent = 'Edit Label Printer';
+            document.getElementById('printerId').value = printer.id;
+            document.getElementById('printerName').value = printer.name;
+            document.getElementById('printerLocation').value = printer.location || '';
+            document.getElementById('printerType').value = printer.printer_type || '';
+            document.getElementById('printerConnection').value = printer.connection_string || '';
+            document.getElementById('printerActive').checked = printer.is_active;
+
+            new bootstrap.Modal(document.getElementById('printerModal')).show();
+        } catch (error) {
+            console.error('Error loading printer:', error);
+            alert('Failed to load printer details');
+        }
+    }
+
+    async function savePrinter() {
+        const id = document.getElementById('printerId').value;
+        const data = {
+            name: document.getElementById('printerName').value.trim(),
+            location: document.getElementById('printerLocation').value.trim() || null,
+            printer_type: document.getElementById('printerType').value || null,
+            connection_string: document.getElementById('printerConnection').value.trim() || null,
+            is_active: document.getElementById('printerActive').checked
+        };
+
+        if (!data.name) {
+            alert('Printer name is required');
+            return;
+        }
+
+        try {
+            const url = id ? `/api/workstation/printers/${id}` : '/api/workstation/printers';
+            const method = id ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) throw new Error('Failed to save printer');
+
+            bootstrap.Modal.getInstance(document.getElementById('printerModal')).hide();
+            loadLabelPrinters();
+        } catch (error) {
+            console.error('Error saving printer:', error);
+            alert('Failed to save label printer');
+        }
+    }
+
+    async function deletePrinter(id, name) {
+        if (!confirm(`Are you sure you want to delete the label printer "${name}"?`)) return;
+
+        try {
+            const response = await fetch(`/api/workstation/printers/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to delete printer');
+            loadLabelPrinters();
+        } catch (error) {
+            console.error('Error deleting printer:', error);
+            alert('Failed to delete label printer');
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 </script>
 

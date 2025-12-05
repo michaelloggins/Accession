@@ -13,6 +13,7 @@ from app.models.patient import Patient
 from app.models.test import Test, TestSpecimenType
 from app.models.order import Order, OrderTest
 from app.models.integration import Integration, ApiKey, IntegrationLog
+from app.models.workstation import ScanningStation, LabelPrinter, UserWorkstationPreference
 
 __all__ = [
     "Document",
@@ -32,4 +33,7 @@ __all__ = [
     "Integration",
     "ApiKey",
     "IntegrationLog",
+    "ScanningStation",
+    "LabelPrinter",
+    "UserWorkstationPreference",
 ]

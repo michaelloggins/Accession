@@ -59,11 +59,29 @@
 
     <!-- Hero Section -->
     <div class="hero-section">
-        <h1 class="hero-title">Welcome back, <span id="hero-user-name">User</span></h1>
-        <p class="hero-subtitle">
-            You have <span id="hero-pending-count">0</span> documents awaiting review •
-            <span id="hero-date"></span>
-        </p>
+        <div class="hero-header">
+            <div class="hero-welcome">
+                <h1 class="hero-title">Welcome back, <span id="hero-user-name">User</span></h1>
+                <p class="hero-subtitle">
+                    You have <span id="hero-pending-count">0</span> documents awaiting review •
+                    <span id="hero-date"></span>
+                </p>
+            </div>
+            <div class="workstation-selectors">
+                <div class="workstation-dropdown">
+                    <label><i class="bi bi-upc-scan"></i> Station</label>
+                    <select id="scanningStationSelect" onchange="saveWorkstationPreference()">
+                        <option value="">Select Station...</option>
+                    </select>
+                </div>
+                <div class="workstation-dropdown">
+                    <label><i class="bi bi-printer"></i> Printer</label>
+                    <select id="labelPrinterSelect" onchange="saveWorkstationPreference()">
+                        <option value="">Select Printer...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
 
         <!-- Stats Grid -->
         <div class="stats-grid">
@@ -914,6 +932,7 @@
         loadQueue();
         updateHeroDate();
         updateHeroUserName();
+        loadWorkstationOptions();
 
         // Filter event listeners
         document.getElementById('filterAccession')?.addEventListener('input', applyDocFilters);
@@ -1769,6 +1788,108 @@
             }
         } catch (error) {
             showToast('Error: ' + error.message, 'error');
+        }
+    }
+
+    // ============================================
+    // Workstation Equipment Functions
+    // ============================================
+
+    async function loadWorkstationOptions() {
+        try {
+            // Load scanning stations
+            const stationsResponse = await fetch('/api/workstation/stations?active_only=true', {
+                headers: getAuthHeaders()
+            });
+            if (stationsResponse.ok) {
+                const stations = await stationsResponse.json();
+                const stationSelect = document.getElementById('scanningStationSelect');
+                stationSelect.innerHTML = '<option value="">Select Station...</option>';
+                stations.forEach(station => {
+                    const option = document.createElement('option');
+                    option.value = station.id;
+                    option.textContent = station.name + (station.location ? ` (${station.location})` : '');
+                    stationSelect.appendChild(option);
+                });
+            }
+
+            // Load label printers
+            const printersResponse = await fetch('/api/workstation/printers?active_only=true', {
+                headers: getAuthHeaders()
+            });
+            if (printersResponse.ok) {
+                const printers = await printersResponse.json();
+                const printerSelect = document.getElementById('labelPrinterSelect');
+                printerSelect.innerHTML = '<option value="">Select Printer...</option>';
+                printers.forEach(printer => {
+                    const option = document.createElement('option');
+                    option.value = printer.id;
+                    option.textContent = printer.name + (printer.location ? ` (${printer.location})` : '');
+                    printerSelect.appendChild(option);
+                });
+            }
+
+            // Load user preferences
+            loadUserWorkstationPreferences();
+        } catch (error) {
+            console.error('Error loading workstation options:', error);
+        }
+    }
+
+    async function loadUserWorkstationPreferences() {
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (!user.id) return;
+
+            const response = await fetch(`/api/workstation/preferences/${user.id}`, {
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const prefs = await response.json();
+
+                if (prefs.scanning_station_id) {
+                    document.getElementById('scanningStationSelect').value = prefs.scanning_station_id;
+                }
+                if (prefs.label_printer_id) {
+                    document.getElementById('labelPrinterSelect').value = prefs.label_printer_id;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading user preferences:', error);
+        }
+    }
+
+    async function saveWorkstationPreference() {
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (!user.id) {
+                console.warn('No user logged in, cannot save preferences');
+                return;
+            }
+
+            const stationId = document.getElementById('scanningStationSelect').value;
+            const printerId = document.getElementById('labelPrinterSelect').value;
+
+            const response = await fetch(`/api/workstation/preferences/${user.id}`, {
+                method: 'PUT',
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    scanning_station_id: stationId ? parseInt(stationId) : 0,
+                    label_printer_id: printerId ? parseInt(printerId) : 0
+                })
+            });
+
+            if (response.ok) {
+                console.log('Workstation preferences saved');
+            } else {
+                console.error('Failed to save preferences');
+            }
+        } catch (error) {
+            console.error('Error saving workstation preference:', error);
         }
     }
 </script>
