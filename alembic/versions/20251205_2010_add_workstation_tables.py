@@ -1,7 +1,7 @@
 """Add workstation equipment tables
 
-Revision ID: add_workstation_tables
-Revises:
+Revision ID: c5d8f902b3e6
+Revises: b4c7e891a2d5
 Create Date: 2025-12-05 20:10:00.000000
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = 'add_workstation_tables'
-down_revision = None
+revision = 'c5d8f902b3e6'
+down_revision = 'b4c7e891a2d5'
 branch_labels = None
 depends_on = None
 
