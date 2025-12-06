@@ -55,6 +55,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             token = session_cookie
 
         if not token:
+            # In development mode, allow API access without authentication
+            # This enables testing without login since dashboard bypasses auth
+            if settings.ENVIRONMENT == "development":
+                logger.debug(f"Development mode: allowing unauthenticated access to {path}")
+                return await call_next(request)
+
             # For API requests, return 401
             if path.startswith("/api/"):
                 return JSONResponse(

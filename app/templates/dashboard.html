@@ -70,7 +70,7 @@
             <div class="workstation-selectors">
                 <div class="workstation-dropdown">
                     <label><i class="bi bi-upc-scan"></i> Station</label>
-                    <select id="scanningStationSelect" onchange="saveWorkstationPreference()">
+                    <select id="scanningStationSelect" onchange="onStationChange()">
                         <option value="">Select Station...</option>
                     </select>
                 </div>
@@ -79,6 +79,13 @@
                     <select id="labelPrinterSelect" onchange="saveWorkstationPreference()">
                         <option value="">Select Printer...</option>
                     </select>
+                </div>
+                <div class="station-filter-toggle">
+                    <label class="toggle-switch-label">
+                        <input type="checkbox" id="myStationOnlyToggle" onchange="onStationFilterChange()">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-text">My Station Only</span>
+                    </label>
                 </div>
             </div>
         </div>
@@ -929,6 +936,14 @@
         loadConfig();
         loadTestsFromAPI();
         loadStats();
+
+        // Restore toggle state from localStorage BEFORE loading queue (synchronous)
+        const myStationOnly = localStorage.getItem('myStationOnly') === 'true';
+        const toggle = document.getElementById('myStationOnlyToggle');
+        if (toggle) {
+            toggle.checked = myStationOnly;
+        }
+
         loadQueue();
         updateHeroDate();
         updateHeroUserName();
@@ -1097,7 +1112,17 @@
 
     async function loadQueue() {
         try {
-            const url = currentFilter ? `/api/documents/?status=${currentFilter}` : '/api/documents/';
+            // Build URL with status filter
+            let url = currentFilter ? `/api/documents/?status=${currentFilter}` : '/api/documents/';
+
+            // Add scan station filter if toggle is active and station is selected
+            const myStationToggle = document.getElementById('myStationOnlyToggle');
+            const stationSelect = document.getElementById('scanningStationSelect');
+            if (myStationToggle && myStationToggle.checked && stationSelect && stationSelect.value) {
+                const separator = url.includes('?') ? '&' : '?';
+                url += `${separator}scan_station_id=${stationSelect.value}`;
+            }
+
             const response = await fetch(url, { headers: getAuthHeaders() });
             const tbody = document.getElementById('documentQueue');
 
@@ -1855,8 +1880,34 @@
                     document.getElementById('labelPrinterSelect').value = prefs.label_printer_id;
                 }
             }
+
+            // Restore toggle state from localStorage
+            const myStationOnly = localStorage.getItem('myStationOnly') === 'true';
+            const toggle = document.getElementById('myStationOnlyToggle');
+            if (toggle) {
+                toggle.checked = myStationOnly;
+            }
         } catch (error) {
             console.error('Error loading user preferences:', error);
+        }
+    }
+
+    // Handle station selection change
+    function onStationChange() {
+        saveWorkstationPreference();
+        // Reload queue if "My Station Only" is active
+        const toggle = document.getElementById('myStationOnlyToggle');
+        if (toggle && toggle.checked) {
+            loadQueue();
+        }
+    }
+
+    // Handle "My Station Only" toggle change
+    function onStationFilterChange() {
+        const toggle = document.getElementById('myStationOnlyToggle');
+        if (toggle) {
+            localStorage.setItem('myStationOnly', toggle.checked);
+            loadQueue();
         }
     }
 

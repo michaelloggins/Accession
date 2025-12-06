@@ -14,7 +14,7 @@ import traceback
 
 from app.config import settings
 from app.database import engine, Base
-from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation, scan
+from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation, scan, print as print_router
 from app.middleware.audit import AuditMiddleware
 from app.middleware.auth import AuthMiddleware
 from app.middleware.security import (
@@ -70,6 +70,33 @@ async def lifespan(app: FastAPI):
         logger.info("Schema migrations completed")
     except Exception as e:
         logger.error(f"Schema migration error: {e}")
+
+    # Run schema migrations for documents table (scan station columns)
+    try:
+        from sqlalchemy import text, inspect
+        inspector = inspect(engine)
+        existing_doc_columns = [col['name'] for col in inspector.get_columns('documents')]
+
+        doc_migrations = [
+            ("scan_station_id", "INT NULL"),
+            ("scan_station_name", "NVARCHAR(100) NULL"),
+            ("scanned_by", "NVARCHAR(100) NULL"),
+            ("scanned_at", "DATETIME2 NULL"),
+        ]
+
+        with engine.connect() as conn:
+            for col_name, col_def in doc_migrations:
+                if col_name not in existing_doc_columns:
+                    try:
+                        conn.execute(text(f"ALTER TABLE documents ADD {col_name} {col_def}"))
+                        conn.commit()
+                        logger.info(f"Added column '{col_name}' to documents table")
+                    except Exception as col_err:
+                        if "already exists" not in str(col_err).lower():
+                            logger.warning(f"Could not add column '{col_name}': {col_err}")
+        logger.info("Documents schema migrations completed")
+    except Exception as e:
+        logger.error(f"Documents schema migration error: {e}")
 
     # Initialize default configuration values and read startup config
     blob_watch_enabled = True  # Default if config service fails
@@ -204,6 +231,7 @@ app.include_router(integrations.router, tags=["Integrations"])
 app.include_router(patients.router, prefix="/api/patients", tags=["Patients"])
 app.include_router(workstation.router, prefix="/api/workstation", tags=["Workstation Equipment"])
 app.include_router(scan.router, prefix="/api/scan", tags=["Scanner"])
+app.include_router(print_router.router, prefix="/api/print", tags=["Printing"])
 
 
 @app.get("/")

@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     AZURE_DOC_INTELLIGENCE_KEY: str = ""
     AZURE_DOC_INTELLIGENCE_CLASSIFIER_ID: str = ""  # Custom classifier model ID
 
+    # Microsoft Universal Print (via Graph API)
+    UNIVERSAL_PRINT_ENABLED: bool = False
+    # Uses existing Azure AD credentials for Graph API authentication
+    # Required Graph API permissions: PrintJob.Create, Printer.Read.All
+
     # Authentication
     JWT_SECRET_KEY: str = "change-this-jwt-secret"
     JWT_ALGORITHM: str = "HS256"

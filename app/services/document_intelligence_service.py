@@ -5,12 +5,14 @@ This service handles:
 - Document classification using custom classifier models
 - Document separation (splitting multi-page scans into individual documents)
 - Page analysis and boundary detection
+- Custom classifier training from learned document types
 
 The extracted/separated documents are then passed to Azure OpenAI for data extraction.
 """
 
 import asyncio
 import base64
+import json
 import logging
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
@@ -352,6 +354,225 @@ class DocumentIntelligenceService:
             logger.error(f"Layout analysis failed: {e}")
 
         return {}
+
+    async def build_classifier(
+        self,
+        classifier_id: str,
+        document_types: List[Dict],
+        blob_container_url: str
+    ) -> Dict:
+        """
+        Build a custom classifier from training data.
+
+        Args:
+            classifier_id: Unique ID for the new classifier
+            document_types: List of document types with their training samples
+                Each type should have: name, samples (list of blob_names)
+            blob_container_url: SAS URL to the blob container with training documents
+
+        Returns:
+            Dict with classifier_id, status, and any errors
+        """
+        if not self.is_configured:
+            return {"error": "Document Intelligence not configured"}
+
+        url = f"{self.endpoint}/documentintelligence/documentClassifiers/{classifier_id}"
+        params = {"api-version": self.api_version}
+
+        headers = {
+            "Ocp-Apim-Subscription-Key": self.api_key,
+            "Content-Type": "application/json"
+        }
+
+        # Build the docTypes structure for the API
+        doc_types = {}
+        for dt in document_types:
+            type_name = dt["name"].replace(" ", "_").lower()
+            samples = dt.get("samples", [])
+
+            if samples:
+                # Each document type needs azureBlobSource with file list
+                doc_types[type_name] = {
+                    "azureBlobSource": {
+                        "containerUrl": blob_container_url,
+                        "prefix": ""  # Training samples are in root
+                    },
+                    "azureBlobFileListSource": {
+                        "containerUrl": blob_container_url,
+                        "fileList": f"{type_name}_files.jsonl"
+                    }
+                }
+
+        if not doc_types:
+            return {"error": "No document types with samples to train"}
+
+        body = {
+            "classifierId": classifier_id,
+            "description": f"Auto-trained classifier from learning mode - {datetime.utcnow().isoformat()}",
+            "docTypes": doc_types
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.put(url, params=params, headers=headers, json=body)
+
+                if response.status_code == 201:
+                    # Classifier creation started
+                    operation_url = response.headers.get("Operation-Location")
+                    logger.info(f"Classifier build started: {classifier_id}")
+
+                    if operation_url:
+                        # Poll for completion
+                        result = await self._poll_classifier_build(operation_url)
+                        return result
+                    return {"success": True, "classifier_id": classifier_id, "status": "building"}
+
+                elif response.status_code == 200:
+                    return {"success": True, "classifier_id": classifier_id, "status": "exists"}
+
+                else:
+                    error_text = response.text
+                    logger.error(f"Classifier build failed: {response.status_code} - {error_text}")
+                    return {"error": f"API error {response.status_code}: {error_text}"}
+
+        except Exception as e:
+            logger.error(f"Classifier build error: {e}")
+            return {"error": str(e)}
+
+    async def build_classifier_simple(
+        self,
+        classifier_id: str,
+        training_data: Dict
+    ) -> Dict:
+        """
+        Build a classifier using inline training data (base64 encoded samples).
+
+        This is simpler than blob-based training but limited to smaller datasets.
+
+        Args:
+            classifier_id: Unique ID for the classifier
+            training_data: Dict with document_types, each containing base64 samples
+
+        Returns:
+            Dict with result status
+        """
+        if not self.is_configured:
+            return {"error": "Document Intelligence not configured"}
+
+        # For simple training, we use the prebuilt model as base
+        # and provide labeled examples
+        url = f"{self.endpoint}/documentintelligence/documentClassifiers/{classifier_id}"
+        params = {"api-version": self.api_version}
+
+        headers = {
+            "Ocp-Apim-Subscription-Key": self.api_key,
+            "Content-Type": "application/json"
+        }
+
+        body = {
+            "classifierId": classifier_id,
+            "description": f"Learned classifier - {datetime.utcnow().isoformat()}",
+            "docTypes": training_data.get("docTypes", {})
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.put(url, params=params, headers=headers, json=body)
+
+                if response.status_code in [200, 201]:
+                    operation_url = response.headers.get("Operation-Location")
+                    if operation_url:
+                        result = await self._poll_classifier_build(operation_url)
+                        return result
+                    return {"success": True, "classifier_id": classifier_id}
+                else:
+                    return {"error": f"API error: {response.status_code} - {response.text}"}
+
+        except Exception as e:
+            logger.error(f"Simple classifier build error: {e}")
+            return {"error": str(e)}
+
+    async def _poll_classifier_build(self, operation_url: str, max_attempts: int = 120) -> Dict:
+        """Poll classifier build operation until complete (can take several minutes)."""
+        headers = {"Ocp-Apim-Subscription-Key": self.api_key}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for attempt in range(max_attempts):
+                try:
+                    response = await client.get(operation_url, headers=headers)
+                    result = response.json()
+
+                    status = result.get("status", "").lower()
+                    logger.info(f"Classifier build status: {status} (attempt {attempt + 1})")
+
+                    if status == "succeeded":
+                        return {
+                            "success": True,
+                            "classifier_id": result.get("result", {}).get("classifierId"),
+                            "status": "succeeded",
+                            "doc_types": list(result.get("result", {}).get("docTypes", {}).keys())
+                        }
+                    elif status == "failed":
+                        error = result.get("error", {})
+                        return {
+                            "success": False,
+                            "error": error.get("message", "Build failed"),
+                            "status": "failed"
+                        }
+
+                    # Still running, wait and retry
+                    await asyncio.sleep(5)  # Classifier builds take longer
+
+                except Exception as e:
+                    logger.warning(f"Poll attempt {attempt + 1} failed: {e}")
+                    await asyncio.sleep(5)
+
+        return {"success": False, "error": "Build timed out", "status": "timeout"}
+
+    async def delete_classifier(self, classifier_id: str) -> Dict:
+        """Delete an existing classifier."""
+        if not self.is_configured:
+            return {"error": "Document Intelligence not configured"}
+
+        url = f"{self.endpoint}/documentintelligence/documentClassifiers/{classifier_id}"
+        params = {"api-version": self.api_version}
+
+        headers = {"Ocp-Apim-Subscription-Key": self.api_key}
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.delete(url, params=params, headers=headers)
+
+                if response.status_code == 204:
+                    return {"success": True, "message": f"Classifier {classifier_id} deleted"}
+                else:
+                    return {"error": f"Delete failed: {response.status_code}"}
+
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def list_classifiers(self) -> List[Dict]:
+        """List all available classifiers."""
+        if not self.is_configured:
+            return []
+
+        url = f"{self.endpoint}/documentintelligence/documentClassifiers"
+        params = {"api-version": self.api_version}
+
+        headers = {"Ocp-Apim-Subscription-Key": self.api_key}
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(url, params=params, headers=headers)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    return result.get("value", [])
+
+        except Exception as e:
+            logger.error(f"List classifiers error: {e}")
+
+        return []
 
 
 # Singleton instance

@@ -659,7 +659,12 @@
                                         </div>
 
                                         <small class="text-muted d-block mb-1">Endpoint: <code id="docIntelEndpoint" class="small">-</code></small>
-                                        <small class="text-muted d-block">Classifier: <code id="docIntelClassifier" class="small">-</code></small>
+                                        <small class="text-muted d-block mb-2">Classifier: <code id="docIntelClassifier" class="small">-</code></small>
+
+                                        <!-- Training Stats -->
+                                        <div class="border-top pt-2 mt-2">
+                                            <small class="text-muted">Training samples: <strong id="docIntelTrainingSamples">0</strong></small>
+                                        </div>
                                     </div>
                                     <div class="card-footer">
                                         <button class="btn btn-sm btn-outline-primary" onclick="showDocIntelConfigModal()">
@@ -714,6 +719,69 @@
                             </div>
                         </div>
 
+                        <!-- Learning Mode Section -->
+                        <div class="card mt-3">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1"><i class="bi bi-mortarboard"></i> Learning Mode</h6>
+                                        <small class="text-muted">When enabled, GPT-4 Vision analyzes documents to train the classifier</small>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="learningModeToggle" onchange="saveAiServiceConfig()" style="transform: scale(1.5);">
+                                    </div>
+                                </div>
+
+                                <div id="learningModeDetails" class="mt-3" style="display: none;">
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <div class="border rounded p-2 text-center">
+                                                <div class="fs-4 fw-bold text-primary" id="learnedDocTypes">0</div>
+                                                <small class="text-muted">Document Types</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="border rounded p-2 text-center">
+                                                <div class="fs-4 fw-bold text-success" id="learnedSamples">0</div>
+                                                <small class="text-muted">Training Samples</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="border rounded p-2 text-center">
+                                                <div class="fs-4 fw-bold text-info" id="learnedFeatures">0</div>
+                                                <small class="text-muted">Learned Features</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewLearnedTypes()">
+                                            <i class="bi bi-list-ul"></i> View Learned Types
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-success" onclick="exportTrainingData()">
+                                            <i class="bi bi-download"></i> Export Training Data
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="clearTrainingData()">
+                                            <i class="bi bi-trash"></i> Clear Data
+                                        </button>
+                                    </div>
+                                    <div class="mt-3 pt-3 border-top" id="trainClassifierSection" style="display: none;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <strong><i class="bi bi-cpu"></i> Ready to Train?</strong>
+                                                <div class="small text-muted" id="trainingReadiness">
+                                                    Minimum 5 samples across at least 1 document type required.
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-warning" id="trainClassifierBtn" onclick="trainClassifierAndDisable()" disabled>
+                                                <i class="bi bi-mortarboard-fill"></i> Train Classifier & Disable Learning
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Workflow Info -->
                         <div class="alert alert-light mt-3 mb-0 border">
                             <i class="bi bi-diagram-2"></i>
@@ -726,6 +794,9 @@
                                 <span class="badge bg-purple" style="background-color: #6f42c1 !important;">OpenAI (Extract)</span>
                                 <i class="bi bi-arrow-right mx-1"></i>
                                 <span class="badge bg-success">Review Queue</span>
+                            </span>
+                            <span id="learningBadge" class="ms-2" style="display: none;">
+                                <span class="badge bg-warning text-dark"><i class="bi bi-mortarboard"></i> Learning</span>
                             </span>
                         </div>
                     </div>
@@ -1509,7 +1580,7 @@
 
 <!-- Label Printer Modal -->
 <div class="modal fade" id="printerModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="bi bi-printer"></i> <span id="printerModalTitle">Add Label Printer</span></h5>
@@ -1517,35 +1588,90 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="printerId">
-                <div class="mb-3">
-                    <label class="form-label">Printer Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="printerName" placeholder="e.g., Lab Label Printer">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Location</label>
-                    <input type="text" class="form-control" id="printerLocation" placeholder="e.g., Lab Workstation 1">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Printer Type</label>
-                    <select class="form-select" id="printerType">
-                        <option value="">Select type...</option>
-                        <option value="Zebra">Zebra</option>
-                        <option value="DYMO">DYMO</option>
-                        <option value="Brother">Brother</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Connection String</label>
-                    <input type="text" class="form-control" id="printerConnection" placeholder="e.g., IP address or USB path">
-                    <small class="text-muted">Network address or device path for printing</small>
-                </div>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="printerActive" checked>
-                    <label class="form-check-label" for="printerActive">Active</label>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Printer Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="printerName" placeholder="e.g., Lab Label Printer">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" id="printerLocation" placeholder="e.g., Lab Workstation 1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Printer Type</label>
+                            <select class="form-select" id="printerType">
+                                <option value="">Select type...</option>
+                                <option value="Zebra">Zebra (ZPL)</option>
+                                <option value="DYMO">DYMO</option>
+                                <option value="Brother">Brother</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Print Method</label>
+                            <select class="form-select" id="printerMethod" onchange="togglePrinterMethodFields()">
+                                <option value="universal_print">Universal Print (Cloud)</option>
+                                <option value="direct_ip">Direct IP (Port 9100)</option>
+                                <option value="local">Local/USB</option>
+                            </select>
+                            <small class="text-muted">How to send print jobs to this printer</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <!-- Universal Print Settings -->
+                        <div id="universalPrintFields">
+                            <div class="mb-3">
+                                <label class="form-label"><i class="bi bi-cloud"></i> Universal Print ID</label>
+                                <input type="text" class="form-control" id="printerUniversalPrintId" placeholder="Microsoft Graph printer ID">
+                                <small class="text-muted">From Microsoft Universal Print portal</small>
+                            </div>
+                        </div>
+                        <!-- Direct IP Settings -->
+                        <div id="directIpFields" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">IP Address / Connection String</label>
+                                <input type="text" class="form-control" id="printerConnection" placeholder="e.g., 192.168.1.100">
+                                <small class="text-muted">Network address for direct printing</small>
+                            </div>
+                        </div>
+                        <!-- Label Size Settings -->
+                        <div class="mb-3">
+                            <label class="form-label">Label Size</label>
+                            <div class="row g-2">
+                                <div class="col-5">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="printerLabelWidth" value="2" placeholder="Width">
+                                        <span class="input-group-text">"</span>
+                                    </div>
+                                </div>
+                                <div class="col-2 text-center pt-2">x</div>
+                                <div class="col-5">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="printerLabelHeight" value="1" placeholder="Height">
+                                        <span class="input-group-text">"</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Printer DPI</label>
+                            <select class="form-select" id="printerDpi">
+                                <option value="203">203 DPI (Standard)</option>
+                                <option value="300">300 DPI (High Resolution)</option>
+                            </select>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="printerActive" checked>
+                            <label class="form-check-label" for="printerActive">Active</label>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="testPrinterConnection()">
+                    <i class="bi bi-check-circle"></i> Test Connection
+                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="savePrinter()">
                     <i class="bi bi-check-lg"></i> Save Printer
@@ -4398,12 +4524,18 @@
                     const config = JSON.parse(configData.value);
                     document.getElementById('docIntelClassify').checked = config.doc_intel_classify !== false;
                     document.getElementById('openAiExtract').checked = config.openai_extract !== false;
+                    document.getElementById('learningModeToggle').checked = config.learning_mode === true;
+                    updateLearningModeUI(config.learning_mode === true);
                 }
             } else {
-                // Default: both enabled
+                // Default: both enabled, learning off
                 document.getElementById('docIntelClassify').checked = true;
                 document.getElementById('openAiExtract').checked = true;
+                document.getElementById('learningModeToggle').checked = false;
             }
+
+            // Load training stats
+            await loadTrainingStats();
 
         } catch (error) {
             console.error('Error loading AI services status:', error);
@@ -4447,9 +4579,11 @@
     }
 
     async function saveAiServiceConfig() {
+        const learningMode = document.getElementById('learningModeToggle').checked;
         const config = {
             doc_intel_classify: document.getElementById('docIntelClassify').checked,
-            openai_extract: document.getElementById('openAiExtract').checked
+            openai_extract: document.getElementById('openAiExtract').checked,
+            learning_mode: learningMode
         };
 
         try {
@@ -4461,12 +4595,220 @@
 
             if (response.ok) {
                 showToast('AI service configuration saved', 'success');
+                updateLearningModeUI(learningMode);
             } else {
                 showToast('Failed to save configuration', 'danger');
             }
         } catch (error) {
             console.error('Error saving AI config:', error);
             showToast('Error saving configuration', 'danger');
+        }
+    }
+
+    function updateLearningModeUI(enabled) {
+        const detailsDiv = document.getElementById('learningModeDetails');
+        const learningBadge = document.getElementById('learningBadge');
+        const trainSection = document.getElementById('trainClassifierSection');
+
+        if (enabled) {
+            detailsDiv.style.display = 'block';
+            learningBadge.style.display = 'inline';
+            // Load stats to update training readiness
+            loadTrainingStats();
+        } else {
+            detailsDiv.style.display = 'none';
+            learningBadge.style.display = 'none';
+            if (trainSection) trainSection.style.display = 'none';
+        }
+    }
+
+    async function loadTrainingStats() {
+        try {
+            const response = await fetch('/api/scan/training/stats', { headers: getAuthHeaders() });
+            if (response.ok) {
+                const data = await response.json();
+                const stats = data.stats || data;
+                document.getElementById('learnedDocTypes').textContent = stats.document_types || 0;
+                document.getElementById('learnedSamples').textContent = stats.total_samples || 0;
+                document.getElementById('learnedFeatures').textContent = stats.total_features || 0;
+                const docIntelSamples = document.getElementById('docIntelTrainingSamples');
+                if (docIntelSamples) docIntelSamples.textContent = stats.total_samples || 0;
+
+                // Update training readiness
+                updateTrainingReadiness(stats);
+            }
+        } catch (error) {
+            console.log('Training stats not available:', error);
+        }
+    }
+
+    function updateTrainingReadiness(stats) {
+        const section = document.getElementById('trainClassifierSection');
+        const btn = document.getElementById('trainClassifierBtn');
+        const readinessText = document.getElementById('trainingReadiness');
+
+        if (!section) return;
+
+        const docTypes = stats.document_types || 0;
+        const samples = stats.total_samples || 0;
+
+        // Show section if learning mode is enabled
+        const learningEnabled = document.getElementById('learningModeToggle').checked;
+        section.style.display = learningEnabled ? 'block' : 'none';
+
+        // Check readiness: need at least 1 doc type and 5 samples
+        const isReady = docTypes >= 1 && samples >= 5;
+
+        btn.disabled = !isReady;
+
+        if (isReady) {
+            readinessText.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Ready! ${docTypes} document type(s), ${samples} training sample(s)</span>`;
+        } else {
+            const needed = [];
+            if (docTypes < 1) needed.push('at least 1 document type');
+            if (samples < 5) needed.push(`${5 - samples} more sample(s)`);
+            readinessText.innerHTML = `<span class="text-muted">Need: ${needed.join(', ')}</span>`;
+        }
+    }
+
+    async function viewLearnedTypes() {
+        try {
+            const response = await fetch('/api/scan/training/types', { headers: getAuthHeaders() });
+            if (response.ok) {
+                const data = await response.json();
+                let html = '<h6>Learned Document Types</h6><ul class="list-group">';
+                if (data.types && data.types.length > 0) {
+                    data.types.forEach(t => {
+                        html += `<li class="list-group-item d-flex justify-content-between">
+                            <span><strong>${t.name}</strong><br><small class="text-muted">${t.description || 'No description'}</small></span>
+                            <span class="badge bg-primary">${t.sample_count} samples</span>
+                        </li>`;
+                    });
+                } else {
+                    html += '<li class="list-group-item text-muted">No document types learned yet. Enable learning mode and scan some documents.</li>';
+                }
+                html += '</ul>';
+
+                // Show in a modal or alert
+                const modal = document.createElement('div');
+                modal.innerHTML = `
+                    <div class="modal fade" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="bi bi-mortarboard"></i> Learned Document Types</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">${html}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                document.body.appendChild(modal);
+                const bsModal = new bootstrap.Modal(modal.querySelector('.modal'));
+                bsModal.show();
+                modal.querySelector('.modal').addEventListener('hidden.bs.modal', () => modal.remove());
+            }
+        } catch (error) {
+            showToast('Failed to load learned types', 'danger');
+        }
+    }
+
+    async function exportTrainingData() {
+        try {
+            const response = await fetch('/api/scan/training/export', { headers: getAuthHeaders() });
+            if (response.ok) {
+                const data = await response.json();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `training_data_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Training data exported', 'success');
+            }
+        } catch (error) {
+            showToast('Failed to export training data', 'danger');
+        }
+    }
+
+    async function clearTrainingData() {
+        if (!confirm('Are you sure you want to clear all training data? This cannot be undone.')) return;
+
+        try {
+            const response = await fetch('/api/scan/training/clear', {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            if (response.ok) {
+                showToast('Training data cleared', 'success');
+                await loadTrainingStats();
+            }
+        } catch (error) {
+            showToast('Failed to clear training data', 'danger');
+        }
+    }
+
+    async function trainClassifierAndDisable() {
+        if (!confirm('This will:\n\n1. Build a Document Intelligence classifier from learned data\n2. Disable learning mode\n\nThe classifier build may take several minutes. Continue?')) return;
+
+        const btn = document.getElementById('trainClassifierBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Building Classifier...';
+
+        try {
+            const response = await fetch('/api/scan/training/build-classifier', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                showToast(`Classifier built successfully! ${data.document_types_trained} document types trained.`, 'success');
+
+                // Update UI - disable learning toggle
+                document.getElementById('learningModeToggle').checked = false;
+                updateLearningModeUI(false);
+
+                // Show the new classifier ID
+                const modal = document.createElement('div');
+                modal.innerHTML = `
+                    <div class="modal fade" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-success text-white">
+                                    <h5 class="modal-title"><i class="bi bi-check-circle"></i> Classifier Built Successfully</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Classifier ID:</strong><br><code>${data.classifier_id}</code></p>
+                                    <p><strong>Document Types Trained:</strong> ${data.document_types_trained}</p>
+                                    <p class="text-success"><i class="bi bi-check-circle"></i> Learning mode has been disabled.</p>
+                                    <p class="text-muted small">The classifier is now active and will be used for document classification during scanning.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">Done</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                document.body.appendChild(modal);
+                const bsModal = new bootstrap.Modal(modal.querySelector('.modal'));
+                bsModal.show();
+                modal.querySelector('.modal').addEventListener('hidden.bs.modal', () => modal.remove());
+
+                // Reload config to reflect changes
+                await loadAiServiceConfig();
+            } else {
+                showToast('Classifier build failed: ' + (data.detail || data.error || 'Unknown error'), 'danger');
+            }
+        } catch (error) {
+            showToast('Failed to build classifier: ' + error.message, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
     }
 
@@ -4950,27 +5292,44 @@
     async function loadLabelPrinters() {
         const tableBody = document.getElementById('printersTableBody');
         try {
-            const response = await fetch('/api/workstation/printers', { headers: getAuthHeaders() });
+            const response = await fetch('/api/print/printers', { headers: getAuthHeaders() });
             if (!response.ok) throw new Error('Failed to load printers');
 
-            const printers = await response.json();
+            const data = await response.json();
+            const printers = data.printers || [];
 
             if (!printers || printers.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No label printers configured</td></tr>';
                 return;
             }
 
-            tableBody.innerHTML = printers.map(printer => `
+            tableBody.innerHTML = printers.map(printer => {
+                const methodBadge = {
+                    'universal_print': '<span class="badge bg-info"><i class="bi bi-cloud"></i> Universal Print</span>',
+                    'direct_ip': '<span class="badge bg-warning text-dark"><i class="bi bi-ethernet"></i> Direct IP</span>',
+                    'local': '<span class="badge bg-secondary"><i class="bi bi-usb-symbol"></i> Local</span>'
+                }[printer.print_method] || '<span class="badge bg-secondary">Unknown</span>';
+
+                return `
                 <tr>
-                    <td><strong>${escapeHtml(printer.name)}</strong></td>
-                    <td>${escapeHtml(printer.location || '-')}</td>
-                    <td>${escapeHtml(printer.printer_type || '-')}</td>
                     <td>
-                        ${printer.is_active
+                        <strong>${escapeHtml(printer.name)}</strong>
+                        <br><small class="text-muted">${escapeHtml(printer.label_size || '2x1"')}</small>
+                    </td>
+                    <td>${escapeHtml(printer.location || '-')}</td>
+                    <td>
+                        ${escapeHtml(printer.printer_type || '-')}
+                        <br>${methodBadge}
+                    </td>
+                    <td>
+                        ${printer.is_active !== false
                             ? '<span class="badge bg-success">Active</span>'
                             : '<span class="badge bg-secondary">Inactive</span>'}
                     </td>
                     <td>
+                        <button class="btn btn-sm btn-outline-success me-1" onclick="testPrinter(${printer.id}, '${escapeHtml(printer.name)}')" title="Test Print">
+                            <i class="bi bi-printer"></i>
+                        </button>
                         <button class="btn btn-sm btn-outline-primary me-1" onclick="editPrinter(${printer.id})" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </button>
@@ -4979,11 +5338,34 @@
                         </button>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         } catch (error) {
             console.error('Error loading printers:', error);
             tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load printers</td></tr>';
         }
+    }
+
+    function togglePrinterMethodFields() {
+        const method = document.getElementById('printerMethod').value;
+        document.getElementById('universalPrintFields').style.display = method === 'universal_print' ? 'block' : 'none';
+        document.getElementById('directIpFields').style.display = (method === 'direct_ip' || method === 'local') ? 'block' : 'none';
+    }
+
+    async function testPrinterConnection() {
+        const method = document.getElementById('printerMethod').value;
+        const universalPrintId = document.getElementById('printerUniversalPrintId').value;
+        const connection = document.getElementById('printerConnection').value;
+
+        if (method === 'universal_print' && !universalPrintId) {
+            showToast('Please enter Universal Print ID', 'warning');
+            return;
+        }
+        if ((method === 'direct_ip' || method === 'local') && !connection) {
+            showToast('Please enter connection string', 'warning');
+            return;
+        }
+
+        showToast('Connection test not yet implemented', 'info');
     }
 
     function showAddStationModal() {
@@ -5073,15 +5455,21 @@
         document.getElementById('printerId').value = '';
         document.getElementById('printerName').value = '';
         document.getElementById('printerLocation').value = '';
-        document.getElementById('printerType').value = '';
+        document.getElementById('printerType').value = 'Zebra';
+        document.getElementById('printerMethod').value = 'universal_print';
+        document.getElementById('printerUniversalPrintId').value = '';
         document.getElementById('printerConnection').value = '';
+        document.getElementById('printerLabelWidth').value = '2';
+        document.getElementById('printerLabelHeight').value = '1';
+        document.getElementById('printerDpi').value = '203';
         document.getElementById('printerActive').checked = true;
+        togglePrinterMethodFields();
         new bootstrap.Modal(document.getElementById('printerModal')).show();
     }
 
     async function editPrinter(id) {
         try {
-            const response = await fetch(`/api/workstation/printers/${id}`, { headers: getAuthHeaders() });
+            const response = await fetch(`/api/print/printers/${id}`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error('Failed to load printer');
 
             const printer = await response.json();
@@ -5090,14 +5478,20 @@
             document.getElementById('printerId').value = printer.id;
             document.getElementById('printerName').value = printer.name;
             document.getElementById('printerLocation').value = printer.location || '';
-            document.getElementById('printerType').value = printer.printer_type || '';
+            document.getElementById('printerType').value = printer.printer_type || 'Zebra';
+            document.getElementById('printerMethod').value = printer.print_method || 'universal_print';
+            document.getElementById('printerUniversalPrintId').value = printer.universal_print_id || '';
             document.getElementById('printerConnection').value = printer.connection_string || '';
-            document.getElementById('printerActive').checked = printer.is_active;
+            document.getElementById('printerLabelWidth').value = printer.label_width_inches || '2';
+            document.getElementById('printerLabelHeight').value = printer.label_height_inches || '1';
+            document.getElementById('printerDpi').value = printer.label_width_dpi || '203';
+            document.getElementById('printerActive').checked = printer.is_active !== false;
+            togglePrinterMethodFields();
 
             new bootstrap.Modal(document.getElementById('printerModal')).show();
         } catch (error) {
             console.error('Error loading printer:', error);
-            alert('Failed to load printer details');
+            showToast('Failed to load printer details', 'danger');
         }
     }
 
@@ -5107,17 +5501,22 @@
             name: document.getElementById('printerName').value.trim(),
             location: document.getElementById('printerLocation').value.trim() || null,
             printer_type: document.getElementById('printerType').value || null,
+            print_method: document.getElementById('printerMethod').value,
+            universal_print_id: document.getElementById('printerUniversalPrintId').value.trim() || null,
             connection_string: document.getElementById('printerConnection').value.trim() || null,
+            label_width_inches: document.getElementById('printerLabelWidth').value || '2',
+            label_height_inches: document.getElementById('printerLabelHeight').value || '1',
+            label_width_dpi: parseInt(document.getElementById('printerDpi').value) || 203,
             is_active: document.getElementById('printerActive').checked
         };
 
         if (!data.name) {
-            alert('Printer name is required');
+            showToast('Printer name is required', 'warning');
             return;
         }
 
         try {
-            const url = id ? `/api/workstation/printers/${id}` : '/api/workstation/printers';
+            const url = id ? `/api/print/printers/${id}` : '/api/print/printers';
             const method = id ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
@@ -5130,9 +5529,10 @@
 
             bootstrap.Modal.getInstance(document.getElementById('printerModal')).hide();
             loadLabelPrinters();
+            showToast('Printer saved successfully', 'success');
         } catch (error) {
             console.error('Error saving printer:', error);
-            alert('Failed to save label printer');
+            showToast('Failed to save label printer', 'danger');
         }
     }
 
@@ -5140,16 +5540,131 @@
         if (!confirm(`Are you sure you want to delete the label printer "${name}"?`)) return;
 
         try {
-            const response = await fetch(`/api/workstation/printers/${id}`, {
+            const response = await fetch(`/api/print/printers/${id}`, {
                 method: 'DELETE',
                 headers: getAuthHeaders()
             });
 
             if (!response.ok) throw new Error('Failed to delete printer');
             loadLabelPrinters();
+            showToast('Printer deleted', 'success');
         } catch (error) {
             console.error('Error deleting printer:', error);
-            alert('Failed to delete label printer');
+            showToast('Failed to delete label printer', 'danger');
+        }
+    }
+
+    async function testPrinter(id, name) {
+        showToast(`Generating test label for ${name}...`, 'info');
+
+        try {
+            const response = await fetch(`/api/print/test/${id}`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                showToast(data.detail || 'Test print failed', 'danger');
+                return;
+            }
+
+            // Add printer ID to data for alignment test button
+            data.printer_id = id;
+
+            // Show result modal with ZPL preview
+            showTestPrintResult(data);
+
+        } catch (error) {
+            console.error('Error testing printer:', error);
+            showToast('Failed to generate test label', 'danger');
+        }
+    }
+
+    function showTestPrintResult(data) {
+        const modal = document.createElement('div');
+        const statusIcon = data.success
+            ? '<i class="bi bi-check-circle-fill text-success"></i>'
+            : '<i class="bi bi-exclamation-triangle-fill text-warning"></i>';
+
+        modal.innerHTML = `
+            <div class="modal fade" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">${statusIcon} Test Print: ${escapeHtml(data.printer)}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-${data.success ? 'success' : 'warning'}">
+                                <strong>${data.message}</strong>
+                                ${data.note ? `<br><small class="text-muted">${data.note}</small>` : ''}
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Print Method:</strong></label>
+                                <span class="badge bg-info ms-2">${data.print_method || 'unknown'}</span>
+                                ${data.universal_print_id ? `<br><small class="text-muted">ID: ${data.universal_print_id}</small>` : ''}
+                                ${data.connection ? `<br><small class="text-muted">Connection: ${data.connection}</small>` : ''}
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label d-flex justify-content-between align-items-center">
+                                    <strong>ZPL Commands:</strong>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="copyZplToClipboard()">
+                                        <i class="bi bi-clipboard"></i> Copy ZPL
+                                    </button>
+                                </label>
+                                <textarea class="form-control font-monospace" id="testZplOutput" rows="10" readonly>${escapeHtml(data.zpl || '')}</textarea>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <i class="bi bi-lightbulb"></i> <strong>Preview your label:</strong>
+                                <br>Copy the ZPL above and paste it at <a href="http://labelary.com/viewer.html" target="_blank">Labelary.com</a> to see a preview.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" onclick="testPrinterAlignment(${data.printer_id || 0})">
+                                <i class="bi bi-grid-3x3"></i> Alignment Test
+                            </button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal.querySelector('.modal'));
+        bsModal.show();
+        modal.querySelector('.modal').addEventListener('hidden.bs.modal', () => modal.remove());
+    }
+
+    function copyZplToClipboard() {
+        const textarea = document.getElementById('testZplOutput');
+        if (textarea) {
+            textarea.select();
+            document.execCommand('copy');
+            showToast('ZPL copied to clipboard', 'success');
+        }
+    }
+
+    async function testPrinterAlignment(printerId) {
+        if (!printerId) return;
+
+        try {
+            const response = await fetch(`/api/print/test/${printerId}/alignment`, {
+                headers: getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (data.zpl) {
+                document.getElementById('testZplOutput').value = data.zpl;
+                showToast('Alignment test pattern loaded', 'info');
+            }
+        } catch (error) {
+            showToast('Failed to generate alignment test', 'danger');
         }
     }
 

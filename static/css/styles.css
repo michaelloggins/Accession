@@ -431,6 +431,68 @@ a:hover {
     box-shadow: 0 0 0 3px rgba(0, 122, 100, 0.15);
 }
 
+/* Station Filter Toggle */
+.station-filter-toggle {
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 4px;
+}
+
+.toggle-switch-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-switch-label input {
+    display: none;
+}
+
+.toggle-slider {
+    width: 40px;
+    height: 22px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 11px;
+    position: relative;
+    transition: all 0.3s;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: var(--text-secondary);
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: all 0.3s;
+}
+
+.toggle-switch-label input:checked + .toggle-slider {
+    background: var(--mv-green);
+    border-color: var(--mv-green);
+}
+
+.toggle-switch-label input:checked + .toggle-slider::before {
+    transform: translateX(18px);
+    background: white;
+}
+
+.toggle-text {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.toggle-switch-label input:checked ~ .toggle-text {
+    color: var(--mv-green);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .hero-header {
@@ -447,6 +509,11 @@ a:hover {
 
     .workstation-dropdown select {
         width: 100%;
+    }
+
+    .station-filter-toggle {
+        width: 100%;
+        padding-top: 8px;
     }
 }
 
@@ -1151,8 +1218,22 @@ a:hover {
    ============================================================================= */
 
 @media (max-width: 1200px) {
+    .top-nav {
+        flex-wrap: wrap;
+    }
+
     .nav-center {
-        display: none;
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .nav-link-item {
+        padding: 8px 12px;
+        font-size: 0.8rem;
     }
 }
 
@@ -1161,6 +1242,16 @@ a:hover {
         padding: 15px 20px;
         flex-wrap: wrap;
         gap: 15px;
+    }
+
+    .nav-center {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .nav-link-item {
+        padding: 6px 10px;
+        font-size: 0.75rem;
     }
 
     .stats-grid {

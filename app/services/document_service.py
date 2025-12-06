@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
-from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions, ContentSettings
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, generate_container_sas, BlobSasPermissions, ContainerSasPermissions, ContentSettings
 import json
 import uuid
 import logging
@@ -274,12 +274,15 @@ class DocumentService:
         """Count total pending documents."""
         return self.db.query(Document).filter(Document.status == "pending").count()
 
-    def get_all_documents(self, skip: int = 0, limit: int = 50, status_filter: str = None):
-        """Get all documents with optional status filter, ordered by upload date (newest first)."""
+    def get_all_documents(self, skip: int = 0, limit: int = 50, status_filter: str = None, scan_station_id: int = None):
+        """Get all documents with optional status and scan station filters, ordered by upload date (newest first)."""
         query = self.db.query(Document)
 
         if status_filter:
             query = query.filter(Document.status == status_filter)
+
+        if scan_station_id:
+            query = query.filter(Document.scan_station_id == scan_station_id)
 
         documents = (
             query
@@ -290,12 +293,15 @@ class DocumentService:
         )
         return documents
 
-    def count_all_documents(self, status_filter: str = None) -> int:
-        """Count all documents with optional status filter."""
+    def count_all_documents(self, status_filter: str = None, scan_station_id: int = None) -> int:
+        """Count all documents with optional status and scan station filters."""
         query = self.db.query(Document)
 
         if status_filter:
             query = query.filter(Document.status == status_filter)
+
+        if scan_station_id:
+            query = query.filter(Document.scan_station_id == scan_station_id)
 
         return query.count()
 
@@ -425,3 +431,40 @@ class DocumentService:
         except Exception as e:
             logger.error(f"SAS URL generation error: {e}")
             return None, None
+
+    def get_training_container_sas_url(self) -> str:
+        """
+        Generate a SAS URL for the blob container for Document Intelligence training.
+
+        Returns:
+            Container URL with SAS token, or None if not configured
+        """
+        if not settings.AZURE_STORAGE_CONNECTION_STRING:
+            logger.warning("Azure Storage not configured, cannot generate training SAS URL")
+            return None
+
+        try:
+            blob_service_client = BlobServiceClient.from_connection_string(
+                settings.AZURE_STORAGE_CONNECTION_STRING
+            )
+
+            # Generate container SAS with read and list permissions
+            # Training requires longer expiry (classifier build can take time)
+            expiry = datetime.utcnow() + timedelta(hours=24)
+
+            sas_token = generate_container_sas(
+                account_name=blob_service_client.account_name,
+                container_name=settings.AZURE_STORAGE_CONTAINER,
+                account_key=blob_service_client.credential.account_key,
+                permission=ContainerSasPermissions(read=True, list=True),
+                expiry=expiry
+            )
+
+            url = f"https://{blob_service_client.account_name}.blob.core.windows.net/{settings.AZURE_STORAGE_CONTAINER}?{sas_token}"
+
+            logger.info(f"Generated training container SAS URL, expires: {expiry}")
+            return url
+
+        except Exception as e:
+            logger.error(f"Training container SAS URL generation error: {e}")
+            return None

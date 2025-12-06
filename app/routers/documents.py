@@ -304,15 +304,16 @@ async def get_all_documents(
     skip: int = 0,
     limit: int = 50,
     status: Optional[str] = None,
+    scan_station_id: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
-    """Get all documents with optional status filter."""
+    """Get all documents with optional status and scan station filters."""
     import json
     from app.services.encryption_service import EncryptionService
 
     doc_service = DocumentService(db)
-    documents = doc_service.get_all_documents(skip=skip, limit=limit, status_filter=status)
-    total = doc_service.count_all_documents(status_filter=status)
+    documents = doc_service.get_all_documents(skip=skip, limit=limit, status_filter=status, scan_station_id=scan_station_id)
+    total = doc_service.count_all_documents(status_filter=status, scan_station_id=scan_station_id)
 
     encryption_service = EncryptionService()
 

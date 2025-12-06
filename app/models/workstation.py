@@ -33,12 +33,38 @@ class LabelPrinter(Base):
     location = Column(String(255), nullable=True)
     printer_type = Column(String(50), nullable=True)  # e.g., "Zebra", "DYMO", "Brother"
     connection_string = Column(String(500), nullable=True)  # IP address, USB path, etc.
+
+    # Universal Print integration
+    universal_print_id = Column(String(255), nullable=True)  # Microsoft Graph printer ID
+    print_method = Column(String(50), default="universal_print")  # "universal_print", "direct_ip", "local"
+
+    # ZPL settings
+    label_width_dpi = Column(Integer, default=203)  # 203 or 300 DPI
+    label_width_inches = Column(String(10), default="2")  # e.g., "2", "4"
+    label_height_inches = Column(String(10), default="1")  # e.g., "1", "6"
+
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=now_eastern)
     updated_at = Column(DateTime, default=now_eastern, onupdate=now_eastern)
 
     def __repr__(self):
         return f"<LabelPrinter {self.name}>"
+
+    @property
+    def label_width_dots(self) -> int:
+        """Calculate label width in dots based on DPI and inches."""
+        try:
+            return int(float(self.label_width_inches) * self.label_width_dpi)
+        except (ValueError, TypeError):
+            return 406  # Default 2" at 203 DPI
+
+    @property
+    def label_height_dots(self) -> int:
+        """Calculate label height in dots based on DPI and inches."""
+        try:
+            return int(float(self.label_height_inches) * self.label_width_dpi)
+        except (ValueError, TypeError):
+            return 203  # Default 1" at 203 DPI
 
 
 class UserWorkstationPreference(Base):
