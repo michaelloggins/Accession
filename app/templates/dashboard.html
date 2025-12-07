@@ -443,16 +443,19 @@
         <!-- Status Filter Pills -->
         <div class="status-pills">
             <a href="#" class="status-pill active" data-filter="pending" onclick="filterDocuments('pending'); return false;">
-                <i class="bi bi-clock"></i> Pending
-            </a>
-            <a href="#" class="status-pill" data-filter="auto_approved" onclick="filterDocuments('auto_approved'); return false;">
-                <i class="bi bi-check-circle"></i> Auto-Approved
+                <i class="bi bi-clock"></i> Pending Review
             </a>
             <a href="#" class="status-pill" data-filter="approved" onclick="filterDocuments('approved'); return false;">
                 <i class="bi bi-check2-circle"></i> Approved
             </a>
-            <a href="#" class="status-pill" data-filter="rejected" onclick="filterDocuments('rejected'); return false;">
-                <i class="bi bi-x-circle"></i> Rejected
+            <a href="#" class="status-pill" data-filter="error" onclick="filterDocuments('error'); return false;">
+                <i class="bi bi-exclamation-triangle"></i> Error
+            </a>
+            <a href="#" class="status-pill" data-filter="pending_epr" onclick="filterDocuments('pending_epr'); return false;">
+                <i class="bi bi-hourglass-split"></i> Pending EPR
+            </a>
+            <a href="#" class="status-pill" data-filter="auto_approved" onclick="filterDocuments('auto_approved'); return false;">
+                <i class="bi bi-check-circle"></i> Auto-Approved
             </a>
             <a href="#" class="status-pill" data-filter="" onclick="filterDocuments(''); return false;">
                 <i class="bi bi-grid"></i> All
@@ -462,7 +465,6 @@
         <!-- Filter Row -->
         <div class="filter-row">
             <input type="text" id="filterAccession" placeholder="Accession #...">
-            <input type="text" id="filterFacility" placeholder="Facility...">
             <select id="filterConfidence">
                 <option value="">All Confidence</option>
                 <option value="high">High (≥90%)</option>
@@ -948,7 +950,6 @@
 
         // Filter event listeners
         document.getElementById('filterAccession')?.addEventListener('input', applyDocFilters);
-        document.getElementById('filterFacility')?.addEventListener('input', applyDocFilters);
         document.getElementById('filterConfidence')?.addEventListener('change', applyDocFilters);
         document.getElementById('filterHowReceived')?.addEventListener('change', applyDocFilters);
 
@@ -1142,14 +1143,11 @@
 
     function applyDocFilters() {
         const accessionFilter = document.getElementById('filterAccession')?.value.toLowerCase() || '';
-        const facilityFilter = document.getElementById('filterFacility')?.value.toLowerCase() || '';
         const confidenceFilter = document.getElementById('filterConfidence')?.value || '';
         const howReceivedFilter = document.getElementById('filterHowReceived')?.value || '';
 
         filteredDocuments = allDocuments.filter(doc => {
             if (accessionFilter && !doc.accession_number.toLowerCase().includes(accessionFilter)) return false;
-            const facilityText = (doc.facility_name || '').toLowerCase();
-            if (facilityFilter && !facilityText.includes(facilityFilter)) return false;
             if (confidenceFilter) {
                 const score = doc.confidence_score || 0;
                 if (confidenceFilter === 'high' && score < 0.90) return false;
@@ -1165,7 +1163,6 @@
 
     function clearDocFilters() {
         document.getElementById('filterAccession').value = '';
-        document.getElementById('filterFacility').value = '';
         document.getElementById('filterConfidence').value = '';
         document.getElementById('filterHowReceived').value = '';
         filteredDocuments = [...allDocuments];
