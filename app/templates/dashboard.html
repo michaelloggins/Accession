@@ -24,9 +24,6 @@
             <a href="/queue" class="nav-link-item power-user-only" style="display: none;">
                 <i class="bi bi-list-task"></i> Queue
             </a>
-            <a href="/compliance" class="nav-link-item">
-                <i class="bi bi-clipboard-check"></i> Compliance
-            </a>
             <a href="/admin" class="nav-link-item admin-only" style="display: none;">
                 <i class="bi bi-gear-wide-connected"></i> Admin
             </a>
@@ -1881,11 +1878,16 @@
                 }
             }
 
-            // Restore toggle state from localStorage
-            const myStationOnly = localStorage.getItem('myStationOnly') === 'true';
+            // Restore toggle state from localStorage (default to ON if not set)
+            const storedValue = localStorage.getItem('myStationOnly');
+            const myStationOnly = storedValue === null ? true : storedValue === 'true';
             const toggle = document.getElementById('myStationOnlyToggle');
             if (toggle) {
                 toggle.checked = myStationOnly;
+                // If defaulting to ON for first time, save it
+                if (storedValue === null) {
+                    localStorage.setItem('myStationOnly', 'true');
+                }
             }
         } catch (error) {
             console.error('Error loading user preferences:', error);

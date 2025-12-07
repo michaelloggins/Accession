@@ -280,6 +280,11 @@
                     <i class="bi bi-pc-display"></i> Equipment
                 </button>
             </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#compliance">
+                    <i class="bi bi-clipboard-check"></i> Compliance
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content mt-3">
@@ -837,20 +842,6 @@
                             </div>
                         </div>
 
-                        <!-- MCP Servers Card -->
-                        <div class="card mt-3">
-                            <div class="card-header">
-                                <h6 class="mb-0"><i class="bi bi-cpu"></i> MCP Servers</h6>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="list-group list-group-flush" id="mcpServersList">
-                                    <div class="text-center p-2 text-muted small">
-                                        <div class="spinner-border spinner-border-sm me-1"></div>
-                                        Loading MCPs...
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Integration Details -->
@@ -1540,6 +1531,59 @@
         </div>
     </div>
 </div>
+
+            <!-- Compliance Tab -->
+            <div class="tab-pane fade" id="compliance">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> Compliance Reports</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-4">Access compliance reports, audit logs, and regulatory documentation.</p>
+
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-file-earmark-text fs-1 text-primary mb-3"></i>
+                                        <h6>HIPAA Compliance</h6>
+                                        <p class="small text-muted">View HIPAA audit reports and access logs</p>
+                                        <a href="/compliance" class="btn btn-outline-primary btn-sm">View Reports</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-shield-check fs-1 text-success mb-3"></i>
+                                        <h6>Access Audit</h6>
+                                        <p class="small text-muted">Review user access patterns and PHI views</p>
+                                        <a href="/compliance#access-audit" class="btn btn-outline-success btn-sm">View Audit</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-download fs-1 text-info mb-3"></i>
+                                        <h6>Export Reports</h6>
+                                        <p class="small text-muted">Download compliance reports for auditors</p>
+                                        <a href="/compliance#export" class="btn btn-outline-info btn-sm">Export</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="text-center">
+                            <a href="/compliance" class="btn btn-primary">
+                                <i class="bi bi-box-arrow-up-right"></i> Open Full Compliance Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
 <!-- Scanning Station Modal -->
 <div class="modal fade" id="stationModal" tabindex="-1">
@@ -3653,7 +3697,6 @@
         loadIntegrationTypes();
         loadIntegrations();
         loadApiKeys();
-        loadMcpServers();
     });
 
     async function loadIntegrationTypes() {
@@ -4223,120 +4266,6 @@
             await loadApiKeys();
         } catch (error) {
             alert('Error revoking API key: ' + error.message);
-        }
-    }
-
-    // ============================================
-    // MCP Server Management Functions
-    // ============================================
-
-    async function loadMcpServers() {
-        try {
-            const response = await fetch('/api/integrations/mcps', { headers: getAuthHeaders() });
-            const data = await response.json();
-
-            const container = document.getElementById('mcpServersList');
-            const mcpStatus = data.status || {};
-            const mcpList = Object.values(mcpStatus);
-
-            if (!mcpList.length) {
-                container.innerHTML = '<div class="text-center p-2 text-muted small">No MCPs available</div>';
-                return;
-            }
-
-            container.innerHTML = mcpList.map(mcp => {
-                const statusBadge = mcp.installed
-                    ? (mcp.connected
-                        ? '<span class="badge bg-success">Connected</span>'
-                        : '<span class="badge bg-warning text-dark">Auth Required</span>')
-                    : '<span class="badge bg-secondary">Not Installed</span>';
-
-                const toggleSwitch = mcp.installed
-                    ? `<div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="mcp_${mcp.server_name}"
-                            ${mcp.enabled ? 'checked' : ''}
-                            onchange="toggleMcp('${mcp.server_name}', this.checked)">
-                       </div>`
-                    : `<button class="btn btn-sm btn-outline-primary" onclick="installMcp('${mcp.server_name}')">
-                        <i class="bi bi-download"></i>
-                       </button>`;
-
-                return `
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="${mcp.icon} me-2"></i>
-                                <strong class="small">${mcp.name}</strong>
-                                <br><small class="text-muted">${mcp.description.substring(0, 40)}...</small>
-                            </div>
-                            <div class="d-flex align-items-center gap-2">
-                                ${statusBadge}
-                                ${toggleSwitch}
-                            </div>
-                        </div>
-                        ${!mcp.connected && mcp.installed && mcp.env_vars.length > 0 ? `
-                            <div class="mt-2">
-                                <small class="text-warning">
-                                    <i class="bi bi-exclamation-triangle"></i>
-                                    Requires: ${mcp.env_vars.join(', ')}
-                                </small>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            }).join('');
-        } catch (error) {
-            console.error('Error loading MCPs:', error);
-            document.getElementById('mcpServersList').innerHTML =
-                '<div class="text-center p-2 text-muted small">Error loading MCPs</div>';
-        }
-    }
-
-    async function installMcp(serverName) {
-        if (!confirm(`Install ${serverName} MCP server?`)) return;
-
-        try {
-            const response = await fetch(`/api/integrations/mcps/${serverName}/install`, {
-                method: 'POST',
-                headers: getAuthHeaders()
-            });
-
-            const result = await response.json();
-            if (result.success) {
-                alert(`${serverName} installed successfully!`);
-                await loadMcpServers();
-            } else {
-                alert('Installation failed: ' + (result.error || 'Unknown error'));
-            }
-        } catch (error) {
-            alert('Error installing MCP: ' + error.message);
-        }
-    }
-
-    async function toggleMcp(serverName, enabled) {
-        if (!enabled) {
-            if (!confirm(`Remove ${serverName} MCP server?`)) {
-                document.getElementById(`mcp_${serverName}`).checked = true;
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/integrations/mcps/${serverName}`, {
-                    method: 'DELETE',
-                    headers: getAuthHeaders()
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    await loadMcpServers();
-                } else {
-                    document.getElementById(`mcp_${serverName}`).checked = true;
-                    alert('Failed to remove MCP: ' + (result.error || 'Unknown error'));
-                }
-            } catch (error) {
-                document.getElementById(`mcp_${serverName}`).checked = true;
-                alert('Error removing MCP: ' + error.message);
-            }
         }
     }
 

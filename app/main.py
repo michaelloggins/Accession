@@ -98,6 +98,34 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Documents schema migration error: {e}")
 
+    # Run schema migrations for label_printers table (Universal Print columns)
+    try:
+        from sqlalchemy import text, inspect
+        inspector = inspect(engine)
+        existing_printer_columns = [col['name'] for col in inspector.get_columns('label_printers')]
+
+        printer_migrations = [
+            ("universal_print_id", "NVARCHAR(255) NULL"),
+            ("print_method", "NVARCHAR(50) DEFAULT 'universal_print'"),
+            ("label_width_dpi", "INT DEFAULT 203"),
+            ("label_width_inches", "NVARCHAR(10) DEFAULT '2'"),
+            ("label_height_inches", "NVARCHAR(10) DEFAULT '1'"),
+        ]
+
+        with engine.connect() as conn:
+            for col_name, col_def in printer_migrations:
+                if col_name not in existing_printer_columns:
+                    try:
+                        conn.execute(text(f"ALTER TABLE label_printers ADD {col_name} {col_def}"))
+                        conn.commit()
+                        logger.info(f"Added column '{col_name}' to label_printers table")
+                    except Exception as col_err:
+                        if "already exists" not in str(col_err).lower():
+                            logger.warning(f"Could not add column '{col_name}': {col_err}")
+        logger.info("Label printers schema migrations completed")
+    except Exception as e:
+        logger.error(f"Label printers schema migration error: {e}")
+
     # Initialize default configuration values and read startup config
     blob_watch_enabled = True  # Default if config service fails
     from app.database import SessionLocal
