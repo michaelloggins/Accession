@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     # SSO Configuration
     SSO_ENABLED: bool = True  # Enable/disable Entra ID SSO
     SSO_DEFAULT_ROLE: str = "read_only"  # Default role if user not in any mapped group
+    SSO_REQUIRE_GROUP_MEMBERSHIP: bool = True  # Deny access if user is not in any mapped group
     SSO_METHOD: str = "saml"  # "saml" or "oidc" - authentication method
 
     # SAML Configuration

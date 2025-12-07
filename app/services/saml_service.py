@@ -281,7 +281,7 @@ class SAMLService:
 
         return metadata
 
-    def map_groups_to_role(self, group_ids: list) -> str:
+    def map_groups_to_role(self, group_ids: list) -> Optional[str]:
         """
         Map Entra ID group memberships to application role.
 
@@ -289,7 +289,7 @@ class SAMLService:
             group_ids: List of group object IDs
 
         Returns:
-            Role string (admin, reviewer, or read_only)
+            Role string (admin, reviewer, or read_only), or None if no match and group membership is required
         """
         # Check admin group first
         if settings.AZURE_AD_ADMIN_GROUP_ID and settings.AZURE_AD_ADMIN_GROUP_ID in group_ids:
@@ -303,7 +303,12 @@ class SAMLService:
         if settings.AZURE_AD_READONLY_GROUP_ID and settings.AZURE_AD_READONLY_GROUP_ID in group_ids:
             return "read_only"
 
-        # Default role
+        # If group membership is required and user is not in any mapped group, deny access
+        if settings.SSO_REQUIRE_GROUP_MEMBERSHIP:
+            logger.warning(f"User not in any mapped group and group membership is required. Groups: {group_ids}")
+            return None
+
+        # Default role (only used if group membership is not required)
         return settings.SSO_DEFAULT_ROLE
 
 

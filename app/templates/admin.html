@@ -256,8 +256,8 @@
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tests">
-                    <i class="bi bi-clipboard2-check"></i> Test Catalog
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#reference-data">
+                    <i class="bi bi-database"></i> Reference Data
                 </button>
             </li>
             <li class="nav-item">
@@ -1028,11 +1028,51 @@
                 </div>
             </div>
 
-            <!-- Test Catalog Tab -->
-            <div class="tab-pane fade" id="tests">
+            <!-- Reference Data Tab -->
+            <div class="tab-pane fade" id="reference-data">
+                <!-- Species Management Section -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="bi bi-bug"></i> Species Management</h5>
+                        <button class="btn btn-primary btn-sm" onclick="showAddSpeciesModal()">
+                            <i class="bi bi-plus-circle"></i> Add Species
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Define the species available for testing. Species determines which tests are applicable and affects patient data entry.
+                        </p>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Common Name</th>
+                                        <th>Category</th>
+                                        <th>Description</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="speciesTableBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            Loading species...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Catalog Section -->
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5><i class="bi bi-clipboard2-check"></i> Test Catalog Management</h5>
+                        <h5><i class="bi bi-clipboard2-check"></i> Test Catalog</h5>
                         <button class="btn btn-primary btn-sm" onclick="showAddTestModal()">
                             <i class="bi bi-plus-circle"></i> Add Test
                         </button>
@@ -1092,7 +1132,7 @@
                                 </thead>
                                 <tbody id="testsTableBody">
                                     <tr>
-                                        <td colspan="6" class="text-center">
+                                        <td colspan="7" class="text-center">
                                             <div class="spinner-border spinner-border-sm" role="status">
                                                 <span class="visually-hidden">Loading...</span>
                                             </div>
@@ -2252,6 +2292,58 @@
     </div>
 </div>
 
+<!-- Add/Edit Species Modal -->
+<div class="modal fade" id="speciesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="speciesModalTitle">Add Species</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="speciesForm">
+                    <input type="hidden" id="speciesId">
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="speciesName" required placeholder="e.g., Dog, Cat, Horse">
+                        <small class="text-muted">Scientific or common name used for identification</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Common Name</label>
+                        <input type="text" class="form-control" id="speciesCommonName" placeholder="e.g., Canine, Feline, Equine">
+                        <small class="text-muted">Alternative or display name</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category <span class="text-danger">*</span></label>
+                        <select class="form-select" id="speciesCategory" required>
+                            <option value="human">Human</option>
+                            <option value="veterinary">Veterinary</option>
+                        </select>
+                        <small class="text-muted">Determines which test menu is shown</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="speciesDescription" rows="2" placeholder="Optional description..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="speciesActive" checked>
+                            <label class="form-check-label" for="speciesActive">Active</label>
+                        </div>
+                        <small class="text-muted">Inactive species won't appear in patient entry</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveSpecies()">
+                    <i class="bi bi-check-lg"></i> Save Species
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Add/Edit Test Modal -->
 <div class="modal fade" id="testModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -2349,18 +2441,21 @@
 <script>
     let testsData = [];
     let filteredTestsData = [];
+    let speciesData = [];
     let currentSortField = 'test_number';
     let currentSortDir = 'asc';
 
-    // Load tests when Test Catalog tab is shown
+    // Load Reference Data when tab is shown
     document.addEventListener('DOMContentLoaded', function() {
         // Load users on page load (Users tab is default)
         loadUsers();
         loadScimStatus();
 
-        const testTab = document.querySelector('button[data-bs-target="#tests"]');
-        if (testTab) {
-            testTab.addEventListener('shown.bs.tab', function() {
+        // Reference Data tab (Species + Test Catalog)
+        const referenceDataTab = document.querySelector('button[data-bs-target="#reference-data"]');
+        if (referenceDataTab) {
+            referenceDataTab.addEventListener('shown.bs.tab', function() {
+                loadSpecies();
                 loadTests();
             });
         }
@@ -2645,6 +2740,174 @@
             'Authorization': token ? `Bearer ${token}` : ''
         };
     }
+
+    // ============================================
+    // Species Management Functions
+    // ============================================
+
+    async function loadSpecies() {
+        try {
+            const response = await fetch('/api/config/species?include_inactive=true', {
+                headers: getAuthHeaders()
+            });
+            if (!response.ok) throw new Error('Failed to load species');
+
+            const data = await response.json();
+            speciesData = data.species || [];
+            renderSpeciesTable();
+        } catch (error) {
+            console.error('Error loading species:', error);
+            document.getElementById('speciesTableBody').innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Error loading species: ${error.message}
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    function renderSpeciesTable() {
+        const tableBody = document.getElementById('speciesTableBody');
+
+        if (!speciesData || speciesData.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        No species defined. Click "Add Species" to create one.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = speciesData.map(species => {
+            const categoryBadge = species.test_category === 'human'
+                ? '<span class="badge bg-primary">Human</span>'
+                : '<span class="badge bg-success">Veterinary</span>';
+
+            const statusBadge = species.is_active
+                ? '<span class="badge bg-success">Active</span>'
+                : '<span class="badge bg-secondary">Inactive</span>';
+
+            return `
+                <tr class="${!species.is_active ? 'table-secondary' : ''}">
+                    <td><strong>${species.name}</strong></td>
+                    <td>${species.common_name || '<em class="text-muted">-</em>'}</td>
+                    <td>${categoryBadge}</td>
+                    <td><small>${species.description || '<em class="text-muted">No description</em>'}</small></td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editSpecies(${species.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSpecies(${species.id}, '${species.name}')" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function showAddSpeciesModal() {
+        document.getElementById('speciesModalTitle').textContent = 'Add Species';
+        document.getElementById('speciesId').value = '';
+        document.getElementById('speciesName').value = '';
+        document.getElementById('speciesCommonName').value = '';
+        document.getElementById('speciesCategory').value = 'veterinary';
+        document.getElementById('speciesDescription').value = '';
+        document.getElementById('speciesActive').checked = true;
+
+        const modal = new bootstrap.Modal(document.getElementById('speciesModal'));
+        modal.show();
+    }
+
+    function editSpecies(speciesId) {
+        const species = speciesData.find(s => s.id === speciesId);
+        if (!species) {
+            alert('Species not found');
+            return;
+        }
+
+        document.getElementById('speciesModalTitle').textContent = 'Edit Species';
+        document.getElementById('speciesId').value = species.id;
+        document.getElementById('speciesName').value = species.name;
+        document.getElementById('speciesCommonName').value = species.common_name || '';
+        document.getElementById('speciesCategory').value = species.test_category;
+        document.getElementById('speciesDescription').value = species.description || '';
+        document.getElementById('speciesActive').checked = species.is_active;
+
+        const modal = new bootstrap.Modal(document.getElementById('speciesModal'));
+        modal.show();
+    }
+
+    async function saveSpecies() {
+        const speciesId = document.getElementById('speciesId').value;
+        const data = {
+            name: document.getElementById('speciesName').value,
+            common_name: document.getElementById('speciesCommonName').value || null,
+            test_category: document.getElementById('speciesCategory').value,
+            description: document.getElementById('speciesDescription').value || null,
+            is_active: document.getElementById('speciesActive').checked
+        };
+
+        if (!data.name) {
+            alert('Species name is required');
+            return;
+        }
+
+        try {
+            const url = speciesId ? `/api/config/species/${speciesId}` : '/api/config/species';
+            const method = speciesId ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: getAuthHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to save species');
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('speciesModal')).hide();
+            await loadSpecies();
+
+        } catch (error) {
+            alert('Error saving species: ' + error.message);
+        }
+    }
+
+    async function deleteSpecies(speciesId, speciesName) {
+        if (!confirm(`Are you sure you want to delete "${speciesName}"?\n\nIf this species is in use by patients, it will be deactivated instead of deleted.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/config/species/${speciesId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to delete species');
+            }
+
+            const result = await response.json();
+            alert(result.message);
+            await loadSpecies();
+
+        } catch (error) {
+            alert('Error deleting species: ' + error.message);
+        }
+    }
+
+    // ============================================
+    // Test Catalog Functions
+    // ============================================
 
     async function loadTests() {
         try {
@@ -5099,7 +5362,12 @@
                 document.getElementById('adminGroupId').value = config.admin_group_id || '';
                 document.getElementById('reviewerGroupId').value = config.reviewer_group_id || '';
                 document.getElementById('userGroupId').value = config.user_group_id || '';
-                document.getElementById('defaultRole').value = config.default_role || 'read_only';
+                // If group membership is required, show "deny" as selected
+                if (config.require_group_membership) {
+                    document.getElementById('defaultRole').value = 'deny';
+                } else {
+                    document.getElementById('defaultRole').value = config.default_role || 'read_only';
+                }
             }
         } catch (error) {
             console.error('Error loading role mapping config:', error);
@@ -5109,11 +5377,15 @@
     }
 
     async function saveRoleMappingConfig() {
+        const defaultRoleValue = document.getElementById('defaultRole').value;
+        const requireGroupMembership = defaultRoleValue === 'deny';
+
         const config = {
             admin_group_id: document.getElementById('adminGroupId').value || null,
             reviewer_group_id: document.getElementById('reviewerGroupId').value || null,
             user_group_id: document.getElementById('userGroupId').value || null,
-            default_role: document.getElementById('defaultRole').value
+            default_role: requireGroupMembership ? 'read_only' : defaultRoleValue,
+            require_group_membership: requireGroupMembership
         };
 
         try {

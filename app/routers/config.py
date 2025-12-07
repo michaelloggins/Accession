@@ -415,6 +415,148 @@ async def seed_species(db: Session = Depends(get_db)):
     }
 
 
+# =============================================================================
+# Species CRUD Endpoints
+# =============================================================================
+
+@router.get("/species")
+async def list_species(
+    include_inactive: bool = False,
+    db: Session = Depends(get_db)
+):
+    """List all species."""
+    query = db.query(Species)
+    if not include_inactive:
+        query = query.filter(Species.is_active == 1)
+
+    species_list = query.order_by(Species.name).all()
+
+    return {
+        "species": [
+            {
+                "id": s.id,
+                "name": s.name,
+                "common_name": s.common_name,
+                "description": s.description,
+                "test_category": s.test_category,
+                "is_active": s.is_active == 1
+            }
+            for s in species_list
+        ]
+    }
+
+
+@router.get("/species/{species_id}")
+async def get_species(species_id: int, db: Session = Depends(get_db)):
+    """Get a single species by ID."""
+    species = db.query(Species).filter(Species.id == species_id).first()
+    if not species:
+        raise HTTPException(status_code=404, detail="Species not found")
+
+    return {
+        "id": species.id,
+        "name": species.name,
+        "common_name": species.common_name,
+        "description": species.description,
+        "test_category": species.test_category,
+        "is_active": species.is_active == 1
+    }
+
+
+@router.post("/species")
+async def create_species(data: dict, db: Session = Depends(get_db)):
+    """Create a new species."""
+    # Check for duplicate name
+    existing = db.query(Species).filter(Species.name == data.get("name")).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Species '{data.get('name')}' already exists")
+
+    species = Species(
+        name=data.get("name"),
+        common_name=data.get("common_name"),
+        description=data.get("description"),
+        test_category=data.get("test_category", "veterinary"),
+        is_active=1 if data.get("is_active", True) else 0
+    )
+
+    db.add(species)
+    db.commit()
+    db.refresh(species)
+
+    logger.info(f"Created species: {species.name}")
+
+    return {
+        "id": species.id,
+        "name": species.name,
+        "common_name": species.common_name,
+        "description": species.description,
+        "test_category": species.test_category,
+        "is_active": species.is_active == 1
+    }
+
+
+@router.put("/species/{species_id}")
+async def update_species(species_id: int, data: dict, db: Session = Depends(get_db)):
+    """Update an existing species."""
+    species = db.query(Species).filter(Species.id == species_id).first()
+    if not species:
+        raise HTTPException(status_code=404, detail="Species not found")
+
+    # Check for duplicate name (excluding current)
+    if data.get("name") and data.get("name") != species.name:
+        existing = db.query(Species).filter(Species.name == data.get("name")).first()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"Species '{data.get('name')}' already exists")
+
+    if "name" in data:
+        species.name = data["name"]
+    if "common_name" in data:
+        species.common_name = data["common_name"]
+    if "description" in data:
+        species.description = data["description"]
+    if "test_category" in data:
+        species.test_category = data["test_category"]
+    if "is_active" in data:
+        species.is_active = 1 if data["is_active"] else 0
+
+    db.commit()
+    db.refresh(species)
+
+    logger.info(f"Updated species: {species.name}")
+
+    return {
+        "id": species.id,
+        "name": species.name,
+        "common_name": species.common_name,
+        "description": species.description,
+        "test_category": species.test_category,
+        "is_active": species.is_active == 1
+    }
+
+
+@router.delete("/species/{species_id}")
+async def delete_species(species_id: int, db: Session = Depends(get_db)):
+    """Deactivate a species (soft delete)."""
+    species = db.query(Species).filter(Species.id == species_id).first()
+    if not species:
+        raise HTTPException(status_code=404, detail="Species not found")
+
+    # Check if species is in use by any patients
+    if species.patients:
+        # Soft delete - just deactivate
+        species.is_active = 0
+        db.commit()
+        logger.info(f"Deactivated species: {species.name} (in use by patients)")
+        return {"status": "deactivated", "message": f"Species '{species.name}' deactivated (in use by patients)"}
+
+    # Hard delete if not in use
+    db.delete(species)
+    db.commit()
+    logger.info(f"Deleted species: {species.name}")
+
+    return {"status": "deleted", "message": f"Species '{species.name}' deleted"}
+
+
 @router.post("/seed/tests")
 async def seed_test_catalog(db: Session = Depends(get_db)):
     """Seed MiraVista test catalog data."""

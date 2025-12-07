@@ -24,6 +24,21 @@ logger = logging.getLogger(__name__)
 _sso_states = {}
 
 
+def get_require_group_membership(db: Session) -> bool:
+    """
+    Check if group membership is required for SSO access.
+    Checks database config first, falls back to environment variable.
+    """
+    from app.models.system_config import SystemConfig
+
+    config = db.query(SystemConfig).filter(SystemConfig.key == "SSO_REQUIRE_GROUP_MEMBERSHIP").first()
+    if config and config.value:
+        return config.value.lower() in ("true", "1", "yes")
+
+    # Fall back to environment variable setting
+    return settings.SSO_REQUIRE_GROUP_MEMBERSHIP
+
+
 @router.post("/login", response_model=LoginResponse)
 async def login(request: LoginRequest, db: Session = Depends(get_db)):
     """Authenticate user and return JWT token."""
@@ -190,8 +205,25 @@ async def sso_callback(
         access_token = token_result.get("access_token")
         user_info = await entra_service.get_user_info(access_token)
 
+        # Check if group membership is required (from database or env var)
+        require_group = get_require_group_membership(db)
+
         # Map groups to role
-        role = entra_service.map_groups_to_role(user_info.get("group_ids", []))
+        group_ids = user_info.get("group_ids", [])
+        role = entra_service.map_groups_to_role(group_ids)
+
+        # Deny access if user is not in any mapped group and group membership is required
+        # Role will be None if env var requires it, but also check database config
+        if role is None or (require_group and role == settings.SSO_DEFAULT_ROLE):
+            # Double-check if user is actually in a mapped group
+            in_mapped_group = (
+                (settings.AZURE_AD_ADMIN_GROUP_ID and settings.AZURE_AD_ADMIN_GROUP_ID in group_ids) or
+                (settings.AZURE_AD_REVIEWER_GROUP_ID and settings.AZURE_AD_REVIEWER_GROUP_ID in group_ids) or
+                (settings.AZURE_AD_READONLY_GROUP_ID and settings.AZURE_AD_READONLY_GROUP_ID in group_ids)
+            )
+            if not in_mapped_group and require_group:
+                logger.warning(f"SSO: Access denied - user {user_info.get('email')} not in any authorized group")
+                return RedirectResponse(url="/?error=access_denied&error_description=You+are+not+authorized+to+access+this+application.+Please+contact+your+administrator+to+be+added+to+an+authorized+group.")
 
         # Find or create user (JIT provisioning)
         user = db.query(User).filter(User.entra_id == user_info["id"]).first()
@@ -562,9 +594,28 @@ async def saml_acs(
         logger.info(f"SAML: Reviewer group expected: {settings.AZURE_AD_REVIEWER_GROUP_ID}")
         logger.info(f"SAML: Raw attributes keys: {list(user_info.get('raw_attributes', {}).keys())}")
 
+        # Check if group membership is required (from database or env var)
+        require_group = get_require_group_membership(db)
+
         # Map groups to role
         role = saml_service.map_groups_to_role(groups)
         logger.info(f"SAML: Mapped role: {role}")
+
+        # Deny access if user is not in any mapped group and group membership is required
+        # Role will be None if env var requires it, but also check database config
+        if role is None or (require_group and role == settings.SSO_DEFAULT_ROLE):
+            # Double-check if user is actually in a mapped group
+            in_mapped_group = (
+                (settings.AZURE_AD_ADMIN_GROUP_ID and settings.AZURE_AD_ADMIN_GROUP_ID in groups) or
+                (settings.AZURE_AD_REVIEWER_GROUP_ID and settings.AZURE_AD_REVIEWER_GROUP_ID in groups) or
+                (settings.AZURE_AD_READONLY_GROUP_ID and settings.AZURE_AD_READONLY_GROUP_ID in groups)
+            )
+            if not in_mapped_group and require_group:
+                logger.warning(f"SAML: Access denied - user {user_info.get('email')} not in any authorized group")
+                return RedirectResponse(
+                    url="/?error=access_denied&error_description=You+are+not+authorized+to+access+this+application.+Please+contact+your+administrator+to+be+added+to+an+authorized+group.",
+                    status_code=303
+                )
 
         # Find or create user (JIT provisioning)
         user = db.query(User).filter(User.entra_id == user_info["id"]).first()
@@ -788,6 +839,13 @@ async def get_auth_config(db: Session = Depends(get_db)):
         config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
         return config.value if config else default
 
+    # Get require_group_membership setting
+    require_group_str = get_config_value("SSO_REQUIRE_GROUP_MEMBERSHIP", "")
+    if require_group_str:
+        require_group_membership = require_group_str.lower() in ("true", "1", "yes")
+    else:
+        require_group_membership = settings.SSO_REQUIRE_GROUP_MEMBERSHIP
+
     return {
         "sso_enabled": settings.SSO_ENABLED,
         "sso_method": get_config_value("SSO_METHOD", settings.SSO_METHOD),
@@ -801,6 +859,7 @@ async def get_auth_config(db: Session = Depends(get_db)):
         "reviewer_group_id": settings.AZURE_AD_REVIEWER_GROUP_ID or get_config_value("AZURE_AD_REVIEWER_GROUP_ID"),
         "user_group_id": settings.AZURE_AD_READONLY_GROUP_ID or get_config_value("AZURE_AD_READONLY_GROUP_ID"),
         "default_role": settings.SSO_DEFAULT_ROLE or get_config_value("SSO_DEFAULT_ROLE", "read_only"),
+        "require_group_membership": require_group_membership,
         "scim_configured": bool(settings.SCIM_BEARER_TOKEN)
     }
 
@@ -946,9 +1005,14 @@ async def save_role_mapping_config(config: dict, db: Session = Depends(get_db)):
     save_config("SSO_DEFAULT_ROLE", config.get("default_role", "read_only"),
                 "Default role for users not in any mapped group")
 
+    # Save require group membership setting
+    require_group = config.get("require_group_membership", True)
+    save_config("SSO_REQUIRE_GROUP_MEMBERSHIP", "true" if require_group else "false",
+                "Require users to be in a mapped group to access the application")
+
     db.commit()
 
-    logger.info("Role mapping configuration saved")
+    logger.info(f"Role mapping configuration saved (require_group_membership={require_group})")
 
     return {
         "success": True,

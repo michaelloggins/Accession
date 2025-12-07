@@ -180,7 +180,7 @@ class EntraIDService:
         logger.info(f"Retrieved user info for: {user_info['email']} with {len(group_ids)} groups")
         return user_info
 
-    def map_groups_to_role(self, group_ids: List[str]) -> str:
+    def map_groups_to_role(self, group_ids: List[str]) -> Optional[str]:
         """
         Map Entra ID group memberships to application role.
 
@@ -190,12 +190,8 @@ class EntraIDService:
             group_ids: List of Entra ID group Object IDs
 
         Returns:
-            Application role string
+            Application role string, or None if no match and group membership is required
         """
-        if not group_ids:
-            logger.info(f"No groups found, using default role: {settings.SSO_DEFAULT_ROLE}")
-            return settings.SSO_DEFAULT_ROLE
-
         # Check for admin group first (highest priority)
         if settings.AZURE_AD_ADMIN_GROUP_ID and settings.AZURE_AD_ADMIN_GROUP_ID in group_ids:
             logger.info("User is member of admin group")
@@ -211,7 +207,12 @@ class EntraIDService:
             logger.info("User is member of read_only group")
             return "read_only"
 
-        # Default role if not in any mapped group
+        # If group membership is required and user is not in any mapped group, deny access
+        if settings.SSO_REQUIRE_GROUP_MEMBERSHIP:
+            logger.warning(f"User not in any mapped group and group membership is required. Groups: {group_ids}")
+            return None
+
+        # Default role if not in any mapped group (only used if group membership is not required)
         logger.info(f"User not in any mapped group, using default role: {settings.SSO_DEFAULT_ROLE}")
         return settings.SSO_DEFAULT_ROLE
 

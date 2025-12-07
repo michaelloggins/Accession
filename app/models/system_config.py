@@ -283,4 +283,12 @@ class SystemConfig(Base):
             "category": "storage_lifecycle",
             "display_order": "050"
         },
+        # AI Service Settings
+        "AI_SERVICE_CONFIG": {
+            "value": '{"doc_intel_classify": true, "openai_extract": true, "learning_mode": false}',
+            "value_type": "string",
+            "description": "AI service configuration: Document Intelligence classification, OpenAI extraction, and learning mode settings",
+            "category": "integration",
+            "display_order": "005"
+        },
     }
