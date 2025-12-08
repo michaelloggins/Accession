@@ -57,24 +57,42 @@ jobs:
 
     - name: Deploy to Azure Web App
       run: |
+        # Use async deployment to avoid 504 timeout
         az webapp deploy \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --src-path deploy.zip \
-          --type zip
+          --type zip \
+          --async true
 
-    - name: Health check
+        echo "Deployment initiated asynchronously. Waiting for site to become healthy..."
+
+    - name: Wait for deployment and health check
       run: |
-        echo "Waiting for deployment to complete..."
-        sleep 120
-        response=$(curl -s -w "\n%{http_code}" https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health)
-        http_code=$(echo "$response" | tail -1)
-        echo "Health check response code: $http_code"
-        if [ "$http_code" -eq 200 ]; then
-          echo "Deployment successful!"
-        else
-          echo "Warning: Health check returned $http_code"
-        fi
+        echo "Waiting for deployment to complete and site to start..."
+        max_attempts=30
+        attempt=1
+
+        while [ $attempt -le $max_attempts ]; do
+          echo "Attempt $attempt of $max_attempts..."
+          sleep 20
+
+          response=$(curl -s -w "\n%{http_code}" https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health 2>/dev/null)
+          http_code=$(echo "$response" | tail -1)
+
+          if [ "$http_code" -eq 200 ]; then
+            echo "Site is healthy! Deployment successful."
+            exit 0
+          else
+            echo "Health check returned $http_code, waiting..."
+          fi
+
+          attempt=$((attempt + 1))
+        done
+
+        echo "Warning: Site did not become healthy within expected time"
+        # Don't fail the workflow - deployment may still be in progress
+        exit 0
 
     - name: Azure logout
       if: always()
