@@ -4745,9 +4745,15 @@
         if (service.status === 'healthy') {
             statusBadge.innerHTML = '<span class="badge bg-success">Connected</span>';
         } else if (service.status === 'degraded') {
+            // Degraded means not configured or missing credentials
             statusBadge.innerHTML = '<span class="badge bg-warning text-dark">Not Configured</span>';
+        } else if (service.status === 'unhealthy') {
+            // Unhealthy means configured but connection/auth failed
+            const msg = service.message || 'Connection failed';
+            statusBadge.innerHTML = `<span class="badge bg-danger" title="${msg}">Error</span>`;
         } else {
-            statusBadge.innerHTML = '<span class="badge bg-danger">Error</span>';
+            // Unknown status
+            statusBadge.innerHTML = '<span class="badge bg-secondary">Unknown</span>';
         }
 
         const details = service.details || {};

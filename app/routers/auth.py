@@ -374,6 +374,7 @@ async def sso_status():
 
     return {
         "sso_enabled": settings.SSO_ENABLED,
+        "sso_method": settings.SSO_METHOD,
         "entra_id_configured": entra_service.is_configured,
         "tenant_id": settings.AZURE_AD_TENANT_ID[:8] + "..." if settings.AZURE_AD_TENANT_ID else None,
         "client_id": settings.AZURE_AD_CLIENT_ID[:8] + "..." if settings.AZURE_AD_CLIENT_ID else None,
