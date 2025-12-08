@@ -72,6 +72,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # Verify token
         if not self._verify_token(token):
+            # In development mode, treat invalid tokens as "no token" and allow access
+            # This handles stale cookies from previous sessions
+            if settings.ENVIRONMENT == "development":
+                logger.debug(f"Development mode: ignoring invalid token for {path}")
+                return await call_next(request)
+
             # For API requests, return 401
             if path.startswith("/api/"):
                 return JSONResponse(
