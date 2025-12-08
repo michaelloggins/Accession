@@ -27,7 +27,7 @@ class ConfigUpdateRequest(BaseModel):
 class ConfigItem(BaseModel):
     """Configuration item response."""
     key: str
-    value: str | int | float | bool
+    value: Optional[str | int | float | bool | dict | list]
     value_type: str
     description: Optional[str]
     category: Optional[str]

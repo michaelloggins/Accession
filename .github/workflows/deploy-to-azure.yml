@@ -1,0 +1,71 @@
+# Azure App Service Deployment Workflow
+# Deploys to app-accession-dev.azurewebsites.net on push to main
+
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  AZURE_WEBAPP_NAME: app-accession-dev
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'  # Cache pip dependencies
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Create deployment package
+      run: |
+        # Create a zip file excluding unnecessary files
+        zip -r deploy.zip . \
+          -x "*.git*" \
+          -x "__pycache__/*" \
+          -x "*.pyc" \
+          -x "*.pyo" \
+          -x ".env" \
+          -x "venv/*" \
+          -x ".venv/*" \
+          -x "node_modules/*" \
+          -x "*.log" \
+          -x ".github/*" \
+          -x "tests/*" \
+          -x "*.md" \
+          -x "deploy.zip"
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: deploy.zip
+
+    - name: Health check
+      run: |
+        echo "Waiting for deployment to complete..."
+        sleep 60
+        response=$(curl -s -w "\n%{http_code}" https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health)
+        http_code=$(echo "$response" | tail -1)
+        echo "Health check response code: $http_code"
+        if [ "$http_code" -eq 200 ]; then
+          echo "Deployment successful!"
+        else
+          echo "Warning: Health check returned $http_code"
+        fi

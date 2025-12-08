@@ -4713,7 +4713,10 @@
             if (configResponse.ok) {
                 const configData = await configResponse.json();
                 if (configData.value) {
-                    const config = JSON.parse(configData.value);
+                    // Handle both object and string values
+                    const config = typeof configData.value === 'string'
+                        ? JSON.parse(configData.value)
+                        : configData.value;
                     document.getElementById('docIntelClassify').checked = config.doc_intel_classify !== false;
                     document.getElementById('openAiExtract').checked = config.openai_extract !== false;
                     document.getElementById('learningModeToggle').checked = config.learning_mode === true;

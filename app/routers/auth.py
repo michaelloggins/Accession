@@ -836,14 +836,21 @@ async def get_auth_config(db: Session = Depends(get_db)):
 
     # Get config values from database (or fall back to env vars)
     def get_config_value(key: str, default: str = "") -> str:
-        config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
-        return config.value if config else default
+        try:
+            config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
+            return config.value if config else default
+        except Exception:
+            # Table might not exist yet - fall back to default
+            return default
 
     # Get require_group_membership setting
-    require_group_str = get_config_value("SSO_REQUIRE_GROUP_MEMBERSHIP", "")
-    if require_group_str:
-        require_group_membership = require_group_str.lower() in ("true", "1", "yes")
-    else:
+    try:
+        require_group_str = get_config_value("SSO_REQUIRE_GROUP_MEMBERSHIP", "")
+        if require_group_str:
+            require_group_membership = require_group_str.lower() in ("true", "1", "yes")
+        else:
+            require_group_membership = settings.SSO_REQUIRE_GROUP_MEMBERSHIP
+    except Exception:
         require_group_membership = settings.SSO_REQUIRE_GROUP_MEMBERSHIP
 
     return {

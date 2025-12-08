@@ -11,9 +11,21 @@ from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
 import logging
 import traceback
+import os
+from pathlib import Path
+
+# Get the base directory (parent of app/)
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 from app.config import settings
 from app.database import engine, Base
+# Import all models to register them with Base before create_all
+from app.models import (
+    Document, User, AuditLog, SystemConfig, ExtractionBatch,
+    Facility, FacilityPhysician, FacilityMatchLog, Species, Patient,
+    Test, TestSpecimenType, Order, OrderTest, Integration, ApiKey,
+    IntegrationLog, ScanningStation, LabelPrinter, UserWorkstationPreference
+)
 from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation, scan, print as print_router
 from app.middleware.audit import AuditMiddleware
 from app.middleware.auth import AuthMiddleware
@@ -180,7 +192,12 @@ app = FastAPI(
     redoc_url="/api/redoc" if settings.DEBUG else None,
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Static files - use absolute path and create directory if it doesn't exist
+STATIC_DIR = BASE_DIR / "static"
+if not STATIC_DIR.exists():
+    STATIC_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Created static directory at {STATIC_DIR}")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 
