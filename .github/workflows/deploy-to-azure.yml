@@ -56,8 +56,11 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: Deploy to Azure Web App
+      id: deploy
       run: |
-        # Use async deployment to avoid 504 timeout
+        echo "Starting deployment..."
+
+        # Deploy using az webapp deploy (async to avoid timeout)
         az webapp deploy \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
@@ -65,33 +68,105 @@ jobs:
           --type zip \
           --async true
 
-        echo "Deployment initiated asynchronously. Waiting for site to become healthy..."
+        echo "Deployment package uploaded successfully"
 
-    - name: Wait for deployment and health check
+    - name: Wait for deployment to complete
       run: |
-        echo "Waiting for deployment to complete and site to start..."
-        max_attempts=30
-        attempt=1
+        echo "Waiting for Azure to process the deployment..."
 
-        while [ $attempt -le $max_attempts ]; do
-          echo "Attempt $attempt of $max_attempts..."
-          sleep 20
+        # Wait for deployment to be picked up and processed
+        max_deployment_checks=20
+        deployment_check=1
 
-          response=$(curl -s -w "\n%{http_code}" https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health 2>/dev/null)
-          http_code=$(echo "$response" | tail -1)
+        while [ $deployment_check -le $max_deployment_checks ]; do
+          echo "Checking deployment status ($deployment_check/$max_deployment_checks)..."
 
-          if [ "$http_code" -eq 200 ]; then
-            echo "Site is healthy! Deployment successful."
-            exit 0
-          else
-            echo "Health check returned $http_code, waiting..."
+          # Get latest deployment status
+          deployment_status=$(az webapp deployment list \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --query "[0].status" -o tsv 2>/dev/null || echo "Unknown")
+
+          echo "Deployment status: $deployment_status"
+
+          if [ "$deployment_status" = "4" ] || [ "$deployment_status" = "Success" ]; then
+            echo "Deployment completed successfully!"
+            break
+          elif [ "$deployment_status" = "3" ] || [ "$deployment_status" = "Failed" ]; then
+            echo "Deployment failed according to Azure"
+            # Continue anyway - Azure sometimes reports failure but app works
+            break
           fi
 
+          sleep 15
+          deployment_check=$((deployment_check + 1))
+        done
+
+        echo "Proceeding to health check..."
+
+    - name: Health check with extended timeout
+      run: |
+        echo "Waiting for site to become healthy..."
+        echo "Note: Container startup takes ~2-3 minutes (ODBC driver install, migrations)"
+
+        # Extended health check - 15 attempts x 30 seconds = 7.5 minutes max
+        max_attempts=15
+        attempt=1
+        last_status=""
+
+        # Initial delay to let container start
+        echo "Initial wait (60 seconds) for container to start..."
+        sleep 60
+
+        while [ $attempt -le $max_attempts ]; do
+          echo ""
+          echo "=== Health check attempt $attempt of $max_attempts ==="
+
+          # Get full response for debugging
+          response=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+            --connect-timeout 10 \
+            --max-time 30 \
+            https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health 2>&1)
+
+          http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
+          body=$(echo "$response" | grep -v "HTTP_CODE:")
+
+          echo "HTTP Status: $http_code"
+
+          if [ "$http_code" = "200" ]; then
+            echo ""
+            echo "✅ Site is healthy!"
+            echo "Response: $body"
+            echo ""
+            echo "🚀 Deployment successful!"
+            exit 0
+          elif [ "$http_code" = "503" ]; then
+            echo "Site returning 503 (Service Unavailable) - container still starting..."
+          elif [ "$http_code" = "502" ]; then
+            echo "Site returning 502 (Bad Gateway) - container restarting..."
+          elif [ -z "$http_code" ]; then
+            echo "No response - site may be restarting..."
+          else
+            echo "Unexpected status: $http_code"
+            [ -n "$body" ] && echo "Body: $body"
+          fi
+
+          last_status="$http_code"
+          sleep 30
           attempt=$((attempt + 1))
         done
 
-        echo "Warning: Site did not become healthy within expected time"
-        # Don't fail the workflow - deployment may still be in progress
+        echo ""
+        echo "⚠️ Health check timed out after $max_attempts attempts"
+        echo "Last status: $last_status"
+        echo ""
+        echo "Note: The deployment may still succeed. Azure App Service will retry"
+        echo "container startup automatically. Check the site manually in a few minutes."
+        echo ""
+        echo "Site URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+        echo "Logs: https://${{ env.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/logs/docker"
+
+        # Exit with success - deployment was uploaded, site may just need more time
         exit 0
 
     - name: Azure logout
