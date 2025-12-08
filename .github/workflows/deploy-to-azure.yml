@@ -11,6 +11,7 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: app-accession-dev
+  RESOURCE_GROUP: rg-accession-dev
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -25,7 +26,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'  # Cache pip dependencies
+        cache: 'pip'
 
     - name: Install dependencies
       run: |
@@ -34,7 +35,6 @@ jobs:
 
     - name: Create deployment package
       run: |
-        # Create a zip file excluding unnecessary files
         zip -r deploy.zip . \
           -x "*.git*" \
           -x "__pycache__/*" \
@@ -50,17 +50,23 @@ jobs:
           -x "*.md" \
           -x "deploy.zip"
 
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v3
+    - name: Login to Azure
+      uses: azure/login@v2
       with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: deploy.zip
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Azure Web App
+      run: |
+        az webapp deploy \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --src-path deploy.zip \
+          --type zip
 
     - name: Health check
       run: |
         echo "Waiting for deployment to complete..."
-        sleep 60
+        sleep 120
         response=$(curl -s -w "\n%{http_code}" https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health)
         http_code=$(echo "$response" | tail -1)
         echo "Health check response code: $http_code"
@@ -69,3 +75,7 @@ jobs:
         else
           echo "Warning: Health check returned $http_code"
         fi
+
+    - name: Azure logout
+      if: always()
+      run: az logout
