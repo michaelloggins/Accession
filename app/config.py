@@ -61,9 +61,10 @@ class Settings(BaseSettings):
     AZURE_AD_REDIRECT_URI: str = ""  # e.g., https://your-app.azurewebsites.net/api/auth/callback
 
     # Entra ID Group-to-Role Mapping (Object IDs of Azure AD Security Groups)
-    AZURE_AD_ADMIN_GROUP_ID: str = ""      # "DocIntel - Admin" -> admin role
-    AZURE_AD_REVIEWER_GROUP_ID: str = ""   # "DocIntel - PowerUser" -> reviewer role
-    AZURE_AD_READONLY_GROUP_ID: str = ""   # "DocIntel - User" -> read_only role
+    AZURE_AD_ADMIN_GROUP_ID: str = ""      # "Accession - Admin" -> admin role
+    AZURE_AD_REVIEWER_GROUP_ID: str = ""   # "Accession - PowerUser" -> reviewer role
+    AZURE_AD_LAB_STAFF_GROUP_ID: str = ""  # "Accession - LabStaff" -> lab_staff role
+    AZURE_AD_READONLY_GROUP_ID: str = ""   # "Accession - User" -> read_only role
 
     # SSO Configuration
     SSO_ENABLED: bool = True  # Enable/disable Entra ID SSO
@@ -156,6 +157,10 @@ ROLES = {
     "reviewer": {
         "name": "Reviewer",
         "permissions": ["upload", "view", "edit", "approve", "reject", "submit", "audit_own"]
+    },
+    "lab_staff": {
+        "name": "Lab Staff",
+        "permissions": ["upload", "view", "scan"]
     },
     "read_only": {
         "name": "Read-Only Auditor",

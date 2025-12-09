@@ -184,7 +184,7 @@ class EntraIDService:
         """
         Map Entra ID group memberships to application role.
 
-        Priority: admin > reviewer > read_only > default
+        Priority: admin > reviewer > lab_staff > read_only > default
 
         Args:
             group_ids: List of Entra ID group Object IDs
@@ -201,6 +201,11 @@ class EntraIDService:
         if settings.AZURE_AD_REVIEWER_GROUP_ID and settings.AZURE_AD_REVIEWER_GROUP_ID in group_ids:
             logger.info("User is member of reviewer group")
             return "reviewer"
+
+        # Check for lab_staff group
+        if settings.AZURE_AD_LAB_STAFF_GROUP_ID and settings.AZURE_AD_LAB_STAFF_GROUP_ID in group_ids:
+            logger.info("User is member of lab_staff group")
+            return "lab_staff"
 
         # Check for read-only group
         if settings.AZURE_AD_READONLY_GROUP_ID and settings.AZURE_AD_READONLY_GROUP_ID in group_ids:

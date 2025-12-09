@@ -219,6 +219,7 @@ async def sso_callback(
             in_mapped_group = (
                 (settings.AZURE_AD_ADMIN_GROUP_ID and settings.AZURE_AD_ADMIN_GROUP_ID in group_ids) or
                 (settings.AZURE_AD_REVIEWER_GROUP_ID and settings.AZURE_AD_REVIEWER_GROUP_ID in group_ids) or
+                (settings.AZURE_AD_LAB_STAFF_GROUP_ID and settings.AZURE_AD_LAB_STAFF_GROUP_ID in group_ids) or
                 (settings.AZURE_AD_READONLY_GROUP_ID and settings.AZURE_AD_READONLY_GROUP_ID in group_ids)
             )
             if not in_mapped_group and require_group:
