@@ -84,8 +84,36 @@ def verify_scim_token(authorization: Optional[str] = Header(None)) -> bool:
 
 
 # =============================================================================
-# ServiceProviderConfig & Schemas
+# Root & ServiceProviderConfig & Schemas
 # =============================================================================
+
+@router.get("")
+@router.get("/")
+async def scim_root(
+    _: bool = Depends(verify_scim_token)
+):
+    """
+    SCIM Root endpoint - Returns ServiceProviderConfig.
+    Required for Azure AD SCIM validation which calls the base URL.
+    """
+    return {
+        "schemas": ["urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"],
+        "documentationUri": "https://docs.microsoft.com/azure/active-directory/app-provisioning/",
+        "patch": {"supported": True},
+        "bulk": {"supported": False, "maxOperations": 0, "maxPayloadSize": 0},
+        "filter": {"supported": True, "maxResults": 200},
+        "changePassword": {"supported": False},
+        "sort": {"supported": False},
+        "etag": {"supported": False},
+        "authenticationSchemes": [
+            {
+                "type": "oauthbearertoken",
+                "name": "OAuth Bearer Token",
+                "description": "Authentication using Bearer token in Authorization header"
+            }
+        ]
+    }
+
 
 @router.get("/ServiceProviderConfig")
 async def get_service_provider_config(
