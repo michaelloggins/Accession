@@ -271,6 +271,8 @@ app.include_router(tests.router, prefix="/api/tests", tags=["Tests"])
 app.include_router(facilities.router, prefix="/api/facilities", tags=["Facilities"])
 app.include_router(config.router, prefix="/api/config", tags=["Configuration"])
 app.include_router(scim.router, prefix="/scim/v2", tags=["SCIM Provisioning"])
+# Azure AD SCIM provisioning adds "/scim" prefix to paths, so also mount at /scim
+app.include_router(scim.router, prefix="/scim/v2/scim", tags=["SCIM Provisioning (Azure AD compat)"])
 app.include_router(queue.router, tags=["Queue Management"])
 app.include_router(integrations.router, tags=["Integrations"])
 app.include_router(patients.router, prefix="/api/patients", tags=["Patients"])
