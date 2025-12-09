@@ -23,9 +23,18 @@ class DocumentType(Base):
     # Extraction rules learned
     extraction_fields = Column(Text, nullable=True)  # JSON: fields to extract and their locations
 
+    # Training control - per document type
+    training_enabled = Column(Boolean, default=True)  # Allow training for this type
+    use_form_recognizer = Column(Boolean, default=False)  # Use FR extraction model if available
+    form_recognizer_model_id = Column(String(200), nullable=True)  # Custom FR model ID for this type
+    fr_confidence_threshold = Column(Float, default=0.90)  # Fallback to OpenAI below this
+
     # Statistics
     sample_count = Column(Integer, default=0)
     avg_confidence = Column(Float, default=0.0)
+    fr_extraction_count = Column(Integer, default=0)  # Times extracted by Form Recognizer
+    openai_extraction_count = Column(Integer, default=0)  # Times extracted by OpenAI
+    openai_fallback_count = Column(Integer, default=0)  # Times FR fell back to OpenAI
 
     # Metadata
     is_active = Column(Boolean, default=True)

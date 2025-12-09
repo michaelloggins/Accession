@@ -54,6 +54,7 @@ class Document(Base):
     reviewer_notes = Column(Text, nullable=True)
     document_type = Column(String(50), nullable=True)
     source = Column(String(50), nullable=True)
+    extraction_method = Column(String(50), nullable=True)  # openai, form_recognizer, openai_fallback
 
     # Scan station metadata
     scan_station_id = Column(Integer, ForeignKey("scanning_stations.id"), nullable=True)

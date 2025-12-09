@@ -739,29 +739,35 @@
 
                                 <div id="learningModeDetails" class="mt-3" style="display: none;">
                                     <div class="row g-2">
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <div class="border rounded p-2 text-center">
                                                 <div class="fs-4 fw-bold text-primary" id="learnedDocTypes">0</div>
                                                 <small class="text-muted">Document Types</small>
                                             </div>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <div class="border rounded p-2 text-center">
                                                 <div class="fs-4 fw-bold text-success" id="learnedSamples">0</div>
                                                 <small class="text-muted">Training Samples</small>
                                             </div>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <div class="border rounded p-2 text-center">
                                                 <div class="fs-4 fw-bold text-info" id="learnedFeatures">0</div>
                                                 <small class="text-muted">Learned Features</small>
                                             </div>
                                         </div>
+                                        <div class="col-md-3">
+                                            <div class="border rounded p-2 text-center">
+                                                <div class="fs-4 fw-bold text-warning" id="frExtractionPct">0%</div>
+                                                <small class="text-muted">FR Extraction Rate</small>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div class="mt-2">
-                                        <button class="btn btn-sm btn-outline-primary" onclick="viewLearnedTypes()">
-                                            <i class="bi bi-list-ul"></i> View Learned Types
+                                        <button class="btn btn-sm btn-outline-primary" onclick="showDocumentTypesPanel()">
+                                            <i class="bi bi-list-ul"></i> Manage Document Types
                                         </button>
                                         <button class="btn btn-sm btn-outline-success" onclick="exportTrainingData()">
                                             <i class="bi bi-download"></i> Export Training Data
@@ -4838,6 +4844,16 @@
                 // Update training readiness
                 updateTrainingReadiness(stats);
             }
+
+            // Also load extraction stats for FR percentage
+            const extractionResponse = await fetch('/api/scan/training/extraction-stats', { headers: getAuthHeaders() });
+            if (extractionResponse.ok) {
+                const extractionStats = await extractionResponse.json();
+                const frPctEl = document.getElementById('frExtractionPct');
+                if (frPctEl) {
+                    frPctEl.textContent = (extractionStats.fr_percentage || 0) + '%';
+                }
+            }
         } catch (error) {
             console.log('Training stats not available:', error);
         }
@@ -4872,46 +4888,207 @@
         }
     }
 
-    async function viewLearnedTypes() {
-        try {
-            const response = await fetch('/api/scan/training/types', { headers: getAuthHeaders() });
-            if (response.ok) {
-                const data = await response.json();
-                let html = '<h6>Learned Document Types</h6><ul class="list-group">';
-                if (data.types && data.types.length > 0) {
-                    data.types.forEach(t => {
-                        html += `<li class="list-group-item d-flex justify-content-between">
-                            <span><strong>${t.name}</strong><br><small class="text-muted">${t.description || 'No description'}</small></span>
-                            <span class="badge bg-primary">${t.sample_count} samples</span>
-                        </li>`;
-                    });
-                } else {
-                    html += '<li class="list-group-item text-muted">No document types learned yet. Enable learning mode and scan some documents.</li>';
-                }
-                html += '</ul>';
+    // Document Type Management Functions
+    let documentTypes = [];
 
-                // Show in a modal or alert
-                const modal = document.createElement('div');
-                modal.innerHTML = `
-                    <div class="modal fade" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title"><i class="bi bi-mortarboard"></i> Learned Document Types</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">${html}</div>
+    async function showDocumentTypesPanel() {
+        try {
+            const response = await fetch('/api/scan/training/document-types', { headers: getAuthHeaders() });
+            if (!response.ok) throw new Error('Failed to load document types');
+
+            const data = await response.json();
+            documentTypes = data.document_types || [];
+
+            // Also get extraction stats
+            const statsResponse = await fetch('/api/scan/training/extraction-stats', { headers: getAuthHeaders() });
+            const statsData = statsResponse.ok ? await statsResponse.json() : {};
+
+            let html = `
+                <div class="mb-3">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-3">
+                            <div class="border rounded p-2 text-center bg-light">
+                                <div class="fs-5 fw-bold text-primary">${statsData.total_extractions || 0}</div>
+                                <small class="text-muted">Total Extractions</small>
                             </div>
                         </div>
-                    </div>`;
-                document.body.appendChild(modal);
-                const bsModal = new bootstrap.Modal(modal.querySelector('.modal'));
-                bsModal.show();
-                modal.querySelector('.modal').addEventListener('hidden.bs.modal', () => modal.remove());
+                        <div class="col-md-3">
+                            <div class="border rounded p-2 text-center bg-light">
+                                <div class="fs-5 fw-bold text-success">${statsData.form_recognizer_extractions || 0}</div>
+                                <small class="text-muted">Form Recognizer</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-2 text-center bg-light">
+                                <div class="fs-5 fw-bold text-info">${statsData.openai_extractions || 0}</div>
+                                <small class="text-muted">OpenAI</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-2 text-center bg-light">
+                                <div class="fs-5 fw-bold text-warning">${statsData.fallback_rate || 0}%</div>
+                                <small class="text-muted">Fallback Rate</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <h6 class="mb-3"><i class="bi bi-file-earmark-text"></i> Document Types (${documentTypes.length})</h6>
+            `;
+
+            if (documentTypes.length > 0) {
+                html += '<div class="document-types-list">';
+                documentTypes.forEach(dt => {
+                    const totalExtractions = (dt.fr_extraction_count || 0) + (dt.openai_extraction_count || 0);
+                    const frPct = totalExtractions > 0 ? Math.round((dt.fr_extraction_count || 0) / totalExtractions * 100) : 0;
+
+                    html += `
+                        <div class="card mb-2">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-file-earmark-text me-1"></i>
+                                            ${dt.name}
+                                            ${!dt.is_active ? '<span class="badge bg-secondary ms-2">Inactive</span>' : ''}
+                                        </h6>
+                                        <small class="text-muted">${dt.description || 'No description'}</small>
+                                        <div class="mt-2">
+                                            <span class="badge bg-primary me-1">${dt.sample_count} samples</span>
+                                            <span class="badge bg-success me-1">${dt.verified_count || 0} verified</span>
+                                            <span class="badge bg-info me-1">Avg: ${(dt.avg_confidence * 100).toFixed(0)}%</span>
+                                            ${totalExtractions > 0 ? '<span class="badge bg-warning text-dark">FR: ' + frPct + '%</span>' : ''}
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="form-check form-switch mb-2">
+                                            <input class="form-check-input" type="checkbox" id="training_${dt.id}"
+                                                ${dt.training_enabled ? 'checked' : ''}
+                                                onchange="toggleDocTypeTraining(${dt.id}, this.checked)">
+                                            <label class="form-check-label small" for="training_${dt.id}">Training</label>
+                                        </div>
+                                        <div class="form-check form-switch mb-2">
+                                            <input class="form-check-input" type="checkbox" id="fr_${dt.id}"
+                                                ${dt.use_form_recognizer ? 'checked' : ''}
+                                                onchange="toggleDocTypeFR(${dt.id}, this.checked)"
+                                                ${!dt.form_recognizer_model_id ? 'disabled' : ''}>
+                                            <label class="form-check-label small" for="fr_${dt.id}">Use FR</label>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewDocTypeDetails(${dt.id})">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteDocType(${dt.id}, '${dt.name.replace(/'/g, "\\'")}')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                ${dt.form_recognizer_model_id ? '<div class="mt-2 pt-2 border-top"><small class="text-muted"><i class="bi bi-cpu"></i> FR Model: <code>' + dt.form_recognizer_model_id + '</code> | Threshold: ' + (dt.fr_confidence_threshold * 100).toFixed(0) + '% | Fallbacks: ' + (dt.openai_fallback_count || 0) + '</small></div>' : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            } else {
+                html += '<div class="alert alert-info"><i class="bi bi-info-circle"></i> No document types learned yet. Enable learning mode and scan some documents to start training.</div>';
             }
+
+            const modal = document.createElement('div');
+            modal.innerHTML = '<div class="modal fade" tabindex="-1" id="docTypesModal"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"><i class="bi bi-mortarboard"></i> Document Type Management</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">' + html + '</div><div class="modal-footer"><button class="btn btn-outline-secondary" onclick="refreshDocTypesPanel()"><i class="bi bi-arrow-clockwise"></i> Refresh</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div></div></div></div>';
+
+            document.getElementById('docTypesModal')?.remove();
+            document.body.appendChild(modal);
+            new bootstrap.Modal(document.getElementById('docTypesModal')).show();
+
         } catch (error) {
-            showToast('Failed to load learned types', 'danger');
+            console.error('Error loading document types:', error);
+            showToast('Failed to load document types', 'danger');
         }
+    }
+
+    async function refreshDocTypesPanel() {
+        bootstrap.Modal.getInstance(document.getElementById('docTypesModal'))?.hide();
+        setTimeout(() => showDocumentTypesPanel(), 300);
+    }
+
+    async function toggleDocTypeTraining(typeId, enabled) {
+        try {
+            const response = await fetch('/api/scan/training/document-types/' + typeId, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ training_enabled: enabled })
+            });
+            if (!response.ok) throw new Error('Failed to update');
+            showToast('Training ' + (enabled ? 'enabled' : 'disabled') + ' for document type', 'success');
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Failed to update training setting', 'danger');
+            document.getElementById('training_' + typeId).checked = !enabled;
+        }
+    }
+
+    async function toggleDocTypeFR(typeId, enabled) {
+        try {
+            const response = await fetch('/api/scan/training/document-types/' + typeId, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ use_form_recognizer: enabled })
+            });
+            if (!response.ok) throw new Error('Failed to update');
+            showToast('Form Recognizer ' + (enabled ? 'enabled' : 'disabled') + ' for document type', 'success');
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Failed to update Form Recognizer setting', 'danger');
+            document.getElementById('fr_' + typeId).checked = !enabled;
+        }
+    }
+
+    async function viewDocTypeDetails(typeId) {
+        try {
+            const response = await fetch('/api/scan/training/document-types/' + typeId, { headers: getAuthHeaders() });
+            if (!response.ok) throw new Error('Failed to load details');
+
+            const dt = await response.json();
+            let samplesHtml = '';
+            if (dt.samples && dt.samples.length > 0) {
+                samplesHtml = '<h6 class="mt-3">Recent Samples (' + dt.samples.length + ')</h6><div class="table-responsive"><table class="table table-sm"><thead><tr><th>ID</th><th>Classification</th><th>Confidence</th><th>Verified</th><th>Date</th></tr></thead><tbody>';
+                dt.samples.forEach(s => {
+                    samplesHtml += '<tr><td>' + s.id + '</td><td>' + s.gpt_classification + '</td><td>' + (s.gpt_confidence * 100).toFixed(0) + '%</td><td>' + (s.is_verified ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-circle text-muted"></i>') + '</td><td>' + (s.created_at ? new Date(s.created_at).toLocaleDateString() : '-') + '</td></tr>';
+                });
+                samplesHtml += '</tbody></table></div>';
+            }
+
+            const html = '<div class="row"><div class="col-md-6"><h6>Basic Info</h6><dl class="row"><dt class="col-sm-5">Name</dt><dd class="col-sm-7">' + dt.name + '</dd><dt class="col-sm-5">Description</dt><dd class="col-sm-7">' + (dt.description || '-') + '</dd><dt class="col-sm-5">Status</dt><dd class="col-sm-7">' + (dt.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>') + '</dd><dt class="col-sm-5">Training</dt><dd class="col-sm-7">' + (dt.training_enabled ? '<span class="badge bg-primary">Enabled</span>' : '<span class="badge bg-warning">Disabled</span>') + '</dd></dl></div><div class="col-md-6"><h6>Statistics</h6><dl class="row"><dt class="col-sm-5">Samples</dt><dd class="col-sm-7">' + dt.sample_count + '</dd><dt class="col-sm-5">Avg Confidence</dt><dd class="col-sm-7">' + (dt.avg_confidence * 100).toFixed(1) + '%</dd><dt class="col-sm-5">FR Extractions</dt><dd class="col-sm-7">' + (dt.fr_extraction_count || 0) + '</dd><dt class="col-sm-5">OpenAI Extractions</dt><dd class="col-sm-7">' + (dt.openai_extraction_count || 0) + '</dd><dt class="col-sm-5">Fallbacks</dt><dd class="col-sm-7">' + (dt.openai_fallback_count || 0) + '</dd></dl></div></div>' + (dt.form_recognizer_model_id ? '<div class="alert alert-info mt-3"><strong>Form Recognizer Model:</strong> ' + dt.form_recognizer_model_id + '<br><strong>Confidence Threshold:</strong> ' + (dt.fr_confidence_threshold * 100).toFixed(0) + '%</div>' : '') + samplesHtml;
+
+            const modal = document.createElement('div');
+            modal.innerHTML = '<div class="modal fade" tabindex="-1" id="docTypeDetailModal"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-earmark-text"></i> ' + dt.name + '</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">' + html + '</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div></div></div></div>';
+
+            document.getElementById('docTypeDetailModal')?.remove();
+            document.body.appendChild(modal);
+            new bootstrap.Modal(document.getElementById('docTypeDetailModal')).show();
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Failed to load document type details', 'danger');
+        }
+    }
+
+    async function deleteDocType(typeId, typeName) {
+        if (!confirm('Are you sure you want to deactivate "' + typeName + '"? This will stop training for this document type.')) return;
+        try {
+            const response = await fetch('/api/scan/training/document-types/' + typeId, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            if (!response.ok) throw new Error('Failed to delete');
+            showToast('Document type "' + typeName + '" deactivated', 'success');
+            refreshDocTypesPanel();
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Failed to deactivate document type', 'danger');
+        }
+    }
+
+    // Legacy function - redirect to new panel
+    async function viewLearnedTypes() {
+        showDocumentTypesPanel();
     }
 
     async function exportTrainingData() {

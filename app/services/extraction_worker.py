@@ -1,11 +1,22 @@
-"""Background worker for processing document extraction queue."""
+"""Background worker for processing document extraction queue.
+
+Extraction Flow:
+1. If document type has Form Recognizer model configured and use_form_recognizer=True:
+   - Try Form Recognizer extraction first
+   - If confidence < threshold, fallback to Azure OpenAI
+2. Otherwise, use Azure OpenAI directly
+
+Training Flow (when learning_mode=True):
+- After extraction, analyze document with GPT-4 Vision to learn patterns
+- Store training data for future Form Recognizer model training
+"""
 
 import asyncio
 import logging
 import uuid
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from azure.storage.blob import BlobServiceClient
@@ -14,8 +25,10 @@ from app.database import SessionLocal
 from app.config import settings
 from app.models.document import Document
 from app.models.extraction_batch import ExtractionBatch
+from app.models.training_data import DocumentType
 from app.services.config_service import ConfigService
 from app.services.azure_openai_service import AzureOpenAIExtractionService
+from app.services.form_recognizer_service import get_form_recognizer_service
 from app.services.encryption_service import EncryptionService
 from app.services.blob_lifecycle_service import BlobLifecycleService
 
@@ -27,7 +40,8 @@ class ExtractionWorker:
 
     def __init__(self):
         self.running = False
-        self.extraction_service = None  # Will be created with config values
+        self.extraction_service = None  # Azure OpenAI service
+        self.form_recognizer_service = None  # Form Recognizer service
         self.encryption_service = EncryptionService()
         self._blob_service_client = None
 
@@ -98,6 +112,13 @@ class ExtractionWorker:
                 default_confidence=default_confidence
             )
 
+            # Initialize Form Recognizer service
+            self.form_recognizer_service = get_form_recognizer_service()
+
+            # Get AI service config for learning mode
+            ai_config = self._get_ai_service_config(config_service)
+            learning_mode = ai_config.get("learning_mode", False)
+
             # Query for queued documents
             queued_docs = (
                 db.query(Document)
@@ -162,9 +183,11 @@ class ExtractionWorker:
                 db.commit()
                 return
 
-            # Perform batch extraction
+            # Perform extraction with Form Recognizer -> OpenAI fallback
             try:
-                results = await self.extraction_service.extract_batch(documents_data)
+                results = await self._extract_with_fallback(
+                    db, documents_data, queued_docs, learning_mode
+                )
 
                 # Process results
                 successful = 0
@@ -190,6 +213,7 @@ class ExtractionWorker:
                         doc.processing_status = Document.PROC_STATUS_EXTRACTED
                         doc.extraction_completed_at = datetime.utcnow()
                         doc.last_extraction_error = None
+                        doc.extraction_method = result.get('extraction_method', 'openai')
 
                         # Set review status based on confidence
                         if result['confidence_score'] >= auto_approve_threshold:
@@ -198,6 +222,15 @@ class ExtractionWorker:
                             doc.status = "pending"
 
                         successful += 1
+
+                        # Update document type statistics if available
+                        if result.get('document_type_id'):
+                            self._update_document_type_stats(
+                                db,
+                                result['document_type_id'],
+                                result.get('extraction_method', 'openai'),
+                                result.get('was_fallback', False)
+                            )
 
                         # Update blob: rename to standard format, set metadata, and apply immutability
                         if doc.blob_name:
@@ -343,6 +376,239 @@ class ExtractionWorker:
                     logger.info(f"Document {doc.id} split from batch, will process individually")
 
         db.commit()
+
+    async def _extract_with_fallback(
+        self,
+        db: Session,
+        documents_data: List[Dict],
+        queued_docs: List[Document],
+        learning_mode: bool
+    ) -> List[Dict]:
+        """
+        Extract documents using Form Recognizer with OpenAI fallback.
+
+        Flow:
+        1. Check if document has a known type with Form Recognizer model
+        2. If yes and FR enabled for that type: try FR first
+        3. If FR confidence < threshold or FR fails: fallback to OpenAI
+        4. If learning mode: also run training analysis
+        """
+        results = []
+
+        # Build a map of document IDs to their data
+        doc_data_map = {d['id']: d for d in documents_data}
+
+        # Get document types that have FR models configured
+        doc_types_with_fr = self._get_document_types_with_fr(db)
+
+        # Process each document
+        for doc in queued_docs:
+            doc_data = doc_data_map.get(doc.id)
+            if not doc_data:
+                results.append({
+                    'document_id': doc.id,
+                    'extracted_data': None,
+                    'confidence_score': None,
+                    'error': 'Document data not found'
+                })
+                continue
+
+            try:
+                result = await self._extract_single_document(
+                    db, doc, doc_data, doc_types_with_fr, learning_mode
+                )
+                results.append(result)
+            except Exception as e:
+                logger.error(f"Extraction error for document {doc.id}: {e}")
+                results.append({
+                    'document_id': doc.id,
+                    'extracted_data': None,
+                    'confidence_score': None,
+                    'error': str(e)
+                })
+
+        return results
+
+    async def _extract_single_document(
+        self,
+        db: Session,
+        doc: Document,
+        doc_data: Dict,
+        doc_types_with_fr: Dict[str, DocumentType],
+        learning_mode: bool
+    ) -> Dict:
+        """Extract a single document with FR -> OpenAI fallback logic."""
+        document_id = doc.id
+        content = doc_data['content']
+        filename = doc_data['filename']
+
+        extraction_method = 'openai'
+        was_fallback = False
+        document_type_id = None
+
+        # Check if document has a known type with FR model
+        doc_type = None
+        if doc.document_type and doc.document_type in doc_types_with_fr:
+            doc_type = doc_types_with_fr[doc.document_type]
+            document_type_id = doc_type.id
+
+        # Determine extraction strategy
+        use_fr_first = (
+            doc_type is not None and
+            doc_type.use_form_recognizer and
+            doc_type.form_recognizer_model_id and
+            self.form_recognizer_service and
+            self.form_recognizer_service.is_configured
+        )
+
+        extracted_data = None
+        confidence_score = 0.0
+        error = None
+
+        if use_fr_first:
+            # Try Form Recognizer first
+            logger.info(f"Document {document_id}: Trying Form Recognizer model {doc_type.form_recognizer_model_id}")
+            extraction_method = 'form_recognizer'
+
+            fr_data, fr_confidence, fr_error = await self.form_recognizer_service.extract_with_model(
+                model_id=doc_type.form_recognizer_model_id,
+                document_bytes=content,
+                filename=filename
+            )
+
+            if fr_error:
+                logger.warning(f"Document {document_id}: Form Recognizer error: {fr_error}")
+                # Fall back to OpenAI
+                was_fallback = True
+            elif fr_confidence < doc_type.fr_confidence_threshold:
+                logger.info(
+                    f"Document {document_id}: FR confidence {fr_confidence:.2f} < "
+                    f"threshold {doc_type.fr_confidence_threshold:.2f}, falling back to OpenAI"
+                )
+                was_fallback = True
+            else:
+                # FR succeeded with good confidence
+                extracted_data = fr_data
+                confidence_score = fr_confidence
+                logger.info(f"Document {document_id}: Form Recognizer extraction succeeded (confidence: {fr_confidence:.2f})")
+
+        # Use OpenAI if FR not configured, failed, or confidence too low
+        if extracted_data is None:
+            if was_fallback:
+                extraction_method = 'openai_fallback'
+            else:
+                extraction_method = 'openai'
+
+            logger.info(f"Document {document_id}: Using Azure OpenAI extraction")
+
+            try:
+                # Use the batch extraction for single document
+                openai_results = await self.extraction_service.extract_batch([doc_data])
+                if openai_results and len(openai_results) > 0:
+                    openai_result = openai_results[0]
+                    if openai_result.get('error'):
+                        error = openai_result['error']
+                    else:
+                        extracted_data = openai_result['extracted_data']
+                        confidence_score = openai_result['confidence_score']
+                else:
+                    error = "OpenAI extraction returned no results"
+            except Exception as e:
+                error = f"OpenAI extraction failed: {str(e)}"
+
+        # If learning mode is enabled and we have data, run training analysis
+        if learning_mode and extracted_data and not error:
+            await self._run_training_analysis(db, doc, content, extracted_data)
+
+        return {
+            'document_id': document_id,
+            'extracted_data': extracted_data,
+            'confidence_score': confidence_score,
+            'error': error,
+            'extraction_method': extraction_method,
+            'was_fallback': was_fallback,
+            'document_type_id': document_type_id
+        }
+
+    def _get_document_types_with_fr(self, db: Session) -> Dict[str, DocumentType]:
+        """Get document types that have Form Recognizer models configured."""
+        try:
+            doc_types = db.query(DocumentType).filter(
+                DocumentType.is_active == True,
+                DocumentType.use_form_recognizer == True,
+                DocumentType.form_recognizer_model_id != None
+            ).all()
+
+            return {dt.name: dt for dt in doc_types}
+        except Exception as e:
+            logger.warning(f"Error loading document types: {e}")
+            return {}
+
+    def _get_ai_service_config(self, config_service: ConfigService) -> Dict:
+        """Get AI service configuration."""
+        try:
+            config_str = config_service.get("AI_SERVICE_CONFIG", "{}")
+            if isinstance(config_str, str):
+                return json.loads(config_str)
+            return config_str or {}
+        except Exception as e:
+            logger.warning(f"Error loading AI service config: {e}")
+            return {}
+
+    def _update_document_type_stats(
+        self,
+        db: Session,
+        document_type_id: int,
+        extraction_method: str,
+        was_fallback: bool
+    ):
+        """Update extraction statistics for a document type."""
+        try:
+            doc_type = db.query(DocumentType).filter(DocumentType.id == document_type_id).first()
+            if doc_type:
+                if extraction_method == 'form_recognizer':
+                    doc_type.fr_extraction_count = (doc_type.fr_extraction_count or 0) + 1
+                elif extraction_method in ('openai', 'openai_fallback'):
+                    doc_type.openai_extraction_count = (doc_type.openai_extraction_count or 0) + 1
+                    if was_fallback:
+                        doc_type.openai_fallback_count = (doc_type.openai_fallback_count or 0) + 1
+        except Exception as e:
+            logger.warning(f"Error updating document type stats: {e}")
+
+    async def _run_training_analysis(
+        self,
+        db: Session,
+        doc: Document,
+        content: bytes,
+        extracted_data: Dict
+    ):
+        """Run training analysis on a document when learning mode is enabled."""
+        try:
+            from app.services.training_service import TrainingService
+
+            training_service = TrainingService(db)
+            if training_service.is_configured:
+                # Check if this document type has training enabled
+                if doc.document_type:
+                    doc_type = db.query(DocumentType).filter(
+                        DocumentType.name == doc.document_type,
+                        DocumentType.is_active == True
+                    ).first()
+
+                    # Skip if training is disabled for this type
+                    if doc_type and not doc_type.training_enabled:
+                        logger.debug(f"Training disabled for document type: {doc.document_type}")
+                        return
+
+                logger.info(f"Running training analysis for document {doc.id}")
+                await training_service.analyze_document(
+                    image_bytes=content,
+                    document_id=doc.id,
+                    blob_name=doc.blob_name,
+                    user_email="system"
+                )
+        except Exception as e:
+            logger.warning(f"Training analysis failed for document {doc.id}: {e}")
 
 
 # Global worker instance

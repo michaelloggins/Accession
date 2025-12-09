@@ -549,3 +549,362 @@ async def build_and_deploy_classifier(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to build classifier: {str(e)}"
         )
+
+
+# Document Type Management Endpoints
+@router.get("/training/document-types")
+async def list_document_types(
+    request: Request,
+    include_inactive: bool = False,
+    db: Session = Depends(get_db)
+):
+    """
+    List all document types with their training status and statistics.
+    """
+    get_current_user_from_request(request, db)
+
+    from app.models.training_data import DocumentType, TrainingSample
+
+    query = db.query(DocumentType)
+    if not include_inactive:
+        query = query.filter(DocumentType.is_active == True)
+
+    doc_types = query.order_by(DocumentType.sample_count.desc()).all()
+
+    result = []
+    for dt in doc_types:
+        # Get sample counts
+        verified_count = db.query(TrainingSample).filter(
+            TrainingSample.document_type_id == dt.id,
+            TrainingSample.is_verified == True
+        ).count()
+
+        result.append({
+            "id": dt.id,
+            "name": dt.name,
+            "description": dt.description,
+            "is_active": dt.is_active,
+            "training_enabled": dt.training_enabled,
+            "use_form_recognizer": dt.use_form_recognizer,
+            "form_recognizer_model_id": dt.form_recognizer_model_id,
+            "fr_confidence_threshold": float(dt.fr_confidence_threshold) if dt.fr_confidence_threshold else 0.90,
+            "sample_count": dt.sample_count or 0,
+            "verified_count": verified_count,
+            "avg_confidence": round(float(dt.avg_confidence), 2) if dt.avg_confidence else 0.0,
+            "fr_extraction_count": dt.fr_extraction_count or 0,
+            "openai_extraction_count": dt.openai_extraction_count or 0,
+            "openai_fallback_count": dt.openai_fallback_count or 0,
+            "created_at": dt.created_at.isoformat() if dt.created_at else None,
+            "updated_at": dt.updated_at.isoformat() if dt.updated_at else None,
+            "created_by": dt.created_by
+        })
+
+    return {
+        "success": True,
+        "document_types": result,
+        "total": len(result)
+    }
+
+
+@router.get("/training/document-types/{type_id}")
+async def get_document_type(
+    type_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Get details of a specific document type including samples."""
+    get_current_user_from_request(request, db)
+
+    from app.models.training_data import DocumentType, TrainingSample
+
+    doc_type = db.query(DocumentType).filter(DocumentType.id == type_id).first()
+    if not doc_type:
+        raise HTTPException(status_code=404, detail="Document type not found")
+
+    # Get recent samples
+    samples = db.query(TrainingSample).filter(
+        TrainingSample.document_type_id == type_id
+    ).order_by(TrainingSample.created_at.desc()).limit(20).all()
+
+    import json
+    return {
+        "id": doc_type.id,
+        "name": doc_type.name,
+        "description": doc_type.description,
+        "is_active": doc_type.is_active,
+        "training_enabled": doc_type.training_enabled,
+        "use_form_recognizer": doc_type.use_form_recognizer,
+        "form_recognizer_model_id": doc_type.form_recognizer_model_id,
+        "fr_confidence_threshold": float(doc_type.fr_confidence_threshold) if doc_type.fr_confidence_threshold else 0.90,
+        "visual_features": json.loads(doc_type.visual_features) if doc_type.visual_features else {},
+        "text_patterns": json.loads(doc_type.text_patterns) if doc_type.text_patterns else {},
+        "extraction_fields": json.loads(doc_type.extraction_fields) if doc_type.extraction_fields else [],
+        "sample_count": doc_type.sample_count or 0,
+        "avg_confidence": round(float(doc_type.avg_confidence), 2) if doc_type.avg_confidence else 0.0,
+        "fr_extraction_count": doc_type.fr_extraction_count or 0,
+        "openai_extraction_count": doc_type.openai_extraction_count or 0,
+        "openai_fallback_count": doc_type.openai_fallback_count or 0,
+        "created_at": doc_type.created_at.isoformat() if doc_type.created_at else None,
+        "samples": [
+            {
+                "id": s.id,
+                "document_id": s.document_id,
+                "blob_name": s.blob_name,
+                "gpt_classification": s.gpt_classification,
+                "gpt_confidence": round(float(s.gpt_confidence), 2) if s.gpt_confidence else 0.0,
+                "is_verified": s.is_verified,
+                "verified_by": s.verified_by,
+                "created_at": s.created_at.isoformat() if s.created_at else None
+            }
+            for s in samples
+        ]
+    }
+
+
+@router.put("/training/document-types/{type_id}")
+async def update_document_type(
+    type_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Update document type settings (training toggle, FR settings, etc.)."""
+    current_user = get_current_user_from_request(request, db)
+    audit_service = AuditService(db)
+
+    from app.models.training_data import DocumentType
+
+    doc_type = db.query(DocumentType).filter(DocumentType.id == type_id).first()
+    if not doc_type:
+        raise HTTPException(status_code=404, detail="Document type not found")
+
+    data = await request.json()
+
+    # Update allowed fields
+    if "training_enabled" in data:
+        doc_type.training_enabled = bool(data["training_enabled"])
+    if "is_active" in data:
+        doc_type.is_active = bool(data["is_active"])
+    if "use_form_recognizer" in data:
+        doc_type.use_form_recognizer = bool(data["use_form_recognizer"])
+    if "form_recognizer_model_id" in data:
+        doc_type.form_recognizer_model_id = data["form_recognizer_model_id"]
+    if "fr_confidence_threshold" in data:
+        threshold = float(data["fr_confidence_threshold"])
+        if 0.0 <= threshold <= 1.0:
+            doc_type.fr_confidence_threshold = threshold
+    if "description" in data:
+        doc_type.description = data["description"]
+
+    db.commit()
+
+    audit_service.log_action(
+        user_id=current_user["user_id"],
+        user_email=current_user["user_email"],
+        action="UPDATE",
+        resource_type="DOCUMENT_TYPE",
+        resource_id=str(type_id),
+        details=f"Updated document type '{doc_type.name}': {list(data.keys())}",
+        success=True
+    )
+
+    return {
+        "success": True,
+        "message": f"Document type '{doc_type.name}' updated",
+        "document_type": {
+            "id": doc_type.id,
+            "name": doc_type.name,
+            "training_enabled": doc_type.training_enabled,
+            "use_form_recognizer": doc_type.use_form_recognizer,
+            "fr_confidence_threshold": float(doc_type.fr_confidence_threshold) if doc_type.fr_confidence_threshold else 0.90
+        }
+    }
+
+
+@router.delete("/training/document-types/{type_id}")
+async def delete_document_type(
+    type_id: int,
+    request: Request,
+    hard_delete: bool = False,
+    db: Session = Depends(get_db)
+):
+    """Delete or deactivate a document type."""
+    current_user = get_current_user_from_request(request, db)
+    audit_service = AuditService(db)
+
+    from app.models.training_data import DocumentType, TrainingSample, ExtractionRule
+
+    doc_type = db.query(DocumentType).filter(DocumentType.id == type_id).first()
+    if not doc_type:
+        raise HTTPException(status_code=404, detail="Document type not found")
+
+    type_name = doc_type.name
+
+    if hard_delete:
+        # Delete samples and rules first
+        db.query(TrainingSample).filter(TrainingSample.document_type_id == type_id).delete()
+        db.query(ExtractionRule).filter(ExtractionRule.document_type_id == type_id).delete()
+        db.delete(doc_type)
+        action_detail = f"Hard deleted document type '{type_name}' and all samples"
+    else:
+        # Soft delete - just deactivate
+        doc_type.is_active = False
+        doc_type.training_enabled = False
+        action_detail = f"Deactivated document type '{type_name}'"
+
+    db.commit()
+
+    audit_service.log_action(
+        user_id=current_user["user_id"],
+        user_email=current_user["user_email"],
+        action="DELETE",
+        resource_type="DOCUMENT_TYPE",
+        resource_id=str(type_id),
+        details=action_detail,
+        success=True
+    )
+
+    return {
+        "success": True,
+        "message": action_detail,
+        "hard_deleted": hard_delete
+    }
+
+
+@router.get("/training/document-types/{type_id}/samples")
+async def get_document_type_samples(
+    type_id: int,
+    request: Request,
+    limit: int = 50,
+    offset: int = 0,
+    verified_only: bool = False,
+    db: Session = Depends(get_db)
+):
+    """Get training samples for a document type."""
+    get_current_user_from_request(request, db)
+
+    from app.models.training_data import DocumentType, TrainingSample
+
+    doc_type = db.query(DocumentType).filter(DocumentType.id == type_id).first()
+    if not doc_type:
+        raise HTTPException(status_code=404, detail="Document type not found")
+
+    query = db.query(TrainingSample).filter(TrainingSample.document_type_id == type_id)
+    if verified_only:
+        query = query.filter(TrainingSample.is_verified == True)
+
+    total = query.count()
+    samples = query.order_by(TrainingSample.created_at.desc()).offset(offset).limit(limit).all()
+
+    import json
+    return {
+        "document_type": doc_type.name,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "samples": [
+            {
+                "id": s.id,
+                "document_id": s.document_id,
+                "blob_name": s.blob_name,
+                "gpt_classification": s.gpt_classification,
+                "gpt_confidence": round(float(s.gpt_confidence), 2) if s.gpt_confidence else 0.0,
+                "gpt_reasoning": s.gpt_reasoning,
+                "gpt_features": json.loads(s.gpt_features) if s.gpt_features else {},
+                "is_verified": s.is_verified,
+                "verified_by": s.verified_by,
+                "verified_at": s.verified_at.isoformat() if s.verified_at else None,
+                "corrected_type": s.corrected_type,
+                "created_at": s.created_at.isoformat() if s.created_at else None
+            }
+            for s in samples
+        ]
+    }
+
+
+@router.put("/training/samples/{sample_id}/verify")
+async def verify_training_sample(
+    sample_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Mark a training sample as verified or correct its classification."""
+    current_user = get_current_user_from_request(request, db)
+
+    from app.models.training_data import TrainingSample, DocumentType
+    from datetime import datetime
+
+    sample = db.query(TrainingSample).filter(TrainingSample.id == sample_id).first()
+    if not sample:
+        raise HTTPException(status_code=404, detail="Sample not found")
+
+    data = await request.json()
+
+    sample.is_verified = True
+    sample.verified_by = current_user["user_email"]
+    sample.verified_at = datetime.utcnow()
+
+    # If classification was corrected
+    if "corrected_type" in data and data["corrected_type"]:
+        sample.corrected_type = data["corrected_type"]
+
+        # Optionally move to different document type
+        if data.get("move_to_corrected_type"):
+            # Find or create the corrected type
+            corrected_doc_type = db.query(DocumentType).filter(
+                DocumentType.name == data["corrected_type"]
+            ).first()
+
+            if corrected_doc_type:
+                # Update counts
+                old_doc_type = sample.document_type
+                if old_doc_type:
+                    old_doc_type.sample_count = max(0, (old_doc_type.sample_count or 0) - 1)
+                corrected_doc_type.sample_count = (corrected_doc_type.sample_count or 0) + 1
+
+                sample.document_type_id = corrected_doc_type.id
+
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Sample verified",
+        "sample_id": sample_id,
+        "verified_by": current_user["user_email"],
+        "corrected_type": sample.corrected_type
+    }
+
+
+@router.get("/training/extraction-stats")
+async def get_extraction_stats(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Get overall extraction statistics by method."""
+    get_current_user_from_request(request, db)
+
+    from app.models.training_data import DocumentType
+    from sqlalchemy import func
+
+    # Aggregate stats across all document types
+    stats = db.query(
+        func.sum(DocumentType.fr_extraction_count).label("total_fr"),
+        func.sum(DocumentType.openai_extraction_count).label("total_openai"),
+        func.sum(DocumentType.openai_fallback_count).label("total_fallback"),
+        func.sum(DocumentType.sample_count).label("total_samples")
+    ).filter(DocumentType.is_active == True).first()
+
+    total_fr = stats.total_fr or 0
+    total_openai = stats.total_openai or 0
+    total_fallback = stats.total_fallback or 0
+    total_samples = stats.total_samples or 0
+    total_extractions = total_fr + total_openai
+
+    return {
+        "total_extractions": total_extractions,
+        "form_recognizer_extractions": total_fr,
+        "openai_extractions": total_openai,
+        "openai_fallback_count": total_fallback,
+        "total_training_samples": total_samples,
+        "fr_percentage": round((total_fr / total_extractions * 100), 1) if total_extractions > 0 else 0,
+        "fallback_rate": round((total_fallback / total_fr * 100), 1) if total_fr > 0 else 0
+    }
