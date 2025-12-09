@@ -45,7 +45,7 @@
                 <a href="/dashboard" class="nav-link-item {% if request.path == '/dashboard' %}active{% endif %}">
                     <i class="bi bi-grid-1x2-fill"></i> Dashboard
                 </a>
-                <a href="/scan" class="nav-link-item power-user-only {% if request.path == '/scan' %}active{% endif %}" style="display: none;">
+                <a href="/scan" class="nav-link-item lab-staff-only {% if request.path == '/scan' %}active{% endif %}" style="display: none;">
                     <i class="bi bi-upc-scan"></i> Scan
                 </a>
                 <a href="/documents" class="nav-link-item {% if request.path == '/documents' %}active{% endif %}">
@@ -54,7 +54,7 @@
                 <a href="/queue" class="nav-link-item power-user-only {% if request.path == '/queue' %}active{% endif %}" style="display: none;">
                     <i class="bi bi-list-task"></i> Queue
                 </a>
-                <a href="/compliance" class="nav-link-item {% if request.path == '/compliance' %}active{% endif %}">
+                <a href="/compliance" class="nav-link-item admin-only {% if request.path == '/compliance' %}active{% endif %}" style="display: none;">
                     <i class="bi bi-clipboard-check"></i> Compliance
                 </a>
                 <a href="/admin" class="nav-link-item admin-only {% if request.path == '/admin' %}active{% endif %}" style="display: none;">

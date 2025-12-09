@@ -293,11 +293,13 @@ function updateUserDisplay() {
                              window.__ENVIRONMENT__ === 'development';
 
     if (isLocalhost || isDevelopmentMode) {
-        // Show admin and power user menus in development mode
+        // Show admin, power user, and lab staff menus in development mode
         const adminItems = document.querySelectorAll('.admin-only');
         adminItems.forEach(item => item.style.display = 'block');
         const powerUserItems = document.querySelectorAll('.power-user-only');
         powerUserItems.forEach(item => item.style.display = 'block');
+        const labStaffItems = document.querySelectorAll('.lab-staff-only');
+        labStaffItems.forEach(item => item.style.display = 'block');
 
         // Set default user display
         const userNameElement = document.getElementById('user-name');
@@ -322,12 +324,24 @@ function updateUserDisplay() {
             // Admin also gets power user access
             const powerUserItems = document.querySelectorAll('.power-user-only');
             powerUserItems.forEach(item => item.style.display = 'block');
+            // Admin also gets lab staff access
+            const labStaffItems = document.querySelectorAll('.lab-staff-only');
+            labStaffItems.forEach(item => item.style.display = 'block');
         }
 
         // Show power user menu if admin or reviewer
         if (user.role === 'admin' || user.role === 'reviewer') {
             const powerUserItems = document.querySelectorAll('.power-user-only');
             powerUserItems.forEach(item => item.style.display = 'block');
+            // Reviewers also get lab staff access
+            const labStaffItems = document.querySelectorAll('.lab-staff-only');
+            labStaffItems.forEach(item => item.style.display = 'block');
+        }
+
+        // Show lab staff menu for lab_staff role (and above)
+        if (user.role === 'lab_staff' || user.role === 'reviewer' || user.role === 'admin') {
+            const labStaffItems = document.querySelectorAll('.lab-staff-only');
+            labStaffItems.forEach(item => item.style.display = 'block');
         }
     }
 }

@@ -1,0 +1,19 @@
+<step title="Incoming Request" date="2025-12-04T18:35:41.210" instance="f8f925" url="/api/zipdeploy?isAsync=true" method="POST" type="request" pid="770,1,45" Accept="*/*" Host="app-accession-dev.scm.azurewebsites.net" User-Agent="AZURECLI/2.77.0 (MSI)" Accept-Encoding="gzip, deflate" Authorization="Bea..." Cache-Control="no-cache" Content-Type="application/octet-stream" Content-Length="3933710" x-ms-client-request-id="05429ed4-d140-11f0-b944-70089467f08a" x-ms-artifact-checksum="d56a808720c8ed1e511b06370b10ef7ce6b3303abb42ab9285770cf3c74ccd28" X-ARR-LOG-ID="05429ed4-d140-11f0-b944-70089467f08a" CLIENT-IP="4.43.234.130:42584" X-SITE-DEPLOYMENT-ID="app-accession-dev" WAS-DEFAULT-HOSTNAME="app-accession-dev.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/zipdeploy?isAsync=true" X-Client-IP="4.43.234.130" X-Client-Port="42584" >
+  <step title="Cleanup Xml Logs" date="2025-12-04T18:35:41.465" /><!-- duration: 87ms -->
+  <step title="ZipPushDeploy" date="2025-12-04T18:35:43.051" >
+    <step title="ZipDeploy. Extract zip. Remote build." date="2025-12-04T18:35:43.108" /><!-- duration: 11ms -->
+    <step title="None repository commit" date="2025-12-04T18:35:43.195" >
+      <step title="Commit id: ec036e80-bd69-48d8-a5cc-1365bbd20674" date="2025-12-04T18:35:43.205" Message="N/A" AuthorName="N/A" AuthorEmail="N/A" /><!-- duration: 16ms -->
+    </step><!-- duration: 36ms -->
+    <step title="Starting PushDeployAsync" date="2025-12-04T18:35:43.241" /><!-- duration: 10ms -->
+    <step title="Writing artifact to /tmp/zipdeploy/a208a308-cccd-43fb-99f5-88e5ad6a06f1.zip" date="2025-12-04T18:35:43.492" >
+      <step title="Writing multipart request body to /tmp/zipdeploy/a208a308-cccd-43fb-99f5-88e5ad6a06f1.zip" date="2025-12-04T18:35:43.529" /><!-- duration: 10ms -->
+    </step><!-- duration: 784ms -->
+    <step title="Removing previous build artifact&apos;s manifest file" date="2025-12-04T18:35:44.287" >
+      <step title="Start deployment in the background" date="2025-12-04T18:35:44.314" >
+        <step title="Acquiring Deployment Lock" date="2025-12-04T18:35:44.359" /><!-- duration: 5ms -->
+        <step title="Acquired Deployment Lock" date="2025-12-04T18:35:44.932" /><!-- duration: 5ms -->
+      </step><!-- duration: 893ms -->
+    </step><!-- duration: 979ms -->
+    <step title="Outgoing response" date="2025-12-04T18:35:45.375" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 8ms -->
+  </step><!-- duration: 2336ms -->
