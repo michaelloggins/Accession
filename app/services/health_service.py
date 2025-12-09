@@ -237,7 +237,7 @@ class HealthService:
             import httpx
 
             # Use the info endpoint to check service health
-            test_url = f"{settings.AZURE_DOC_INTELLIGENCE_ENDPOINT}/formrecognizer/info?api-version=2024-02-29-preview"
+            test_url = f"{settings.AZURE_DOC_INTELLIGENCE_ENDPOINT}/formrecognizer/info?api-version=2023-07-31"
 
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.get(
