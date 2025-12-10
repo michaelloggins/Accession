@@ -157,9 +157,9 @@
     <!-- Custom JS -->
     <script src="/static/js/app.js"></script>
 
-    <!-- Global date formatting function -->
+    <!-- Global date formatting functions - All dates displayed in browser's local timezone -->
     <script>
-        // Format date in user's local timezone as MM/DD/YYYY hh:mm:ss AM/PM
+        // Format datetime in user's local timezone as MM/DD/YYYY hh:mm:ss AM/PM
         function formatLocalDate(dateString) {
             if (!dateString) return '-';
             const date = new Date(dateString);
@@ -178,6 +178,77 @@
             const seconds = date.getSeconds().toString().padStart(2, '0');
 
             return `${month}/${day}/${year} ${hours}:${minutes}:${seconds} ${ampm}`;
+        }
+
+        // Format datetime without seconds: MM/DD/YYYY hh:mm AM/PM
+        function formatLocalDateTime(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '-';
+
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const year = date.getFullYear();
+
+            let hours = date.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+
+            return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
+        }
+
+        // Format date only in user's local timezone: MM/DD/YYYY
+        function formatLocalDateOnly(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '-';
+
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const year = date.getFullYear();
+
+            return `${month}/${day}/${year}`;
+        }
+
+        // Format time only in user's local timezone: hh:mm AM/PM
+        function formatLocalTimeOnly(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '-';
+
+            let hours = date.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+
+            return `${hours}:${minutes} ${ampm}`;
+        }
+
+        // Format relative time (e.g., "2 hours ago", "yesterday")
+        function formatRelativeTime(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '-';
+
+            const now = new Date();
+            const diffMs = now - date;
+            const diffSec = Math.floor(diffMs / 1000);
+            const diffMin = Math.floor(diffSec / 60);
+            const diffHours = Math.floor(diffMin / 60);
+            const diffDays = Math.floor(diffHours / 24);
+
+            if (diffSec < 60) return 'just now';
+            if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+            if (diffDays === 1) return 'yesterday';
+            if (diffDays < 7) return `${diffDays} days ago`;
+
+            return formatLocalDateOnly(dateString);
         }
 
         // Update user display with initials

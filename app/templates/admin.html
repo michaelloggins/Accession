@@ -5920,13 +5920,8 @@
     }
 
     function formatDate(isoDate) {
-        if (!isoDate) return 'N/A';
-        const date = new Date(isoDate);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+        // Use global formatLocalDateOnly for consistent local timezone formatting
+        return formatLocalDateOnly(isoDate) || 'N/A';
     }
 
     async function saveLifecycleSettings() {
@@ -6390,7 +6385,7 @@
             if (dt.samples && dt.samples.length > 0) {
                 samplesHtml = '<h6 class="mt-3">Recent Samples (' + dt.samples.length + ')</h6><div class="table-responsive"><table class="table table-sm"><thead><tr><th>ID</th><th>Classification</th><th>Confidence</th><th>Verified</th><th>Date</th></tr></thead><tbody>';
                 dt.samples.forEach(s => {
-                    samplesHtml += '<tr><td>' + s.id + '</td><td>' + s.gpt_classification + '</td><td>' + (s.gpt_confidence * 100).toFixed(0) + '%</td><td>' + (s.is_verified ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-circle text-muted"></i>') + '</td><td>' + (s.created_at ? new Date(s.created_at).toLocaleDateString() : '-') + '</td></tr>';
+                    samplesHtml += '<tr><td>' + s.id + '</td><td>' + s.gpt_classification + '</td><td>' + (s.gpt_confidence * 100).toFixed(0) + '%</td><td>' + (s.is_verified ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-circle text-muted"></i>') + '</td><td>' + formatLocalDateOnly(s.created_at) + '</td></tr>';
                 });
                 samplesHtml += '</tbody></table></div>';
             }
@@ -6642,7 +6637,7 @@
         }
 
         userCount.textContent = data.entra_id_users || '0';
-        lastSync.textContent = data.last_sync ? new Date(data.last_sync).toLocaleDateString() : 'Never';
+        lastSync.textContent = data.last_sync ? formatLocalDateTime(data.last_sync) : 'Never';
     }
 
     function updateRoleMappingDisplay(data) {
@@ -7416,7 +7411,7 @@
 
             // Update summary cards
             document.getElementById('lastAuditTime').textContent = data.timestamp
-                ? new Date(data.timestamp).toLocaleString()
+                ? formatLocalDateTime(data.timestamp)
                 : 'Never';
             document.getElementById('totalIssuesCount').textContent = data.total_issues || '-';
             document.getElementById('pendingIssuesCount').textContent = data.pending_count || '-';
@@ -7745,7 +7740,7 @@
                 if (schedule.enabled) {
                     let statusText = `${schedule.frequency.charAt(0).toUpperCase() + schedule.frequency.slice(1)}`;
                     if (schedule.next_run) {
-                        statusText += ` (Next: ${new Date(schedule.next_run).toLocaleDateString()})`;
+                        statusText += ` (Next: ${formatLocalDateTime(schedule.next_run)})`;
                     }
                     document.getElementById('auditScheduleStatus').textContent = statusText;
                 } else {
