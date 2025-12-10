@@ -893,6 +893,39 @@
         </div>
     </div>
 </div>
+
+<!-- Device Station Setup Modal -->
+<div class="modal fade" id="deviceStationModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="deviceStationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--mv-green) 0%, var(--mv-green-light) 100%); color: white;">
+                <h5 class="modal-title" id="deviceStationModalLabel">
+                    <i class="bi bi-upc-scan me-2"></i>Set Up This Workstation
+                </h5>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    This appears to be a new workstation. Please select which scanning station this device is located at.
+                    This setting will be remembered for all users who log in on this device.
+                </p>
+                <div class="mb-3">
+                    <label for="deviceStationSelect" class="form-label fw-bold">Scanning Station</label>
+                    <select id="deviceStationSelect" class="form-select form-select-lg">
+                        <option value="">Select a station...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="skipDeviceStation()">
+                    <i class="bi bi-x-circle"></i> Skip for Now
+                </button>
+                <button type="button" class="btn btn-success" onclick="saveDeviceStation()">
+                    <i class="bi bi-check-circle"></i> Save Station
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -931,6 +964,25 @@
             'Content-Type': 'application/json',
             'Authorization': token ? `Bearer ${token}` : ''
         };
+    }
+
+
+    // Cookie helper functions for device-based settings
+    function setCookie(name, value, days) {
+        const expires = new Date();
+        expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Lax';
+    }
+
+    function getCookie(name) {
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [cookieName, cookieValue] = cookie.trim().split('=');
+            if (cookieName === name) {
+                return cookieValue;
+            }
+        }
+        return null;
     }
 
     // Initialize on DOM load
@@ -1825,8 +1877,9 @@
             const stationsResponse = await fetch('/api/workstation/stations?active_only=true', {
                 headers: getAuthHeaders()
             });
+            let stations = [];
             if (stationsResponse.ok) {
-                const stations = await stationsResponse.json();
+                stations = await stationsResponse.json();
                 const stationSelect = document.getElementById('scanningStationSelect');
                 stationSelect.innerHTML = '<option value="">Select Station...</option>';
                 stations.forEach(station => {
@@ -1835,6 +1888,13 @@
                     option.textContent = station.name + (station.location ? ` (${station.location})` : '');
                     stationSelect.appendChild(option);
                 });
+
+                // Check for device station cookie
+                const deviceStationId = getCookie('device_station_id');
+                if (deviceStationId) {
+                    // Auto-select from device cookie
+                    stationSelect.value = deviceStationId;
+                }
             }
 
             // Load label printers
@@ -1863,21 +1923,35 @@
     async function loadUserWorkstationPreferences() {
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            if (!user.id) return;
 
-            const response = await fetch(`/api/workstation/preferences/${user.id}`, {
-                headers: getAuthHeaders()
-            });
+            // Check device station cookie first
+            const deviceStationId = getCookie('device_station_id');
+            const stationSelect = document.getElementById('scanningStationSelect');
 
-            if (response.ok) {
-                const prefs = await response.json();
+            if (user.id) {
+                const response = await fetch(`/api/workstation/preferences/${user.id}`, {
+                    headers: getAuthHeaders()
+                });
 
-                if (prefs.scanning_station_id) {
-                    document.getElementById('scanningStationSelect').value = prefs.scanning_station_id;
+                if (response.ok) {
+                    const prefs = await response.json();
+
+                    // User preference takes precedence, but fall back to device cookie
+                    if (prefs.scanning_station_id) {
+                        stationSelect.value = prefs.scanning_station_id;
+                    } else if (deviceStationId) {
+                        stationSelect.value = deviceStationId;
+                        // Save device station as user preference
+                        saveWorkstationPreference();
+                    }
+
+                    if (prefs.label_printer_id) {
+                        document.getElementById('labelPrinterSelect').value = prefs.label_printer_id;
+                    }
                 }
-                if (prefs.label_printer_id) {
-                    document.getElementById('labelPrinterSelect').value = prefs.label_printer_id;
-                }
+            } else if (deviceStationId) {
+                // No user logged in but device has station set
+                stationSelect.value = deviceStationId;
             }
 
             // Restore toggle state from localStorage (default to ON if not set)
@@ -1889,6 +1963,21 @@
                 // If defaulting to ON for first time, save it
                 if (storedValue === null) {
                     localStorage.setItem('myStationOnly', 'true');
+                }
+            }
+
+            // Show device station modal if no device cookie set and stations exist
+            if (!deviceStationId && !sessionStorage.getItem('deviceStationSkipped')) {
+                // Get stations from the select options
+                const stationOptions = Array.from(stationSelect.options).slice(1); // Skip "Select Station..."
+                if (stationOptions.length > 0) {
+                    const stations = stationOptions.map(opt => ({
+                        id: opt.value,
+                        name: opt.textContent.split(' (')[0],
+                        location: opt.textContent.includes('(') ? opt.textContent.match(/\(([^)]+)\)/)?.[1] : null
+                    }));
+                    // Small delay to let page render first
+                    setTimeout(() => showDeviceStationModal(stations), 500);
                 }
             }
         } catch (error) {
@@ -1913,6 +2002,44 @@
             localStorage.setItem('myStationOnly', toggle.checked);
             loadQueue();
         }
+    }
+
+
+    // Device station setup functions
+    function showDeviceStationModal(stations) {
+        const select = document.getElementById('deviceStationSelect');
+        select.innerHTML = '<option value="">Select a station...</option>';
+        stations.forEach(station => {
+            const option = document.createElement('option');
+            option.value = station.id;
+            option.textContent = station.name + (station.location ? ' (' + station.location + ')' : '');
+            select.appendChild(option);
+        });
+        const modal = new bootstrap.Modal(document.getElementById('deviceStationModal'));
+        modal.show();
+    }
+
+    function saveDeviceStation() {
+        const select = document.getElementById('deviceStationSelect');
+        const stationId = select.value;
+        if (!stationId) {
+            alert('Please select a station');
+            return;
+        }
+        // Save to cookie for 365 days (device-based, not user-based)
+        setCookie('device_station_id', stationId, 365);
+        // Also set the main station selector
+        document.getElementById('scanningStationSelect').value = stationId;
+        // Save as user preference too
+        saveWorkstationPreference();
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('deviceStationModal')).hide();
+    }
+
+    function skipDeviceStation() {
+        // Set a flag so we don't ask again this session
+        sessionStorage.setItem('deviceStationSkipped', 'true');
+        bootstrap.Modal.getInstance(document.getElementById('deviceStationModal')).hide();
     }
 
     async function saveWorkstationPreference() {
