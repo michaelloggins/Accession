@@ -564,6 +564,233 @@ async def update_environment_setting(
         )
 
 
+class NewEnvSettingRequest(BaseModel):
+    """Request to create a new environment setting."""
+    key: str
+    value: str
+    category: str = "custom"
+    description: str = ""
+    requires_restart: bool = True
+
+
+@router.post("/env/settings")
+async def create_environment_setting(
+    request: NewEnvSettingRequest,
+    http_request: Request,
+    db: Session = Depends(get_db)
+):
+    """Create a new Azure App Setting.
+
+    This creates a custom environment variable in Azure App Settings.
+    """
+    user_id = getattr(http_request.state, 'user_id', None)
+    user_email = getattr(http_request.state, 'user_email', 'unknown')
+
+    key = request.key.strip().upper()
+
+    # Validate key format
+    if not key or not key.replace('_', '').isalnum():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Setting name must be alphanumeric with underscores only"
+        )
+
+    try:
+        from azure.identity import DefaultAzureCredential
+        from azure.mgmt.web import WebSiteManagementClient
+
+        subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
+        resource_group = os.environ.get("AZURE_RESOURCE_GROUP", "rg-accession-dev")
+        app_name = os.environ.get("WEBSITE_SITE_NAME", "app-accession-dev")
+
+        if not subscription_id:
+            owner_name = os.environ.get("WEBSITE_OWNER_NAME", "")
+            if "+" in owner_name:
+                subscription_id = owner_name.split("+")[0]
+
+        if not subscription_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Unable to determine Azure subscription ID"
+            )
+
+        credential = DefaultAzureCredential()
+        web_client = WebSiteManagementClient(credential, subscription_id)
+
+        # Get current app settings
+        current_settings = web_client.web_apps.list_application_settings(resource_group, app_name)
+        settings_dict = dict(current_settings.properties) if current_settings.properties else {}
+
+        # Check if key already exists
+        if key in settings_dict:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Setting '{key}' already exists. Use PUT to update."
+            )
+
+        # Add the new setting
+        settings_dict[key] = request.value
+
+        # Apply updated settings
+        web_client.web_apps.update_application_settings(
+            resource_group,
+            app_name,
+            {"properties": settings_dict}
+        )
+
+        logger.info(f"Environment setting '{key}' created via Azure Management API")
+
+        # Create audit log entry
+        try:
+            audit_log = AuditLog(
+                user_id=user_id,
+                user_email=user_email,
+                action="create_env_setting",
+                resource_type="environment_setting",
+                resource_id=key,
+                http_method="POST",
+                endpoint="/api/config/env/settings",
+                request_body=f'{{"key": "{key}", "value": "{request.value}", "category": "{request.category}"}}',
+                response_status=201,
+                success=True,
+                user_ip=http_request.client.host if http_request.client else None,
+                user_agent=http_request.headers.get("user-agent")
+            )
+            db.add(audit_log)
+            db.commit()
+        except Exception as audit_error:
+            logger.error(f"Failed to create audit log: {audit_error}")
+
+        return {
+            "status": "success",
+            "key": key,
+            "message": f"Setting '{key}' created successfully. App restart may be required."
+        }
+
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Azure Management SDK not installed"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create environment setting '{key}': {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create setting: {str(e)}"
+        )
+
+
+@router.delete("/env/settings/{key}")
+async def delete_environment_setting(
+    key: str,
+    http_request: Request,
+    db: Session = Depends(get_db)
+):
+    """Delete an Azure App Setting.
+
+    Only custom settings (not in predefined list) can be deleted.
+    """
+    user_id = getattr(http_request.state, 'user_id', None)
+    user_email = getattr(http_request.state, 'user_email', 'unknown')
+
+    # Prevent deletion of predefined settings
+    if key in ENV_SETTINGS_METADATA:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete predefined setting '{key}'. You can only update its value."
+        )
+
+    try:
+        from azure.identity import DefaultAzureCredential
+        from azure.mgmt.web import WebSiteManagementClient
+
+        subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
+        resource_group = os.environ.get("AZURE_RESOURCE_GROUP", "rg-accession-dev")
+        app_name = os.environ.get("WEBSITE_SITE_NAME", "app-accession-dev")
+
+        if not subscription_id:
+            owner_name = os.environ.get("WEBSITE_OWNER_NAME", "")
+            if "+" in owner_name:
+                subscription_id = owner_name.split("+")[0]
+
+        if not subscription_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Unable to determine Azure subscription ID"
+            )
+
+        credential = DefaultAzureCredential()
+        web_client = WebSiteManagementClient(credential, subscription_id)
+
+        # Get current app settings
+        current_settings = web_client.web_apps.list_application_settings(resource_group, app_name)
+        settings_dict = dict(current_settings.properties) if current_settings.properties else {}
+
+        # Check if key exists
+        if key not in settings_dict:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Setting '{key}' not found"
+            )
+
+        old_value = settings_dict[key]
+
+        # Remove the setting
+        del settings_dict[key]
+
+        # Apply updated settings
+        web_client.web_apps.update_application_settings(
+            resource_group,
+            app_name,
+            {"properties": settings_dict}
+        )
+
+        logger.info(f"Environment setting '{key}' deleted via Azure Management API")
+
+        # Create audit log entry
+        try:
+            audit_log = AuditLog(
+                user_id=user_id,
+                user_email=user_email,
+                action="delete_env_setting",
+                resource_type="environment_setting",
+                resource_id=key,
+                http_method="DELETE",
+                endpoint=f"/api/config/env/settings/{key}",
+                request_body=f'{{"key": "{key}", "old_value": "{old_value}"}}',
+                response_status=200,
+                success=True,
+                user_ip=http_request.client.host if http_request.client else None,
+                user_agent=http_request.headers.get("user-agent")
+            )
+            db.add(audit_log)
+            db.commit()
+        except Exception as audit_error:
+            logger.error(f"Failed to create audit log: {audit_error}")
+
+        return {
+            "status": "success",
+            "key": key,
+            "message": f"Setting '{key}' deleted successfully. App restart may be required."
+        }
+
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Azure Management SDK not installed"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete environment setting '{key}': {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete setting: {str(e)}"
+        )
+
+
 @router.post("/env/restart")
 async def restart_app():
     """Restart the Azure Web App to apply environment setting changes."""
