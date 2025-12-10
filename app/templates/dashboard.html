@@ -71,13 +71,19 @@
                 <div class="workstation-dropdown">
                     <label><i class="bi bi-upc-scan"></i> Station</label>
                     <select id="scanningStationSelect" onchange="onStationChange()">
-                        <option value="">Select Station...</option>
+                        <option value="">Select...</option>
                     </select>
                 </div>
                 <div class="workstation-dropdown">
-                    <label><i class="bi bi-printer"></i> Printer</label>
+                    <label><i class="bi bi-printer"></i> Label</label>
                     <select id="labelPrinterSelect" onchange="saveWorkstationPreference()">
-                        <option value="">Select Printer...</option>
+                        <option value="">Select...</option>
+                    </select>
+                </div>
+                <div class="workstation-dropdown">
+                    <label><i class="bi bi-printer-fill"></i> Laser</label>
+                    <select id="laserPrinterSelect" onchange="saveWorkstationPreference()">
+                        <option value="">Select...</option>
                     </select>
                 </div>
                 <div class="station-filter-toggle">
@@ -1881,7 +1887,7 @@
             if (stationsResponse.ok) {
                 stations = await stationsResponse.json();
                 const stationSelect = document.getElementById('scanningStationSelect');
-                stationSelect.innerHTML = '<option value="">Select Station...</option>';
+                stationSelect.innerHTML = '<option value="">Select...</option>';
                 stations.forEach(station => {
                     const option = document.createElement('option');
                     option.value = station.id;
@@ -1904,12 +1910,28 @@
             if (printersResponse.ok) {
                 const printers = await printersResponse.json();
                 const printerSelect = document.getElementById('labelPrinterSelect');
-                printerSelect.innerHTML = '<option value="">Select Printer...</option>';
+                printerSelect.innerHTML = '<option value="">Select...</option>';
                 printers.forEach(printer => {
                     const option = document.createElement('option');
                     option.value = printer.id;
                     option.textContent = printer.name + (printer.location ? ` (${printer.location})` : '');
                     printerSelect.appendChild(option);
+                });
+            }
+
+            // Load laser printers
+            const laserResponse = await fetch('/api/workstation/laser-printers?active_only=true', {
+                headers: getAuthHeaders()
+            });
+            if (laserResponse.ok) {
+                const laserPrinters = await laserResponse.json();
+                const laserSelect = document.getElementById('laserPrinterSelect');
+                laserSelect.innerHTML = '<option value="">Select...</option>';
+                laserPrinters.forEach(printer => {
+                    const option = document.createElement('option');
+                    option.value = printer.id;
+                    option.textContent = printer.name + (printer.location ? ` (${printer.location})` : '');
+                    laserSelect.appendChild(option);
                 });
             }
 
@@ -1947,6 +1969,10 @@
 
                     if (prefs.label_printer_id) {
                         document.getElementById('labelPrinterSelect').value = prefs.label_printer_id;
+                    }
+
+                    if (prefs.laser_printer_id) {
+                        document.getElementById('laserPrinterSelect').value = prefs.laser_printer_id;
                     }
                 }
             } else if (deviceStationId) {
@@ -2052,6 +2078,7 @@
 
             const stationId = document.getElementById('scanningStationSelect').value;
             const printerId = document.getElementById('labelPrinterSelect').value;
+            const laserPrinterId = document.getElementById('laserPrinterSelect').value;
 
             const response = await fetch(`/api/workstation/preferences/${user.id}`, {
                 method: 'PUT',
@@ -2061,7 +2088,8 @@
                 },
                 body: JSON.stringify({
                     scanning_station_id: stationId ? parseInt(stationId) : 0,
-                    label_printer_id: printerId ? parseInt(printerId) : 0
+                    label_printer_id: printerId ? parseInt(printerId) : 0,
+                    laser_printer_id: laserPrinterId ? parseInt(laserPrinterId) : 0
                 })
             });
 
