@@ -307,6 +307,7 @@ async def sso_callback(
             httponly=False,
             secure=settings.ENVIRONMENT != "development",
             samesite="lax",
+            path="/",
             max_age=expires_in
         )
 
@@ -704,6 +705,7 @@ async def saml_acs(
             httponly=False,
             secure=settings.ENVIRONMENT != "development",
             samesite="lax",
+            path="/",
             max_age=expires_in
         )
 

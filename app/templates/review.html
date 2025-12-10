@@ -570,15 +570,33 @@
         background: rgba(139, 197, 63, 0.1);
     }
 
-    /* Confidence Badge */
+    /* Confidence Badge - Circular with centered number */
     .confidence-badge {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        border-radius: 50px;
-        font-weight: 600;
-        font-size: 0.875rem;
+        justify-content: center;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 1rem;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .confidence-badge.confidence-high {
+        background: linear-gradient(135deg, #28a745, #20c997);
+    }
+
+    .confidence-badge.confidence-medium {
+        background: linear-gradient(135deg, #ffc107, #fd7e14);
+        color: #000;
+        text-shadow: none;
+    }
+
+    .confidence-badge.confidence-low {
+        background: linear-gradient(135deg, #dc3545, #c82333);
     }
 
     /* Header Section */
@@ -1516,11 +1534,13 @@
                 accessionSpan.textContent = `(${documentData.accession_number})`;
             }
 
-            // Set confidence badge
+            // Set confidence badge - show percentage in colored circle
             const badge = document.getElementById('confidenceBadge');
             const score = documentData.confidence_score || 0;
-            badge.textContent = `AI Confidence: ${(score * 100).toFixed(1)}%`;
-            badge.className = `confidence-badge ${getConfidenceClass(score)}`;
+            const percentage = Math.round(score * 100);
+            badge.textContent = percentage + '%';
+            badge.className = 'confidence-badge ' + getConfidenceCircleClass(score);
+            badge.title = 'AI Confidence Score';
 
             // Load document viewer
             const viewer = document.getElementById('documentViewer');
@@ -1530,7 +1550,7 @@
                 // Get token from localStorage or js_access_token cookie (SSO)
                 const authHeaders = getAuthHeaders();
                 const token = authHeaders['Authorization'] ? authHeaders['Authorization'].replace('Bearer ', '') : null;
-                const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const isDevelopment = '{{ environment }}' === 'development' || window.location.hostname === 'localhost';
 
                 if (!token && !isDevelopment) {
                     viewer.innerHTML = `
