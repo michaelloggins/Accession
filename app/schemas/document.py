@@ -73,6 +73,11 @@ class DocumentResponse(BaseModel):
     extracted_data: Optional[Dict[str, Any]] = None
     document_url: Optional[str] = None
     document_url_expires: Optional[datetime] = None
+    # AI/Extraction metadata
+    extraction_method: Optional[str] = None  # openai, form_recognizer, openai_fallback
+    document_type: Optional[str] = None  # Classification detected
+    used_for_training: bool = False  # Whether this doc was used for learning
+    learning_mode_enabled: bool = False  # Whether learning mode is currently on
 
 
 class DocumentListItem(BaseModel):

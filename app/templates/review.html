@@ -570,6 +570,61 @@
         background: rgba(139, 197, 63, 0.1);
     }
 
+    /* AI Processing Info */
+    .ai-info-bar {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+    }
+
+    .ai-info-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .ai-info-badge.processor {
+        background: rgba(13, 110, 253, 0.15);
+        color: #0d6efd;
+        border: 1px solid rgba(13, 110, 253, 0.3);
+    }
+
+    .ai-info-badge.processor.doc-intel {
+        background: rgba(111, 66, 193, 0.15);
+        color: #6f42c1;
+        border: 1px solid rgba(111, 66, 193, 0.3);
+    }
+
+    .ai-info-badge.classification {
+        background: rgba(32, 201, 151, 0.15);
+        color: #198754;
+        border: 1px solid rgba(32, 201, 151, 0.3);
+    }
+
+    .ai-info-badge.training {
+        background: rgba(255, 193, 7, 0.15);
+        color: #856404;
+        border: 1px solid rgba(255, 193, 7, 0.3);
+    }
+
+    .ai-info-badge.training.used {
+        background: rgba(25, 135, 84, 0.15);
+        color: #198754;
+        border: 1px solid rgba(25, 135, 84, 0.3);
+    }
+
+    .ai-info-badge.training.disabled {
+        background: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+        border: 1px solid rgba(108, 117, 125, 0.2);
+    }
+
     /* Confidence Badge - Large prominent circle with solid colors */
     .confidence-badge {
         display: inline-flex;
@@ -972,7 +1027,12 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h4><i class="bi bi-clipboard-check"></i> Review Lab Requisition <span id="accessionNumber" class="text-muted"></span></h4>
-                    <span class="confidence-badge mt-2" id="confidenceBadge">Loading...</span>
+                    <div class="d-flex align-items-center gap-3 mt-2">
+                        <span class="confidence-badge" id="confidenceBadge">Loading...</span>
+                        <div class="ai-info-bar" id="aiInfoBar">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
                 </div>
                 <div class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-warning" onclick="reExtractDocument()" title="Re-run AI extraction" id="reExtractBtn">
@@ -1541,6 +1601,42 @@
             badge.textContent = percentage + '%';
             badge.className = 'confidence-badge ' + getConfidenceCircleClass(score);
             badge.title = 'AI Confidence Score';
+
+            // Populate AI info bar
+            const aiInfoBar = document.getElementById('aiInfoBar');
+            if (aiInfoBar) {
+                let infoHtml = '';
+
+                // Processor badge
+                const processor = documentData.extraction_method || 'unknown';
+                const processorLabel = {
+                    'openai': 'Azure OpenAI',
+                    'form_recognizer': 'Doc Intelligence',
+                    'openai_fallback': 'AI (Fallback)',
+                    'manual': 'Manual Entry'
+                }[processor] || processor;
+                const processorClass = processor === 'form_recognizer' ? 'processor doc-intel' : 'processor';
+                const processorIcon = processor === 'form_recognizer' ? 'bi-file-earmark-text' : 'bi-robot';
+                infoHtml += '<span class="ai-info-badge ' + processorClass + '" title="Extraction processor"><i class="bi ' + processorIcon + '"></i> ' + processorLabel + '</span>';
+
+                // Classification badge (if available)
+                if (documentData.document_type) {
+                    infoHtml += '<span class="ai-info-badge classification" title="Document classification"><i class="bi bi-tag"></i> ' + documentData.document_type + '</span>';
+                }
+
+                // Training badge
+                if (documentData.learning_mode_enabled) {
+                    if (documentData.used_for_training) {
+                        infoHtml += '<span class="ai-info-badge training used" title="Used for AI learning"><i class="bi bi-mortarboard-fill"></i> Trained</span>';
+                    } else {
+                        infoHtml += '<span class="ai-info-badge training" title="Learning mode active"><i class="bi bi-mortarboard"></i> Learning</span>';
+                    }
+                } else {
+                    infoHtml += '<span class="ai-info-badge training disabled" title="Learning mode is off"><i class="bi bi-mortarboard"></i> Learning Off</span>';
+                }
+
+                aiInfoBar.innerHTML = infoHtml;
+            }
 
             // Load document viewer
             const viewer = document.getElementById('documentViewer');

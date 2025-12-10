@@ -23,6 +23,8 @@ from app.schemas.document import (
     ManualOrderCreate,
 )
 from app.services.document_service import DocumentService
+from app.services.config_service import ConfigService
+from app.models.training_data import TrainingSample
 from app.services.extraction_factory import get_extraction_service
 from app.services.lab_integration_service import LabIntegrationService
 from app.services.audit_service import AuditService
@@ -556,6 +558,16 @@ async def get_document(request: Request, document_id: int, db: Session = Depends
         success=True
     )
 
+    # Check if document was used for training
+    training_sample = db.query(TrainingSample).filter(
+        TrainingSample.document_id == document_id
+    ).first()
+
+    # Check if learning mode is enabled
+    config_service = ConfigService(db)
+    ai_config = config_service.get("AI_SERVICE_CONFIG") or {}
+    learning_mode_enabled = ai_config.get("learning_mode", False) if isinstance(ai_config, dict) else False
+
     return DocumentResponse(
         id=document.id,
         accession_number=document.accession_number,
@@ -566,7 +578,11 @@ async def get_document(request: Request, document_id: int, db: Session = Depends
         status=document.status,
         extracted_data=extracted_data_dict,
         document_url=document_url,
-        document_url_expires=expires
+        document_url_expires=expires,
+        extraction_method=document.extraction_method,
+        document_type=document.document_type,
+        used_for_training=training_sample is not None,
+        learning_mode_enabled=learning_mode_enabled
     )
 
 
