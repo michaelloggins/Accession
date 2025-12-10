@@ -1,6 +1,6 @@
 """Configuration management API endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional, List
@@ -9,6 +9,7 @@ import logging
 import os
 
 from app.database import get_db, engine, Base
+from app.models.audit_log import AuditLog
 from app.services.config_service import ConfigService
 from app.models.extraction_batch import ExtractionBatch
 from app.models.document import Document
@@ -431,12 +432,22 @@ async def get_environment_settings():
 
 
 @router.put("/env/settings/{key}")
-async def update_environment_setting(key: str, request: ConfigUpdateRequest):
+async def update_environment_setting(
+    key: str,
+    request: ConfigUpdateRequest,
+    http_request: Request,
+    db: Session = Depends(get_db)
+):
     """Update an Azure App Setting.
 
     This uses the Azure Management API via the app's managed identity to update
     the app setting. Changes require an app restart to take effect.
+    All changes are logged to the audit trail.
     """
+    # Get user info from request state (set by auth middleware)
+    user_id = getattr(http_request.state, 'user_id', None)
+    user_email = getattr(http_request.state, 'user_email', 'unknown')
+
     # Validate the key is in our allowed list
     if key not in ENV_SETTINGS_METADATA:
         raise HTTPException(
@@ -447,6 +458,7 @@ async def update_environment_setting(key: str, request: ConfigUpdateRequest):
     # Get metadata for validation
     metadata = ENV_SETTINGS_METADATA[key]
     new_value = request.value
+    old_value = os.environ.get(key, '')
 
     # Validate select options
     if metadata["value_type"] == "select" and metadata.get("options"):
@@ -505,6 +517,29 @@ async def update_environment_setting(key: str, request: ConfigUpdateRequest):
         )
 
         logger.info(f"Environment setting '{key}' updated to '{new_value}' via Azure Management API")
+
+        # Create audit log entry
+        try:
+            audit_log = AuditLog(
+                user_id=user_id,
+                user_email=user_email,
+                action="update_env_setting",
+                resource_type="environment_setting",
+                resource_id=key,
+                http_method="PUT",
+                endpoint=f"/api/config/env/settings/{key}",
+                request_body=f'{{"key": "{key}", "old_value": "{old_value}", "new_value": "{new_value}"}}',
+                response_status=200,
+                success=True,
+                user_ip=http_request.client.host if http_request.client else None,
+                user_agent=http_request.headers.get("user-agent")
+            )
+            db.add(audit_log)
+            db.commit()
+            logger.info(f"Audit log created for env setting update: {key}")
+        except Exception as audit_error:
+            logger.error(f"Failed to create audit log for env setting update: {audit_error}")
+            # Don't fail the request if audit logging fails
 
         return {
             "status": "success",

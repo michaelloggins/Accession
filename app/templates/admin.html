@@ -493,8 +493,8 @@
                     <div class="card-body">
                         <div class="alert alert-info mb-3">
                             <i class="bi bi-info-circle"></i>
-                            <strong>Read-only:</strong> These settings are loaded from Azure App Configuration.
-                            To change them, update Azure App Settings in the Azure Portal and restart the app.
+                            These settings are loaded from Azure App Settings. Click the <i class="bi bi-pencil"></i> icon to edit.
+                            Changes are applied immediately and logged to the audit trail.
                         </div>
                         <!-- Environment Category Filter -->
                         <div class="mb-3">
@@ -510,9 +510,9 @@
                                     <tr>
                                         <th>Setting</th>
                                         <th>Current Value</th>
-                                        <th>Description</th>
                                         <th>Category</th>
                                         <th>Restart Required</th>
+                                        <th style="width: 50px;">Edit</th>
                                     </tr>
                                 </thead>
                                 <tbody id="envSettingsTable">
@@ -539,33 +539,27 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <!-- Category Filter -->
-                        <div class="mb-3">
-                            <label class="form-label">Filter by Category</label>
-                            <select class="form-select form-select-sm w-auto" id="configCategoryFilter" onchange="loadConfigs()">
-                                <option value="">All Categories</option>
-                            </select>
+                        <!-- Category Filter and Expand/Collapse Controls -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <label class="form-label mb-0 me-2">Filter by Category</label>
+                                <select class="form-select form-select-sm d-inline-block w-auto" id="configCategoryFilter" onchange="loadConfigs()">
+                                    <option value="">All Categories</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary me-1" onclick="expandAllConfigs()">
+                                    <i class="bi bi-arrows-expand"></i> Expand All
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="collapseAllConfigs()">
+                                    <i class="bi bi-arrows-collapse"></i> Collapse All
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Configuration Table -->
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Setting</th>
-                                        <th>Value</th>
-                                        <th>Description</th>
-                                        <th>Category</th>
-                                        <th>Source</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="configTable">
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <!-- Configuration Accordion -->
+                        <div class="accordion" id="configAccordion">
+                            <div class="text-center text-muted py-4">Loading...</div>
                         </div>
                     </div>
                 </div>
@@ -3928,36 +3922,126 @@
     }
 
     function renderConfigs(configs) {
-        const tbody = document.getElementById('configTable');
+        const accordion = document.getElementById('configAccordion');
         if (!configs || configs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No configuration settings found</td></tr>';
+            accordion.innerHTML = '<div class="text-center text-muted py-4">No configuration settings found</div>';
             return;
         }
 
-        tbody.innerHTML = configs.map(config => `
-            <tr>
-                <td><strong>${config.key}</strong></td>
-                <td>
-                    <input type="text" class="form-control form-control-sm"
-                           id="config_${config.key}"
-                           value="${config.value}"
-                           data-original="${config.value}"
-                           style="width: auto; min-width: 100px;">
-                </td>
-                <td><small class="text-muted">${config.description || '-'}</small></td>
-                <td><span class="badge bg-secondary">${config.category || 'general'}</span></td>
-                <td>
-                    <span class="badge ${config.source === 'database' ? 'bg-success' : 'bg-info'}">
-                        ${config.source}
-                    </span>
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-primary" onclick="saveConfig('${config.key}')">
-                        <i class="bi bi-check"></i> Save
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+        // Group configs by category
+        const grouped = {};
+        configs.forEach(config => {
+            const category = config.category || 'general';
+            if (!grouped[category]) {
+                grouped[category] = [];
+            }
+            grouped[category].push(config);
+        });
+
+        // Sort categories alphabetically
+        const sortedCategories = Object.keys(grouped).sort();
+
+        // Category display names and icons
+        const categoryInfo = {
+            'extraction': { name: 'Extraction Settings', icon: 'bi-cpu' },
+            'security': { name: 'Security Settings', icon: 'bi-shield-lock' },
+            'documents': { name: 'Document Settings', icon: 'bi-file-earmark-text' },
+            'compliance': { name: 'Compliance & Audit', icon: 'bi-clipboard-check' },
+            'storage': { name: 'Storage Settings', icon: 'bi-cloud-upload' },
+            'blob_watcher': { name: 'Blob Watcher', icon: 'bi-eye' },
+            'azure_openai': { name: 'Azure OpenAI', icon: 'bi-robot' },
+            'integration': { name: 'Integrations', icon: 'bi-plug' },
+            'storage_lifecycle': { name: 'Storage Lifecycle', icon: 'bi-archive' },
+            'scanner': { name: 'Scanner Settings', icon: 'bi-printer' },
+            'general': { name: 'General', icon: 'bi-gear' }
+        };
+
+        // Build accordion HTML
+        let html = '';
+        sortedCategories.forEach((category, index) => {
+            const info = categoryInfo[category] || { name: category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' '), icon: 'bi-gear' };
+            const categoryConfigs = grouped[category];
+            const isFirst = index === 0;
+
+            let tableRows = '';
+            categoryConfigs.forEach(config => {
+                const escapedValue = String(config.value).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                tableRows += `
+                    <tr>
+                        <td><code>${config.key}</code></td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm"
+                                   id="config_${config.key}"
+                                   value="${escapedValue}"
+                                   data-original="${escapedValue}"
+                                   style="min-width: 80px;">
+                        </td>
+                        <td><small class="text-muted">${config.description || '-'}</small></td>
+                        <td>
+                            <span class="badge ${config.source === 'database' ? 'bg-success' : 'bg-info'}">
+                                ${config.source}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="saveConfig('${config.key}')">
+                                <i class="bi bi-check"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+
+            html += `
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading_${category}">
+                        <button class="accordion-button ${isFirst ? '' : 'collapsed'}" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#collapse_${category}"
+                                aria-expanded="${isFirst}" aria-controls="collapse_${category}">
+                            <i class="bi ${info.icon} me-2"></i>
+                            <strong>${info.name}</strong>
+                            <span class="badge bg-secondary ms-2">${categoryConfigs.length}</span>
+                        </button>
+                    </h2>
+                    <div id="collapse_${category}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}"
+                         aria-labelledby="heading_${category}">
+                        <div class="accordion-body p-0">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 25%">Setting</th>
+                                        <th style="width: 20%">Value</th>
+                                        <th style="width: 35%">Description</th>
+                                        <th style="width: 10%">Source</th>
+                                        <th style="width: 10%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${tableRows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+        });
+
+        accordion.innerHTML = html;
+    }
+
+    function expandAllConfigs() {
+        document.querySelectorAll('#configAccordion .accordion-collapse').forEach(el => {
+            el.classList.add('show');
+        });
+        document.querySelectorAll('#configAccordion .accordion-button').forEach(el => {
+            el.classList.remove('collapsed');
+            el.setAttribute('aria-expanded', 'true');
+        });
+    }
+
+    function collapseAllConfigs() {
+        document.querySelectorAll('#configAccordion .accordion-collapse').forEach(el => {
+            el.classList.remove('show');
+        });
+        document.querySelectorAll('#configAccordion .accordion-button').forEach(el => {
+            el.classList.add('collapsed');
+            el.setAttribute('aria-expanded', 'false');
+        });
     }
 
     async function saveConfig(key) {
