@@ -24,7 +24,7 @@ from app.models import (
     Document, User, AuditLog, SystemConfig, ExtractionBatch,
     Facility, FacilityPhysician, FacilityMatchLog, Species, Patient,
     Test, TestSpecimenType, Order, OrderTest, Integration, ApiKey,
-    IntegrationLog, ScanningStation, LabelPrinter, UserWorkstationPreference,
+    IntegrationLog, ScanningStation, LabelPrinter, LaserPrinter, UserWorkstationPreference,
     CodeAuditResult, CodeAuditSchedule
 )
 from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation, scan, print as print_router, code_audit

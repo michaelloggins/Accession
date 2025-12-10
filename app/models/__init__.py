@@ -13,7 +13,7 @@ from app.models.patient import Patient
 from app.models.test import Test, TestSpecimenType
 from app.models.order import Order, OrderTest
 from app.models.integration import Integration, ApiKey, IntegrationLog
-from app.models.workstation import ScanningStation, LabelPrinter, UserWorkstationPreference
+from app.models.workstation import ScanningStation, LabelPrinter, LaserPrinter, UserWorkstationPreference
 from app.models.code_audit import CodeAuditResult, CodeAuditSchedule
 
 __all__ = [
@@ -36,6 +36,7 @@ __all__ = [
     "IntegrationLog",
     "ScanningStation",
     "LabelPrinter",
+    "LaserPrinter",
     "UserWorkstationPreference",
     "CodeAuditResult",
     "CodeAuditSchedule",

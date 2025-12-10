@@ -1640,6 +1640,44 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Laser Printers Card -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5><i class="bi bi-printer-fill"></i> Laser Printers</h5>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-2" onclick="loadLaserPrinters()">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                    <button class="btn btn-primary btn-sm" onclick="showAddLaserPrinterModal()">
+                                        <i class="bi bi-plus-circle"></i> Add Printer
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Location</th>
+                                                <th>Type/Model</th>
+                                                <th>Features</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="laserPrintersTableBody">
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2103,6 +2141,110 @@
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="savePrinter()">
+                    <i class="bi bi-check-lg"></i> Save Printer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Laser Printer Modal -->
+<div class="modal fade" id="laserPrinterModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-printer-fill"></i> <span id="laserPrinterModalTitle">Add Laser Printer</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="laserPrinterId">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Printer Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="laserPrinterName" placeholder="e.g., Office Laser Printer">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" id="laserPrinterLocation" placeholder="e.g., Main Office">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Printer Brand</label>
+                            <select class="form-select" id="laserPrinterType">
+                                <option value="">Select brand...</option>
+                                <option value="HP">HP</option>
+                                <option value="Canon">Canon</option>
+                                <option value="Brother">Brother</option>
+                                <option value="Lexmark">Lexmark</option>
+                                <option value="Xerox">Xerox</option>
+                                <option value="Epson">Epson</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Model</label>
+                            <input type="text" class="form-control" id="laserPrinterModel" placeholder="e.g., LaserJet Pro M404n">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Print Method</label>
+                            <select class="form-select" id="laserPrinterMethod" onchange="toggleLaserPrinterMethodFields()">
+                                <option value="universal_print">Universal Print (Cloud)</option>
+                                <option value="direct_ip">Direct IP</option>
+                                <option value="network_share">Network Share (UNC)</option>
+                            </select>
+                            <small class="text-muted">How to send print jobs to this printer</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <!-- Universal Print Settings -->
+                        <div id="laserUniversalPrintFields">
+                            <div class="mb-3">
+                                <label class="form-label"><i class="bi bi-cloud"></i> Universal Print ID</label>
+                                <input type="text" class="form-control" id="laserPrinterUniversalPrintId" placeholder="Microsoft Graph printer ID">
+                                <small class="text-muted">From Microsoft Universal Print portal</small>
+                            </div>
+                        </div>
+                        <!-- Direct IP / Network Share Settings -->
+                        <div id="laserDirectIpFields" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Connection String</label>
+                                <input type="text" class="form-control" id="laserPrinterConnection" placeholder="e.g., 192.168.1.100 or \\server\printer">
+                                <small class="text-muted">IP address or network path</small>
+                            </div>
+                        </div>
+                        <!-- Print Settings -->
+                        <div class="mb-3">
+                            <label class="form-label">Default Paper Size</label>
+                            <select class="form-select" id="laserPrinterPaperSize">
+                                <option value="Letter">Letter (8.5" x 11")</option>
+                                <option value="Legal">Legal (8.5" x 14")</option>
+                                <option value="A4">A4 (210mm x 297mm)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Default Tray</label>
+                            <input type="text" class="form-control" id="laserPrinterTray" placeholder="e.g., Tray 1, Auto">
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="laserPrinterDuplex" checked>
+                                <label class="form-check-label" for="laserPrinterDuplex">Supports Duplex (2-sided)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="laserPrinterColor">
+                                <label class="form-check-label" for="laserPrinterColor">Supports Color</label>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="laserPrinterActive" checked>
+                            <label class="form-check-label" for="laserPrinterActive">Active</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveLaserPrinter()">
                     <i class="bi bi-check-lg"></i> Save Printer
                 </button>
             </div>
@@ -7494,6 +7636,207 @@
     });
 
     // ========== End Code Audit Functions ==========
+
+    // ========== Laser Printer Functions ==========
+
+    async function loadLaserPrinters() {
+        const tableBody = document.getElementById('laserPrintersTableBody');
+        try {
+            const response = await fetch('/api/workstation/laser-printers', { headers: getAuthHeaders() });
+            if (!response.ok) throw new Error('Failed to load laser printers');
+
+            const printers = await response.json();
+
+            if (!printers || printers.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No laser printers configured</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = printers.map(printer => {
+                const methodBadge = {
+                    'universal_print': '<span class="badge bg-info"><i class="bi bi-cloud"></i> Universal Print</span>',
+                    'direct_ip': '<span class="badge bg-warning text-dark"><i class="bi bi-ethernet"></i> Direct IP</span>',
+                    'network_share': '<span class="badge bg-secondary"><i class="bi bi-hdd-network"></i> Network</span>'
+                }[printer.print_method] || '<span class="badge bg-secondary">Unknown</span>';
+
+                const features = [];
+                if (printer.supports_duplex) features.push('<i class="bi bi-layers" title="Duplex"></i>');
+                if (printer.supports_color) features.push('<i class="bi bi-palette" title="Color"></i>');
+                const featureIcons = features.length > 0 ? features.join(' ') : '-';
+
+                return `
+                <tr>
+                    <td>
+                        <strong>${escapeHtml(printer.name)}</strong>
+                    </td>
+                    <td>${escapeHtml(printer.location || '-')}</td>
+                    <td>
+                        ${escapeHtml(printer.printer_type || '-')}
+                        ${printer.model ? '<br><small class="text-muted">' + escapeHtml(printer.model) + '</small>' : ''}
+                        <br>${methodBadge}
+                    </td>
+                    <td>${featureIcons}</td>
+                    <td>
+                        ${printer.is_active !== false
+                            ? '<span class="badge bg-success">Active</span>'
+                            : '<span class="badge bg-secondary">Inactive</span>'}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editLaserPrinter(${printer.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteLaserPrinter(${printer.id}, '${escapeHtml(printer.name)}')" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `}).join('');
+        } catch (error) {
+            console.error('Error loading laser printers:', error);
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load laser printers</td></tr>';
+        }
+    }
+
+    function toggleLaserPrinterMethodFields() {
+        const method = document.getElementById('laserPrinterMethod').value;
+        document.getElementById('laserUniversalPrintFields').style.display = method === 'universal_print' ? 'block' : 'none';
+        document.getElementById('laserDirectIpFields').style.display = (method === 'direct_ip' || method === 'network_share') ? 'block' : 'none';
+    }
+
+    function showAddLaserPrinterModal() {
+        document.getElementById('laserPrinterModalTitle').textContent = 'Add Laser Printer';
+        document.getElementById('laserPrinterId').value = '';
+        document.getElementById('laserPrinterName').value = '';
+        document.getElementById('laserPrinterLocation').value = '';
+        document.getElementById('laserPrinterType').value = '';
+        document.getElementById('laserPrinterModel').value = '';
+        document.getElementById('laserPrinterMethod').value = 'universal_print';
+        document.getElementById('laserPrinterUniversalPrintId').value = '';
+        document.getElementById('laserPrinterConnection').value = '';
+        document.getElementById('laserPrinterPaperSize').value = 'Letter';
+        document.getElementById('laserPrinterTray').value = '';
+        document.getElementById('laserPrinterDuplex').checked = true;
+        document.getElementById('laserPrinterColor').checked = false;
+        document.getElementById('laserPrinterActive').checked = true;
+        toggleLaserPrinterMethodFields();
+        new bootstrap.Modal(document.getElementById('laserPrinterModal')).show();
+    }
+
+    async function editLaserPrinter(id) {
+        try {
+            const response = await fetch(`/api/workstation/laser-printers/${id}`, { headers: getAuthHeaders() });
+            if (!response.ok) throw new Error('Failed to load laser printer');
+
+            const printer = await response.json();
+
+            document.getElementById('laserPrinterModalTitle').textContent = 'Edit Laser Printer';
+            document.getElementById('laserPrinterId').value = printer.id;
+            document.getElementById('laserPrinterName').value = printer.name || '';
+            document.getElementById('laserPrinterLocation').value = printer.location || '';
+            document.getElementById('laserPrinterType').value = printer.printer_type || '';
+            document.getElementById('laserPrinterModel').value = printer.model || '';
+            document.getElementById('laserPrinterMethod').value = printer.print_method || 'universal_print';
+            document.getElementById('laserPrinterUniversalPrintId').value = printer.universal_print_id || '';
+            document.getElementById('laserPrinterConnection').value = printer.connection_string || '';
+            document.getElementById('laserPrinterPaperSize').value = printer.default_paper_size || 'Letter';
+            document.getElementById('laserPrinterTray').value = printer.default_tray || '';
+            document.getElementById('laserPrinterDuplex').checked = printer.supports_duplex !== false;
+            document.getElementById('laserPrinterColor').checked = printer.supports_color === true;
+            document.getElementById('laserPrinterActive').checked = printer.is_active !== false;
+
+            toggleLaserPrinterMethodFields();
+            new bootstrap.Modal(document.getElementById('laserPrinterModal')).show();
+        } catch (error) {
+            console.error('Error loading laser printer:', error);
+            showToast('Failed to load printer details', 'danger');
+        }
+    }
+
+    async function saveLaserPrinter() {
+        const id = document.getElementById('laserPrinterId').value;
+        const name = document.getElementById('laserPrinterName').value.trim();
+
+        if (!name) {
+            showToast('Printer name is required', 'warning');
+            return;
+        }
+
+        const data = {
+            name: name,
+            location: document.getElementById('laserPrinterLocation').value.trim() || null,
+            printer_type: document.getElementById('laserPrinterType').value || null,
+            model: document.getElementById('laserPrinterModel').value.trim() || null,
+            print_method: document.getElementById('laserPrinterMethod').value,
+            connection_string: document.getElementById('laserPrinterConnection').value.trim() || null,
+            default_paper_size: document.getElementById('laserPrinterPaperSize').value,
+            default_tray: document.getElementById('laserPrinterTray').value.trim() || null,
+            supports_duplex: document.getElementById('laserPrinterDuplex').checked,
+            supports_color: document.getElementById('laserPrinterColor').checked,
+            is_active: document.getElementById('laserPrinterActive').checked
+        };
+
+        try {
+            const url = id ? `/api/workstation/laser-printers/${id}` : '/api/workstation/laser-printers';
+            const method = id ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to save printer');
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('laserPrinterModal')).hide();
+            showToast(id ? 'Laser printer updated' : 'Laser printer created', 'success');
+            loadLaserPrinters();
+        } catch (error) {
+            console.error('Error saving laser printer:', error);
+            showToast('Failed to save printer: ' + error.message, 'danger');
+        }
+    }
+
+    async function deleteLaserPrinter(id, name) {
+        if (!confirm(`Are you sure you want to delete the laser printer "${name}"?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/workstation/laser-printers/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to delete printer');
+            }
+
+            showToast('Laser printer deleted', 'success');
+            loadLaserPrinters();
+        } catch (error) {
+            console.error('Error deleting laser printer:', error);
+            showToast('Failed to delete printer: ' + error.message, 'danger');
+        }
+    }
+
+    // Load laser printers when Equipment tab is shown
+    document.addEventListener('DOMContentLoaded', function() {
+        const equipmentTab = document.querySelector('[data-bs-target="#equipment"]');
+        if (equipmentTab) {
+            equipmentTab.addEventListener('shown.bs.tab', function() {
+                loadLaserPrinters();
+            });
+        }
+    });
+
+    // ========== End Laser Printer Functions ==========
 
     function escapeHtml(text) {
         if (!text) return '';
