@@ -1527,7 +1527,9 @@
             const reExtractBtn = document.getElementById('reExtractBtn');
 
             if (documentData.document_url) {
-                const token = localStorage.getItem('access_token');
+                // Get token from localStorage or js_access_token cookie (SSO)
+                const authHeaders = getAuthHeaders();
+                const token = authHeaders['Authorization'] ? authHeaders['Authorization'].replace('Bearer ', '') : null;
                 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
                 if (!token && !isDevelopment) {

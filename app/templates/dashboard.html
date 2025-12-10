@@ -1328,9 +1328,11 @@
             formData.append('source', source);
 
             try {
+                // Get token from localStorage or js_access_token cookie (SSO)
+                const authHeaders = getAuthHeaders();
                 const response = await fetch('/api/documents/upload', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+                    headers: { 'Authorization': authHeaders['Authorization'] },
                     body: formData
                 });
                 if (response.ok) successCount++;
