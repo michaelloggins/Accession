@@ -415,15 +415,34 @@
                             <div class="col-md-6">
                                 <div class="alert alert-info" id="workerStatusAlert">
                                     <i class="bi bi-cpu"></i> <strong>Extraction Worker:</strong> <span id="workerStatus">Checking...</span>
+                                    <div class="float-end">
+                                        <button class="btn btn-sm btn-success me-1" id="startWorkerBtn" onclick="startExtractionWorker()" style="display:none;">
+                                            <i class="bi bi-play-fill"></i> Start
+                                        </button>
+                                        <button class="btn btn-sm btn-danger me-1" id="stopWorkerBtn" onclick="stopExtractionWorker()" style="display:none;">
+                                            <i class="bi bi-stop-fill"></i> Stop
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="triggerProcessCycle()" title="Process queued documents now">
+                                            <i class="bi bi-lightning"></i> Process Now
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="alert alert-info" id="blobWatcherStatusAlert">
                                     <i class="bi bi-cloud-arrow-down"></i> <strong>Blob Watcher:</strong> <span id="blobWatcherStatus">Checking...</span>
                                     <span class="ms-2 text-muted" id="blobWatcherDetails"></span>
-                                    <button class="btn btn-sm btn-outline-primary float-end" onclick="triggerBlobScan()">
-                                        <i class="bi bi-search"></i> Scan Now
-                                    </button>
+                                    <div class="float-end">
+                                        <button class="btn btn-sm btn-success me-1" id="startBlobWatcherBtn" onclick="startBlobWatcher()" style="display:none;">
+                                            <i class="bi bi-play-fill"></i> Start
+                                        </button>
+                                        <button class="btn btn-sm btn-danger me-1" id="stopBlobWatcherBtn" onclick="stopBlobWatcher()" style="display:none;">
+                                            <i class="bi bi-stop-fill"></i> Stop
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="triggerBlobScan()">
+                                            <i class="bi bi-search"></i> Scan Now
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3539,12 +3558,18 @@
                 const worker = await workerResponse.json();
                 const statusSpan = document.getElementById('workerStatus');
                 const alert = document.getElementById('workerStatusAlert');
+                const startBtn = document.getElementById('startWorkerBtn');
+                const stopBtn = document.getElementById('stopWorkerBtn');
                 if (worker.running) {
                     statusSpan.textContent = 'Running';
                     alert.className = 'alert alert-success';
+                    startBtn.style.display = 'none';
+                    stopBtn.style.display = 'inline-block';
                 } else {
-                    statusSpan.textContent = 'Stopped';
-                    alert.className = 'alert alert-danger';
+                    statusSpan.textContent = worker.status === 'not_started' ? 'Not Started' : 'Stopped';
+                    alert.className = 'alert alert-warning';
+                    startBtn.style.display = 'inline-block';
+                    stopBtn.style.display = 'none';
                 }
             }
 
@@ -3557,15 +3582,21 @@
                 const statusSpan = document.getElementById('blobWatcherStatus');
                 const detailsSpan = document.getElementById('blobWatcherDetails');
                 const alert = document.getElementById('blobWatcherStatusAlert');
+                const startBtn = document.getElementById('startBlobWatcherBtn');
+                const stopBtn = document.getElementById('stopBlobWatcherBtn');
 
                 if (blobWatcher.running) {
                     statusSpan.textContent = 'Running';
                     alert.className = 'alert alert-success';
-                    detailsSpan.textContent = `(${blobWatcher.known_blobs} tracked blobs)`;
+                    detailsSpan.textContent = '(' + blobWatcher.known_blobs + ' tracked blobs)';
+                    startBtn.style.display = 'none';
+                    stopBtn.style.display = 'inline-block';
                 } else {
                     statusSpan.textContent = blobWatcher.status === 'not_started' ? 'Not Started' : 'Stopped';
                     alert.className = 'alert alert-warning';
                     detailsSpan.textContent = '';
+                    startBtn.style.display = 'inline-block';
+                    stopBtn.style.display = 'none';
                 }
             }
 
@@ -3716,16 +3747,149 @@
             }
 
             const result = await response.json();
-            alert(`Blob scan completed. ${result.known_blobs} blobs tracked.`);
+            alert('Blob scan completed. ' + result.known_blobs + ' blobs tracked.');
             refreshQueueStatus();
         } catch (error) {
             alert('Error: ' + error.message);
         } finally {
-            const btn = document.querySelector('#blobWatcherStatusAlert button');
+            const btn = document.querySelector('#blobWatcherStatusAlert .btn-outline-primary');
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-search"></i> Scan Now';
             }
+        }
+    }
+
+    // Extraction Worker Controls
+    async function startExtractionWorker() {
+        try {
+            const btn = document.getElementById('startWorkerBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting...';
+
+            const response = await fetch('/api/queue/extraction-worker/start', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to start worker');
+            }
+
+            refreshQueueStatus();
+        } catch (error) {
+            alert('Error starting worker: ' + error.message);
+        } finally {
+            const btn = document.getElementById('startWorkerBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-fill"></i> Start';
+        }
+    }
+
+    async function stopExtractionWorker() {
+        if (!confirm('Stop the extraction worker? Documents currently processing may fail.')) {
+            return;
+        }
+
+        try {
+            const btn = document.getElementById('stopWorkerBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Stopping...';
+
+            const response = await fetch('/api/queue/extraction-worker/stop', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to stop worker');
+            }
+
+            refreshQueueStatus();
+        } catch (error) {
+            alert('Error stopping worker: ' + error.message);
+        } finally {
+            const btn = document.getElementById('stopWorkerBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
+        }
+    }
+
+    async function triggerProcessCycle() {
+        try {
+            const response = await fetch('/api/queue/extraction-worker/process', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to trigger processing');
+            }
+
+            alert('Processing cycle triggered. Check queue status for updates.');
+            refreshQueueStatus();
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Blob Watcher Controls
+    async function startBlobWatcher() {
+        try {
+            const btn = document.getElementById('startBlobWatcherBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting...';
+
+            const response = await fetch('/api/queue/blob-watcher/start', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to start blob watcher');
+            }
+
+            refreshQueueStatus();
+        } catch (error) {
+            alert('Error starting blob watcher: ' + error.message);
+        } finally {
+            const btn = document.getElementById('startBlobWatcherBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-fill"></i> Start';
+        }
+    }
+
+    async function stopBlobWatcher() {
+        if (!confirm('Stop the blob watcher? New files will not be detected until restarted.')) {
+            return;
+        }
+
+        try {
+            const btn = document.getElementById('stopBlobWatcherBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Stopping...';
+
+            const response = await fetch('/api/queue/blob-watcher/stop', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to stop blob watcher');
+            }
+
+            refreshQueueStatus();
+        } catch (error) {
+            alert('Error stopping blob watcher: ' + error.message);
+        } finally {
+            const btn = document.getElementById('stopBlobWatcherBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
         }
     }
 
