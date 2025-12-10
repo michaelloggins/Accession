@@ -61,10 +61,12 @@ class Settings(BaseSettings):
     AZURE_AD_REDIRECT_URI: str = ""  # e.g., https://your-app.azurewebsites.net/api/auth/callback
 
     # Entra ID Group-to-Role Mapping (Object IDs of Azure AD Security Groups)
-    AZURE_AD_ADMIN_GROUP_ID: str = ""      # "Accession - Admin" -> admin role
-    AZURE_AD_REVIEWER_GROUP_ID: str = ""   # "Accession - PowerUser" -> reviewer role
-    AZURE_AD_LAB_STAFF_GROUP_ID: str = ""  # "Accession - LabStaff" -> lab_staff role
-    AZURE_AD_READONLY_GROUP_ID: str = ""   # "Accession - User" -> read_only role
+    AZURE_AD_ADMIN_GROUP_ID: str = ""              # "Accession_dev_Admin" -> admin role
+    AZURE_AD_REVIEWER_GROUP_ID: str = ""           # "Accession_dev_PowerUsers" -> reviewer role
+    AZURE_AD_LAB_STAFF_GROUP_ID: str = ""          # "Accession_dev_Lab_Staff" -> lab_staff role
+    AZURE_AD_SCANNING_USERS_GROUP_ID: str = ""     # "Accession_dev_Scanning_Users" -> scanning_user role
+    AZURE_AD_CHECK_STATION_GROUP_ID: str = ""      # "Accession_dev_Check_Station_Users" -> check_station role
+    AZURE_AD_READONLY_GROUP_ID: str = ""           # "Accession_dev_ReadOnly" -> read_only role
 
     # SSO Configuration
     SSO_ENABLED: bool = True  # Enable/disable Entra ID SSO
@@ -161,6 +163,14 @@ ROLES = {
     "lab_staff": {
         "name": "Lab Staff",
         "permissions": ["upload", "view", "scan"]
+    },
+    "scanning_user": {
+        "name": "Scanning User",
+        "permissions": ["scan", "upload", "view"]
+    },
+    "check_station": {
+        "name": "Check Station User",
+        "permissions": ["view", "verify", "print"]
     },
     "read_only": {
         "name": "Read-Only Auditor",

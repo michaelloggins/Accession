@@ -220,6 +220,8 @@ async def sso_callback(
                 (settings.AZURE_AD_ADMIN_GROUP_ID and settings.AZURE_AD_ADMIN_GROUP_ID in group_ids) or
                 (settings.AZURE_AD_REVIEWER_GROUP_ID and settings.AZURE_AD_REVIEWER_GROUP_ID in group_ids) or
                 (settings.AZURE_AD_LAB_STAFF_GROUP_ID and settings.AZURE_AD_LAB_STAFF_GROUP_ID in group_ids) or
+                (settings.AZURE_AD_SCANNING_USERS_GROUP_ID and settings.AZURE_AD_SCANNING_USERS_GROUP_ID in group_ids) or
+                (settings.AZURE_AD_CHECK_STATION_GROUP_ID and settings.AZURE_AD_CHECK_STATION_GROUP_ID in group_ids) or
                 (settings.AZURE_AD_READONLY_GROUP_ID and settings.AZURE_AD_READONLY_GROUP_ID in group_ids)
             )
             if not in_mapped_group and require_group:
@@ -617,6 +619,9 @@ async def saml_acs(
             in_mapped_group = (
                 (settings.AZURE_AD_ADMIN_GROUP_ID and settings.AZURE_AD_ADMIN_GROUP_ID in groups) or
                 (settings.AZURE_AD_REVIEWER_GROUP_ID and settings.AZURE_AD_REVIEWER_GROUP_ID in groups) or
+                (settings.AZURE_AD_LAB_STAFF_GROUP_ID and settings.AZURE_AD_LAB_STAFF_GROUP_ID in groups) or
+                (settings.AZURE_AD_SCANNING_USERS_GROUP_ID and settings.AZURE_AD_SCANNING_USERS_GROUP_ID in groups) or
+                (settings.AZURE_AD_CHECK_STATION_GROUP_ID and settings.AZURE_AD_CHECK_STATION_GROUP_ID in groups) or
                 (settings.AZURE_AD_READONLY_GROUP_ID and settings.AZURE_AD_READONLY_GROUP_ID in groups)
             )
             if not in_mapped_group and require_group:
