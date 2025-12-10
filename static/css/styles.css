@@ -1153,25 +1153,21 @@ a:hover {
    ============================================================================= */
 
 .hipaa-badge {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    padding: 12px 22px;
-    border-radius: 30px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--mv-green);
+    padding: 6px 16px;
+    border-radius: 20px;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--mv-green);
-    box-shadow: var(--card-shadow);
-    z-index: 1000;
+    letter-spacing: 0.5px;
 }
 
 .hipaa-badge i {
-    margin-right: 5px;
+    font-size: 1rem;
 }
 
 /* =============================================================================
