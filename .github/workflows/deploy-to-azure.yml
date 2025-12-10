@@ -1,7 +1,6 @@
 # Azure App Service Deployment Workflow
 # Deploys to app-accession-dev.azurewebsites.net on push to main
-# Fast deploy (~1 min) - skips health checks by default
-# Use workflow_dispatch with health_check=true for full verification
+# Includes pre-flight checks to avoid deployment conflicts
 
 name: Deploy to Azure App Service
 
@@ -28,7 +27,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
     - name: Checkout code
@@ -64,6 +63,65 @@ jobs:
       uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Pre-flight checks
+      run: |
+        echo "🔍 Running pre-flight checks..."
+
+        # Check 1: App state
+        echo "Checking app state..."
+        app_state=$(az webapp show \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --query "state" -o tsv 2>/dev/null || echo "Unknown")
+
+        echo "App state: $app_state"
+
+        if [ "$app_state" != "Running" ]; then
+          echo "⚠️ App not in Running state - waiting 30s for it to stabilize..."
+          sleep 30
+        fi
+
+        # Check 2: Active deployments
+        echo "Checking for active deployments..."
+        deployment_status=$(az webapp deployment list \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --query "[0].status" -o tsv 2>/dev/null || echo "0")
+
+        # Status 4 = in progress
+        if [ "$deployment_status" = "4" ]; then
+          echo "⚠️ Another deployment in progress - waiting 60s..."
+          sleep 60
+
+          # Check again
+          deployment_status=$(az webapp deployment list \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --query "[0].status" -o tsv 2>/dev/null || echo "0")
+
+          if [ "$deployment_status" = "4" ]; then
+            echo "⚠️ Deployment still in progress - waiting another 60s..."
+            sleep 60
+          fi
+        fi
+
+        # Check 3: SCM site accessible
+        echo "Checking SCM site accessibility..."
+        scm_code=$(curl -s -o /dev/null -w "%{http_code}" \
+          --connect-timeout 10 \
+          --max-time 15 \
+          https://${{ env.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/ 2>/dev/null || echo "000")
+
+        # 401 is expected (auth required), 200 means logged in
+        if [ "$scm_code" = "200" ] || [ "$scm_code" = "401" ] || [ "$scm_code" = "403" ]; then
+          echo "✅ SCM site ready (status: $scm_code)"
+        else
+          echo "⚠️ SCM site returned $scm_code - waiting 30s..."
+          sleep 30
+        fi
+
+        echo "✅ Pre-flight checks complete"
 
     - name: Deploy to Azure Web App
       run: |
