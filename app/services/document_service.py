@@ -7,12 +7,43 @@ from azure.storage.blob import BlobServiceClient, generate_blob_sas, generate_co
 import json
 import uuid
 import logging
+import os
+import shutil
+import re
 
 from app.config import settings
 from app.models.document import Document
 from app.services.encryption_service import EncryptionService
 
 logger = logging.getLogger(__name__)
+
+
+def generate_standardized_filename(username: str, original_filename: str) -> str:
+    """Generate standardized filename in format: User_YYYYMMDDhhmmss_filename.ext
+
+    Args:
+        username: The user's email or username
+        original_filename: The original filename with extension
+
+    Returns:
+        Standardized filename string
+    """
+    # Extract just the username part (before @ if email)
+    if "@" in username:
+        user_part = username.split("@")[0]
+    else:
+        user_part = username
+
+    # Sanitize username - keep alphanumeric and underscores only
+    user_part = re.sub(r'[^a-zA-Z0-9_]', '_', user_part)
+
+    # Generate timestamp in YYYYMMDDhhmmss format
+    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+
+    # Sanitize original filename - replace spaces and special chars
+    safe_original = re.sub(r'[^\w\-_.]', '_', original_filename)
+
+    return f"{user_part}_{timestamp}_{safe_original}"
 
 
 class DocumentService:
@@ -29,6 +60,47 @@ class DocumentService:
             from app.services.mock_storage_service import MockStorageService
             self._mock_storage = MockStorageService()
         return self._mock_storage
+
+    def copy_to_unc_path(self, content: bytes, filename: str, unc_path: str) -> bool:
+        """Copy file content to a UNC network path.
+
+        Args:
+            content: The file content as bytes
+            filename: The filename to use (should be standardized format)
+            unc_path: The UNC path to copy to (e.g., \server\shareolder)
+
+        Returns:
+            True if copy was successful, False otherwise
+        """
+        if not unc_path:
+            logger.warning("UNC path not configured, skipping UNC export")
+            return False
+
+        try:
+            # Ensure the UNC path exists
+            if not os.path.exists(unc_path):
+                logger.error(f"UNC path does not exist or is not accessible: {unc_path}")
+                return False
+
+            # Build the full destination path
+            dest_path = os.path.join(unc_path, filename)
+
+            # Write the file
+            with open(dest_path, 'wb') as f:
+                f.write(content)
+
+            logger.info(f"File copied to UNC path: {dest_path}")
+            return True
+
+        except PermissionError as e:
+            logger.error(f"Permission denied writing to UNC path {unc_path}: {e}")
+            return False
+        except OSError as e:
+            logger.error(f"OS error writing to UNC path {unc_path}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error copying to UNC path {unc_path}: {e}")
+            return False
 
     def validate_file(self, file: UploadFile):
         """Validate uploaded file."""

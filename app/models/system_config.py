@@ -291,4 +291,19 @@ class SystemConfig(Base):
             "category": "integration",
             "display_order": "005"
         },
+        # UNC Path Export Settings (StarLIMS Integration)
+        "UNC_EXPORT_ENABLED": {
+            "value": "false",
+            "value_type": "bool",
+            "description": "When enabled, processed files are copied to a UNC network path for StarLIMS integration. When disabled (default), files are stored only in Azure Blob Storage.",
+            "category": "integration",
+            "display_order": "030"
+        },
+        "UNC_EXPORT_PATH": {
+            "value": "",
+            "value_type": "string",
+            "description": "UNC network path for file export (e.g., \\server\share\folder). Only used when UNC_EXPORT_ENABLED is true.",
+            "category": "integration",
+            "display_order": "035"
+        },
     }

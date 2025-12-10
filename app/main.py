@@ -138,6 +138,55 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Label printers schema migration error: {e}")
 
+    # Run schema migrations for document_types table (Form Recognizer training columns)
+    try:
+        from sqlalchemy import text, inspect
+        inspector = inspect(engine)
+        existing_dt_columns = [col['name'] for col in inspector.get_columns('document_types')]
+
+        dt_migrations = [
+            ("training_enabled", "BIT NOT NULL DEFAULT 1"),
+            ("use_form_recognizer", "BIT NOT NULL DEFAULT 0"),
+            ("form_recognizer_model_id", "NVARCHAR(200) NULL"),
+            ("fr_confidence_threshold", "FLOAT NOT NULL DEFAULT 0.90"),
+            ("fr_extraction_count", "INT NOT NULL DEFAULT 0"),
+            ("openai_extraction_count", "INT NOT NULL DEFAULT 0"),
+            ("openai_fallback_count", "INT NOT NULL DEFAULT 0"),
+        ]
+
+        with engine.connect() as conn:
+            for col_name, col_def in dt_migrations:
+                if col_name not in existing_dt_columns:
+                    try:
+                        conn.execute(text(f"ALTER TABLE document_types ADD {col_name} {col_def}"))
+                        conn.commit()
+                        logger.info(f"Added column '{col_name}' to document_types table")
+                    except Exception as col_err:
+                        if "already exists" not in str(col_err).lower():
+                            logger.warning(f"Could not add column '{col_name}': {col_err}")
+        logger.info("Document types schema migrations completed")
+    except Exception as e:
+        logger.error(f"Document types schema migration error: {e}")
+
+    # Run schema migrations for documents table (extraction_method column)
+    try:
+        from sqlalchemy import text, inspect
+        inspector = inspect(engine)
+        existing_doc_cols = [col['name'] for col in inspector.get_columns('documents')]
+
+        if 'extraction_method' not in existing_doc_cols:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE documents ADD extraction_method NVARCHAR(50) NULL"))
+                    conn.commit()
+                    logger.info("Added column 'extraction_method' to documents table")
+                except Exception as col_err:
+                    if "already exists" not in str(col_err).lower():
+                        logger.warning(f"Could not add column 'extraction_method': {col_err}")
+        logger.info("Documents extraction_method migration completed")
+    except Exception as e:
+        logger.error(f"Documents extraction_method migration error: {e}")
+
     # Initialize default configuration values and read startup config
     blob_watch_enabled = True  # Default if config service fails
     from app.database import SessionLocal
