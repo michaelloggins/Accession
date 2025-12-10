@@ -30,7 +30,7 @@ from app.services.lab_integration_service import LabIntegrationService
 from app.services.audit_service import AuditService
 from app.services.auth_service import get_current_user_from_request
 from app.services.background_tasks import process_bulk_upload, BackgroundTaskManager
-from app.services.config_service import get_config_bool
+from app.services.config_service import get_config_bool, get_config_int
 from app.models.document import Document
 
 router = APIRouter()
@@ -130,8 +130,11 @@ async def bulk_upload_documents(
 ):
     """Upload multiple documents for processing.
 
-    For <= 4 files: Queue directly for Extraction Worker (faster for small batches)
-    For > 4 files: Use Background Jobs system (better progress tracking for large batches)
+    Uses BULK_UPLOAD_THRESHOLD config to determine processing method:
+    - Below threshold: Queue directly for Extraction Worker (faster for small batches)
+    - At or above threshold: Use Background Jobs system (better progress tracking)
+
+    Set BULK_UPLOAD_THRESHOLD=0 to always use background job processing.
     """
     if len(files) == 0:
         raise HTTPException(
@@ -143,8 +146,11 @@ async def bulk_upload_documents(
     audit_service = AuditService(db)
     current_user = get_current_user_from_request(request, db)
 
-    # For larger uploads (>4 files), use Background Jobs for better progress tracking
-    if len(files) > 4:
+    # Get threshold from config (default 4 for backwards compatibility)
+    bulk_threshold = get_config_int(db, "BULK_UPLOAD_THRESHOLD", default=4)
+
+    # For uploads at or above threshold, use Background Jobs for better progress tracking
+    if len(files) >= bulk_threshold:
         # Read all file contents first (needed for background processing)
         files_data = []
         validation_errors = []
@@ -200,7 +206,7 @@ async def bulk_upload_documents(
             "message": f"Background job created to process {len(files_data)} documents. Track progress in Admin > Background Jobs."
         }
 
-    # For small batches (<=4 files), use direct queue approach
+    # For small batches (below threshold), use direct queue approach
     uploaded_docs = []
     errors = []
 
