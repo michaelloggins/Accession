@@ -6,6 +6,7 @@ from sqlalchemy import text
 from typing import Optional, List
 from pydantic import BaseModel
 import logging
+import os
 
 from app.database import get_db, engine, Base
 from app.services.config_service import ConfigService
@@ -14,6 +15,7 @@ from app.models.document import Document
 from app.models.system_config import SystemConfig
 from app.models.test import Test, TestSpecimenType
 from app.models.species import Species
+from app.config import settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -98,6 +100,21 @@ async def get_all_configs(
         configs=[ConfigItem(**c) for c in configs],
         categories=categories
     )
+
+
+# =============================================================================
+# Scanner Configuration Endpoint
+# =============================================================================
+
+@router.get("/scanner")
+async def get_scanner_config(db: Session = Depends(get_db)):
+    """Get scanner configuration settings for the frontend."""
+    config_service = ConfigService(db)
+    
+    return {
+        "max_buffer_pages": config_service.get_int("SCANNER_MAX_BUFFER_PAGES", 100),
+        "default_resolution": config_service.get_int("SCANNER_DEFAULT_RESOLUTION", 200)
+    }
 
 
 # =============================================================================
@@ -240,6 +257,324 @@ async def delete_species(species_id: int, db: Session = Depends(get_db)):
     logger.info(f"Deleted species: {species.name}")
 
     return {"status": "deleted", "message": f"Species '{species.name}' deleted"}
+
+
+# =============================================================================
+# Environment Settings Endpoints (read current env vars from app config)
+# =============================================================================
+
+# Define which environment variables are safe to expose (no secrets)
+ENV_SETTINGS_METADATA = {
+    "ENVIRONMENT": {
+        "description": "Application environment mode. 'development' enables auth bypass, 'production' requires SSO.",
+        "value_type": "select",
+        "options": ["development", "production"],
+        "category": "general",
+        "requires_restart": True
+    },
+    "DEBUG": {
+        "description": "Enable debug mode (verbose logging)",
+        "value_type": "bool",
+        "category": "general",
+        "requires_restart": True
+    },
+    "SSO_ENABLED": {
+        "description": "Enable Single Sign-On authentication",
+        "value_type": "bool",
+        "category": "authentication",
+        "requires_restart": True
+    },
+    "SSO_METHOD": {
+        "description": "SSO authentication method",
+        "value_type": "select",
+        "options": ["saml", "oidc"],
+        "category": "authentication",
+        "requires_restart": True
+    },
+    "SSO_REQUIRE_GROUP_MEMBERSHIP": {
+        "description": "Require users to be members of configured Azure AD groups",
+        "value_type": "bool",
+        "category": "authentication",
+        "requires_restart": False
+    },
+    "AZURE_AD_TENANT_ID": {
+        "description": "Azure AD Tenant ID for SSO",
+        "value_type": "string",
+        "category": "authentication",
+        "requires_restart": True
+    },
+    "AZURE_AD_CLIENT_ID": {
+        "description": "Azure AD Application (Client) ID",
+        "value_type": "string",
+        "category": "authentication",
+        "requires_restart": True
+    },
+    "AZURE_AD_ADMIN_GROUP_ID": {
+        "description": "Azure AD Group ID for Admin role",
+        "value_type": "string",
+        "category": "authentication",
+        "requires_restart": False
+    },
+    "AZURE_AD_REVIEWER_GROUP_ID": {
+        "description": "Azure AD Group ID for Reviewer role",
+        "value_type": "string",
+        "category": "authentication",
+        "requires_restart": False
+    },
+    "AZURE_AD_LAB_STAFF_GROUP_ID": {
+        "description": "Azure AD Group ID for Lab Staff role",
+        "value_type": "string",
+        "category": "authentication",
+        "requires_restart": False
+    },
+    "AZURE_AD_READONLY_GROUP_ID": {
+        "description": "Azure AD Group ID for Read-Only role",
+        "value_type": "string",
+        "category": "authentication",
+        "requires_restart": False
+    },
+    "AZURE_OPENAI_ENDPOINT": {
+        "description": "Azure OpenAI API endpoint URL",
+        "value_type": "string",
+        "category": "azure_openai",
+        "requires_restart": True
+    },
+    "AZURE_OPENAI_DEPLOYMENT_NAME": {
+        "description": "Azure OpenAI deployment/model name",
+        "value_type": "string",
+        "category": "azure_openai",
+        "requires_restart": True
+    },
+    "AZURE_STORAGE_CONTAINER": {
+        "description": "Azure Blob Storage container name for documents",
+        "value_type": "string",
+        "category": "storage",
+        "requires_restart": True
+    },
+    "AZURE_DOC_INTELLIGENCE_ENDPOINT": {
+        "description": "Azure Document Intelligence (Form Recognizer) endpoint",
+        "value_type": "string",
+        "category": "azure_openai",
+        "requires_restart": True
+    },
+    "AZURE_DOC_INTELLIGENCE_CLASSIFIER_ID": {
+        "description": "Custom classifier model ID for document classification",
+        "value_type": "string",
+        "category": "azure_openai",
+        "requires_restart": False
+    },
+    "SAML_ENTITY_ID": {
+        "description": "SAML Service Provider Entity ID",
+        "value_type": "string",
+        "category": "authentication",
+        "requires_restart": True
+    },
+    "SAML_ACS_URL": {
+        "description": "SAML Assertion Consumer Service URL",
+        "value_type": "string",
+        "category": "authentication",
+        "requires_restart": True
+    },
+    "SAML_METADATA_URL": {
+        "description": "SAML Identity Provider Metadata URL",
+        "value_type": "string",
+        "category": "authentication",
+        "requires_restart": True
+    },
+}
+
+
+@router.get("/env/settings")
+async def get_environment_settings():
+    """Get current environment variable settings (non-sensitive only).
+
+    Returns the current values loaded from environment variables.
+    Note: These are read-only from the app's perspective. To change them,
+    update Azure App Settings and restart the app.
+    """
+    env_settings_list = []
+
+    for key, metadata in ENV_SETTINGS_METADATA.items():
+        # Get current value from settings object
+        current_value = getattr(settings, key, None)
+
+        # Convert to appropriate display format
+        if isinstance(current_value, bool):
+            display_value = str(current_value).lower()
+        elif current_value is None:
+            display_value = ""
+        else:
+            display_value = str(current_value)
+
+        env_settings_list.append({
+            "key": key,
+            "value": display_value,
+            "value_type": metadata["value_type"],
+            "description": metadata["description"],
+            "category": metadata["category"],
+            "requires_restart": metadata["requires_restart"],
+            "options": metadata.get("options"),
+            "source": "environment"
+        })
+
+    # Sort by category
+    env_settings_list.sort(key=lambda x: (x["category"], x["key"]))
+
+    # Get unique categories
+    categories = sorted(set(s["category"] for s in env_settings_list))
+
+    return {
+        "settings": env_settings_list,
+        "categories": categories,
+        "note": "Changes to environment settings require an app restart to take effect."
+    }
+
+
+@router.put("/env/settings/{key}")
+async def update_environment_setting(key: str, request: ConfigUpdateRequest):
+    """Update an Azure App Setting.
+
+    This uses the Azure Management API via the app's managed identity to update
+    the app setting. Changes require an app restart to take effect.
+    """
+    # Validate the key is in our allowed list
+    if key not in ENV_SETTINGS_METADATA:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Setting '{key}' is not an editable environment setting"
+        )
+
+    # Get metadata for validation
+    metadata = ENV_SETTINGS_METADATA[key]
+    new_value = request.value
+
+    # Validate select options
+    if metadata["value_type"] == "select" and metadata.get("options"):
+        if new_value not in metadata["options"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid value. Must be one of: {', '.join(metadata['options'])}"
+            )
+
+    # Validate boolean values
+    if metadata["value_type"] == "bool":
+        if new_value.lower() not in ["true", "false"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Boolean value must be 'true' or 'false'"
+            )
+        new_value = new_value.lower()
+
+    try:
+        # Use Azure SDK to update the app setting
+        from azure.identity import DefaultAzureCredential
+        from azure.mgmt.web import WebSiteManagementClient
+
+        # Get subscription ID and resource info from environment or app name
+        subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
+        resource_group = os.environ.get("AZURE_RESOURCE_GROUP", "rg-accession-dev")
+        app_name = os.environ.get("WEBSITE_SITE_NAME", "app-accession-dev")
+
+        if not subscription_id:
+            # Try to get from WEBSITE_OWNER_NAME which has format: subscription_id+resource_group-region-webspace
+            owner_name = os.environ.get("WEBSITE_OWNER_NAME", "")
+            if "+" in owner_name:
+                subscription_id = owner_name.split("+")[0]
+
+        if not subscription_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Unable to determine Azure subscription ID. Set AZURE_SUBSCRIPTION_ID environment variable."
+            )
+
+        credential = DefaultAzureCredential()
+        web_client = WebSiteManagementClient(credential, subscription_id)
+
+        # Get current app settings
+        current_settings = web_client.web_apps.list_application_settings(resource_group, app_name)
+        settings_dict = dict(current_settings.properties) if current_settings.properties else {}
+
+        # Update the specific setting
+        settings_dict[key] = new_value
+
+        # Apply updated settings
+        web_client.web_apps.update_application_settings(
+            resource_group,
+            app_name,
+            {"properties": settings_dict}
+        )
+
+        logger.info(f"Environment setting '{key}' updated to '{new_value}' via Azure Management API")
+
+        return {
+            "status": "success",
+            "key": key,
+            "value": new_value,
+            "requires_restart": metadata["requires_restart"],
+            "message": f"Setting '{key}' updated successfully. " +
+                      ("App restart required for change to take effect." if metadata["requires_restart"] else "Change will apply on next request.")
+        }
+
+    except ImportError:
+        # Azure SDK not available - fallback message
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Azure Management SDK not installed. Install azure-mgmt-web and azure-identity packages."
+        )
+    except Exception as e:
+        logger.error(f"Failed to update environment setting '{key}': {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update setting: {str(e)}"
+        )
+
+
+@router.post("/env/restart")
+async def restart_app():
+    """Restart the Azure Web App to apply environment setting changes."""
+    try:
+        from azure.identity import DefaultAzureCredential
+        from azure.mgmt.web import WebSiteManagementClient
+
+        subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
+        resource_group = os.environ.get("AZURE_RESOURCE_GROUP", "rg-accession-dev")
+        app_name = os.environ.get("WEBSITE_SITE_NAME", "app-accession-dev")
+
+        if not subscription_id:
+            owner_name = os.environ.get("WEBSITE_OWNER_NAME", "")
+            if "+" in owner_name:
+                subscription_id = owner_name.split("+")[0]
+
+        if not subscription_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Unable to determine Azure subscription ID"
+            )
+
+        credential = DefaultAzureCredential()
+        web_client = WebSiteManagementClient(credential, subscription_id)
+
+        # Restart the app
+        web_client.web_apps.restart(resource_group, app_name)
+
+        logger.info(f"App restart initiated for {app_name}")
+
+        return {
+            "status": "success",
+            "message": "App restart initiated. The app will be unavailable briefly."
+        }
+
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Azure Management SDK not installed"
+        )
+    except Exception as e:
+        logger.error(f"Failed to restart app: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to restart app: {str(e)}"
+        )
 
 
 # ============================================

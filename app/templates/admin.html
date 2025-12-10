@@ -480,9 +480,55 @@
 
             <!-- Configuration Tab -->
             <div class="tab-pane fade" id="config">
+                <!-- Environment Settings Card (Read-only view of Azure App Settings) -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="bi bi-cloud-fill"></i> Environment Settings (Azure)</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadEnvSettings()">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Read-only:</strong> These settings are loaded from Azure App Configuration.
+                            To change them, update Azure App Settings in the Azure Portal and restart the app.
+                        </div>
+                        <!-- Environment Category Filter -->
+                        <div class="mb-3">
+                            <label class="form-label">Filter by Category</label>
+                            <select class="form-select form-select-sm w-auto" id="envCategoryFilter" onchange="loadEnvSettings()">
+                                <option value="">All Categories</option>
+                            </select>
+                        </div>
+                        <!-- Environment Settings Table -->
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Setting</th>
+                                        <th>Current Value</th>
+                                        <th>Description</th>
+                                        <th>Category</th>
+                                        <th>Restart Required</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="envSettingsTable">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Database Configuration Card -->
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5><i class="bi bi-sliders"></i> System Configuration</h5>
+                        <h5><i class="bi bi-sliders"></i> System Configuration (Database)</h5>
                         <div>
                             <button class="btn btn-sm btn-outline-success me-2" onclick="seedConfigs()">
                                 <i class="bi bi-database-add"></i> Seed Defaults
@@ -3696,7 +3742,157 @@
     // Load configs when tab is shown
     document.querySelector('button[data-bs-target="#config"]')?.addEventListener('shown.bs.tab', function() {
         loadConfigs();
+        loadEnvSettings();
     });
+
+    // Load environment settings from Azure
+    async function loadEnvSettings() {
+        try {
+            const response = await fetch('/api/config/env/settings', {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to load environment settings');
+
+            const data = await response.json();
+
+            // Populate category filter
+            const categorySelect = document.getElementById('envCategoryFilter');
+            if (categorySelect && data.categories) {
+                const currentValue = categorySelect.value;
+                categorySelect.innerHTML = '<option value="">All Categories</option>' +
+                    data.categories.map(cat => `<option value="${cat}">${cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' ')}</option>`).join('');
+                categorySelect.value = currentValue;
+            }
+
+            // Filter by category if selected
+            const selectedCategory = categorySelect?.value || '';
+            const filteredSettings = selectedCategory
+                ? data.settings.filter(s => s.category === selectedCategory)
+                : data.settings;
+
+            // Render environment settings
+            renderEnvSettings(filteredSettings);
+
+        } catch (error) {
+            console.error('Error loading environment settings:', error);
+            document.getElementById('envSettingsTable').innerHTML = `
+                <tr><td colspan="5" class="text-center text-danger">Error loading environment settings: ${error.message}</td></tr>
+            `;
+        }
+    }
+
+    function renderEnvSettings(settings) {
+        const tbody = document.getElementById('envSettingsTable');
+        if (!settings || settings.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No environment settings found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = settings.map(setting => {
+            // Create editable input based on value type
+            let inputHtml;
+            if (setting.value_type === 'bool') {
+                inputHtml = `
+                    <select class="form-select form-select-sm" id="env_${setting.key}" data-original="${setting.value}">
+                        <option value="true" ${setting.value === 'true' ? 'selected' : ''}>true</option>
+                        <option value="false" ${setting.value === 'false' ? 'selected' : ''}>false</option>
+                    </select>`;
+            } else if (setting.value_type === 'select' && setting.options) {
+                const optionsHtml = setting.options.map(opt => 
+                    `<option value="${opt}" ${setting.value === opt ? 'selected' : ''}>${opt}</option>`
+                ).join('');
+                inputHtml = `<select class="form-select form-select-sm" id="env_${setting.key}" data-original="${setting.value}">${optionsHtml}</select>`;
+            } else {
+                inputHtml = `<input type="text" class="form-control form-control-sm" id="env_${setting.key}" 
+                                   value="${setting.value || ''}" data-original="${setting.value || ''}" 
+                                   style="min-width: 200px;">`;
+            }
+
+            return `
+            <tr>
+                <td><strong>${setting.key}</strong></td>
+                <td>${inputHtml}</td>
+                <td><small class="text-muted">${setting.description || '-'}</small></td>
+                <td><span class="badge bg-secondary">${setting.category}</span></td>
+                <td>
+                    ${setting.requires_restart
+                        ? '<span class="badge bg-warning text-dark"><i class="bi bi-arrow-repeat"></i> Yes</span>'
+                        : '<span class="badge bg-light text-dark">No</span>'}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="saveEnvSetting('${setting.key}')">
+                        <i class="bi bi-check"></i> Save
+                    </button>
+                </td>
+            </tr>
+        `}).join('');
+    }
+
+    async function saveEnvSetting(key) {
+        const input = document.getElementById('env_' + key);
+        const newValue = input.value;
+        const originalValue = input.dataset.original;
+
+        if (newValue === originalValue) {
+            return; // No change
+        }
+
+        try {
+            const response = await fetch('/api/config/env/settings/' + key, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ value: newValue })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to save setting');
+            }
+
+            const result = await response.json();
+            input.dataset.original = newValue;
+            input.classList.add('is-valid');
+            setTimeout(function() { input.classList.remove('is-valid'); }, 2000);
+
+            // Show restart notice if needed
+            if (result.requires_restart) {
+                const restartNow = confirm(
+                    'Setting "' + key + '" saved successfully. ' +
+                    'This setting requires an app restart to take effect. Restart now?'
+                );
+                if (restartNow) {
+                    await restartApp();
+                }
+            } else {
+                alert('Setting "' + key + '" saved successfully.');
+            }
+
+        } catch (error) {
+            alert('Error saving setting: ' + error.message);
+            input.value = originalValue;
+        }
+    }
+
+    async function restartApp() {
+        try {
+            const response = await fetch('/api/config/env/restart', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to restart app');
+            }
+
+            alert('App restart initiated. The page will reload in a few seconds.');
+            setTimeout(function() { window.location.reload(); }, 5000);
+
+        } catch (error) {
+            alert('Error restarting app: ' + error.message);
+        }
+    }
 
     async function loadConfigs() {
         try {

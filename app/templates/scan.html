@@ -355,6 +355,34 @@
 
     let DWObject = null;
     let currentImageIndex = -1;
+    let scannerConfig = {
+        maxBufferPages: 100,
+        defaultResolution: 200
+    };
+
+    // Load scanner configuration from server
+    async function loadScannerConfig() {
+        try {
+            const response = await fetch('/api/config/scanner', {
+                headers: getAuthHeaders()
+            });
+            if (response.ok) {
+                const config = await response.json();
+                scannerConfig.maxBufferPages = config.max_buffer_pages || 100;
+                scannerConfig.defaultResolution = config.default_resolution || 200;
+                
+                // Set default resolution in dropdown
+                const resSelect = document.getElementById('resolution');
+                if (resSelect) {
+                    resSelect.value = scannerConfig.defaultResolution.toString();
+                }
+                
+                console.log('Scanner config loaded:', scannerConfig);
+            }
+        } catch (error) {
+            console.warn('Could not load scanner config, using defaults:', error);
+        }
+    }
 
     // Get auth headers
     function getAuthHeaders() {
@@ -376,7 +404,8 @@
     }
 
     // Initialize Web TWAIN when page loads
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+        await loadScannerConfig();
         initDWT();
     });
 
@@ -389,6 +418,10 @@
                 DWObject.Viewer.show();
                 DWObject.Viewer.width = '100%';
                 DWObject.Viewer.height = '100%';
+                
+                // Set max buffer size from config
+                DWObject.MaxImagesInBuffer = scannerConfig.maxBufferPages;
+                console.log('Scanner buffer limit set to:', scannerConfig.maxBufferPages);
 
                 // Load available scanners
                 loadScanners();

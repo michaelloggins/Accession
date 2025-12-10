@@ -79,6 +79,21 @@ class SystemConfig(Base):
             "category": "security",
             "display_order": "030"
         },
+        # Scanner Settings
+        "SCANNER_MAX_BUFFER_PAGES": {
+            "value": "100",
+            "value_type": "int",
+            "description": "Maximum number of pages that can be held in the scanner buffer before upload. Prevents memory issues with large batches.",
+            "category": "scanner",
+            "display_order": "010"
+        },
+        "SCANNER_DEFAULT_RESOLUTION": {
+            "value": "200",
+            "value_type": "int",
+            "description": "Default scanner resolution in DPI (dots per inch). Common values: 150, 200, 300.",
+            "category": "scanner",
+            "display_order": "020"
+        },
         # Document Settings
         "MAX_FILE_SIZE_MB": {
             "value": "25",
