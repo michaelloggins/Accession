@@ -1764,9 +1764,20 @@
                             Results are stored and can be exported to Excel.
                         </div>
 
+                        <!-- Job Progress Indicator (hidden by default) -->
+                        <div id="auditJobProgress" class="alert alert-info d-none mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                <span id="auditJobMessage">Running audit...</span>
+                                <div class="progress flex-grow-1 mx-3" style="height: 20px;">
+                                    <div id="auditJobProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Last Audit Info -->
                         <div class="row mb-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="card bg-light">
                                     <div class="card-body py-2">
                                         <small class="text-muted">Last Audit Run</small>
@@ -1774,15 +1785,23 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="card bg-light">
                                     <div class="card-body py-2">
-                                        <small class="text-muted">Total Issues Found</small>
+                                        <small class="text-muted">Total Issues</small>
                                         <div id="totalIssuesCount" class="fw-bold">-</div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Pending</small>
+                                        <div id="pendingIssuesCount" class="fw-bold text-warning">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
                                 <div class="card bg-light">
                                     <div class="card-body py-2">
                                         <small class="text-muted">Schedule Status</small>
@@ -1792,14 +1811,38 @@
                             </div>
                         </div>
 
-                        <!-- Select All / Deselect All -->
-                        <div class="mb-3">
-                            <button class="btn btn-sm btn-outline-secondary me-2" onclick="selectAllAuditCategories()">
-                                <i class="bi bi-check-all"></i> Select All
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAllAuditCategories()">
-                                <i class="bi bi-x-lg"></i> Deselect All
-                            </button>
+                        <!-- Status Filter Pill -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="btn-group" role="group" aria-label="Status filter">
+                                <input type="radio" class="btn-check" name="auditStatusFilter" id="filterPending" value="pending" checked>
+                                <label class="btn btn-outline-warning" for="filterPending">
+                                    <i class="bi bi-clock-history"></i> Pending <span id="filterPendingCount" class="badge bg-warning text-dark ms-1">-</span>
+                                </label>
+
+                                <input type="radio" class="btn-check" name="auditStatusFilter" id="filterRiskApproved" value="risk_approved">
+                                <label class="btn btn-outline-info" for="filterRiskApproved">
+                                    <i class="bi bi-shield-check"></i> Risk Approved <span id="filterRiskApprovedCount" class="badge bg-info ms-1">-</span>
+                                </label>
+
+                                <input type="radio" class="btn-check" name="auditStatusFilter" id="filterMitigated" value="mitigated">
+                                <label class="btn btn-outline-success" for="filterMitigated">
+                                    <i class="bi bi-check-circle"></i> Mitigated <span id="filterMitigatedCount" class="badge bg-success ms-1">-</span>
+                                </label>
+
+                                <input type="radio" class="btn-check" name="auditStatusFilter" id="filterAll" value="all">
+                                <label class="btn btn-outline-secondary" for="filterAll">
+                                    <i class="bi bi-list"></i> All
+                                </label>
+                            </div>
+
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary me-2" onclick="selectAllAuditCategories()">
+                                    <i class="bi bi-check-all"></i> Select All
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="deselectAllAuditCategories()">
+                                    <i class="bi bi-x-lg"></i> Deselect All
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Audit Categories Accordion -->
@@ -1827,10 +1870,11 @@
                                                         <th>Issue</th>
                                                         <th>Location</th>
                                                         <th>Mitigation</th>
+                                                        <th style="width: 180px;">Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="auditOwaspTable">
-                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                    <tr><td colspan="5" class="text-center text-muted">Run audit to see results</td></tr>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1860,10 +1904,11 @@
                                                         <th>Issue</th>
                                                         <th>Location</th>
                                                         <th>Mitigation</th>
+                                                        <th style="width: 180px;">Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="auditHipaaTable">
-                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                    <tr><td colspan="5" class="text-center text-muted">Run audit to see results</td></tr>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1893,10 +1938,11 @@
                                                         <th>Issue</th>
                                                         <th>Location</th>
                                                         <th>Mitigation</th>
+                                                        <th style="width: 180px;">Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="auditPerformanceTable">
-                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                    <tr><td colspan="5" class="text-center text-muted">Run audit to see results</td></tr>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1926,10 +1972,11 @@
                                                         <th>Issue</th>
                                                         <th>Location</th>
                                                         <th>Mitigation</th>
+                                                        <th style="width: 180px;">Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="auditDeadCodeTable">
-                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                    <tr><td colspan="5" class="text-center text-muted">Run audit to see results</td></tr>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1959,10 +2006,11 @@
                                                         <th>Issue</th>
                                                         <th>Count</th>
                                                         <th>Mitigation</th>
+                                                        <th style="width: 180px;">Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="auditAdaTable">
-                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                    <tr><td colspan="5" class="text-center text-muted">Run audit to see results</td></tr>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1988,14 +2036,15 @@
                                             <table class="table table-sm table-hover">
                                                 <thead>
                                                     <tr>
-                                                        <th style="width: 100px;">Status</th>
+                                                        <th style="width: 100px;">Finding</th>
                                                         <th>Category</th>
                                                         <th>Issue</th>
                                                         <th>Mitigation</th>
+                                                        <th style="width: 180px;">Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="auditOpswatTable">
-                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                    <tr><td colspan="5" class="text-center text-muted">Run audit to see results</td></tr>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -7347,9 +7396,17 @@
 
     // ========== Code Audit Functions ==========
 
+    let currentAuditJobId = null;
+    let auditJobPollInterval = null;
+
     async function loadAuditResults() {
         try {
-            const response = await fetch('/api/audit/results', {
+            const statusFilter = document.querySelector('input[name="auditStatusFilter"]:checked')?.value || 'pending';
+            const url = statusFilter && statusFilter !== 'all'
+                ? `/api/audit/results?status_filter=${statusFilter}`
+                : '/api/audit/results';
+
+            const response = await fetch(url, {
                 headers: getAuthHeaders()
             });
 
@@ -7362,7 +7419,27 @@
                 ? new Date(data.timestamp).toLocaleString()
                 : 'Never';
             document.getElementById('totalIssuesCount').textContent = data.total_issues || '-';
+            document.getElementById('pendingIssuesCount').textContent = data.pending_count || '-';
             document.getElementById('auditScheduleStatus').textContent = data.schedule_status || 'Not Scheduled';
+
+            // Update filter counts
+            document.getElementById('filterPendingCount').textContent = data.pending_count || 0;
+            document.getElementById('filterMitigatedCount').textContent = data.mitigated_count || 0;
+            document.getElementById('filterRiskApprovedCount').textContent = data.risk_approved_count || 0;
+
+            // Check for active job
+            if (data.active_job) {
+                showAuditJobProgress(data.active_job);
+                if (!auditJobPollInterval) {
+                    currentAuditJobId = data.active_job.job_id;
+                    startAuditJobPolling(data.active_job.job_id);
+                }
+            } else {
+                hideAuditJobProgress();
+            }
+
+            // Clear all tables first
+            clearAllAuditTables();
 
             // Update category tables
             if (data.results && data.results.length > 0) {
@@ -7380,6 +7457,63 @@
         }
     }
 
+    function clearAllAuditTables() {
+        const tables = ['auditOwaspTable', 'auditHipaaTable', 'auditPerformanceTable',
+                       'auditDeadCodeTable', 'auditAdaTable', 'auditOpswatTable'];
+        tables.forEach(tableId => {
+            const table = document.getElementById(tableId);
+            if (table) {
+                table.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No issues found</td></tr>';
+            }
+        });
+    }
+
+    function showAuditJobProgress(job) {
+        const progressDiv = document.getElementById('auditJobProgress');
+        const progressBar = document.getElementById('auditJobProgressBar');
+        const message = document.getElementById('auditJobMessage');
+
+        progressDiv.classList.remove('d-none');
+        progressBar.style.width = job.progress + '%';
+        progressBar.textContent = job.progress + '%';
+        message.textContent = job.status === 'queued' ? 'Audit queued...' : 'Running audit...';
+    }
+
+    function hideAuditJobProgress() {
+        document.getElementById('auditJobProgress').classList.add('d-none');
+        if (auditJobPollInterval) {
+            clearInterval(auditJobPollInterval);
+            auditJobPollInterval = null;
+        }
+        currentAuditJobId = null;
+    }
+
+    function startAuditJobPolling(jobId) {
+        auditJobPollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/audit/job/${jobId}`, {
+                    headers: getAuthHeaders()
+                });
+                if (response.ok) {
+                    const job = await response.json();
+                    showAuditJobProgress(job);
+
+                    if (job.status === 'completed' || job.status === 'failed') {
+                        hideAuditJobProgress();
+                        if (job.status === 'completed') {
+                            showToast('Audit completed successfully', 'success');
+                            loadAuditResults();
+                        } else {
+                            showToast('Audit failed: ' + (job.error_message || 'Unknown error'), 'danger');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling job status:', error);
+            }
+        }, 2000);
+    }
+
     function renderAuditCategory(category) {
         const tableId = getAuditTableId(category.category);
         const countId = getAuditCountId(category.category);
@@ -7394,7 +7528,7 @@
         }
 
         if (!category.issues || category.issues.length === 0) {
-            table.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No issues found</td></tr>';
+            table.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No issues found</td></tr>';
             return;
         }
 
@@ -7402,18 +7536,71 @@
         category.issues.forEach(issue => {
             const severityClass = getSeverityClass(issue.severity);
             const firstCol = getFirstColumnContent(category.category, issue);
+            const statusPill = renderStatusPill(issue.id, issue.resolution_status || 'pending');
 
             html += `
-                <tr>
+                <tr data-issue-id="${issue.id}">
                     <td><span class="badge ${severityClass}">${escapeHtml(firstCol)}</span></td>
                     <td>${escapeHtml(issue.issue)}</td>
                     <td><code>${escapeHtml(issue.location || '-')}</code></td>
                     <td>${escapeHtml(issue.mitigation || '-')}</td>
+                    <td>${statusPill}</td>
                 </tr>
             `;
         });
 
         table.innerHTML = html;
+    }
+
+    function renderStatusPill(issueId, currentStatus) {
+        const statuses = [
+            { value: 'pending', label: 'Pending', class: 'btn-outline-warning', activeClass: 'btn-warning' },
+            { value: 'risk_approved', label: 'Risk OK', class: 'btn-outline-info', activeClass: 'btn-info' },
+            { value: 'mitigated', label: 'Mitigated', class: 'btn-outline-success', activeClass: 'btn-success' }
+        ];
+
+        let html = '<div class="btn-group btn-group-sm" role="group">';
+        statuses.forEach(status => {
+            const isActive = currentStatus === status.value;
+            const btnClass = isActive ? status.activeClass : status.class;
+            html += `<button type="button" class="btn ${btnClass} btn-sm py-0 px-2"
+                            onclick="updateIssueStatus(${issueId}, '${status.value}')"
+                            ${isActive ? 'disabled' : ''}>
+                        ${status.label}
+                     </button>`;
+        });
+        html += '</div>';
+        return html;
+    }
+
+    async function updateIssueStatus(issueId, newStatus) {
+        try {
+            const response = await fetch(`/api/audit/issue/${issueId}/status`, {
+                method: 'PUT',
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    resolution_status: newStatus,
+                    resolution_notes: null
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to update status');
+            }
+
+            showToast(`Status updated to ${newStatus.replace('_', ' ')}`, 'success');
+
+            // Reload to apply filter
+            loadAuditResults();
+
+        } catch (error) {
+            console.error('Error updating issue status:', error);
+            showToast('Failed to update status: ' + error.message, 'danger');
+        }
     }
 
     function getAuditTableId(category) {
@@ -7487,8 +7674,6 @@
         }
 
         try {
-            showToast('Running audit analysis...', 'info');
-
             const response = await fetch('/api/audit/run', {
                 method: 'POST',
                 headers: {
@@ -7505,16 +7690,14 @@
 
             const data = await response.json();
 
-            // Update UI with results
-            document.getElementById('lastAuditTime').textContent = new Date(data.timestamp).toLocaleString();
-            document.getElementById('totalIssuesCount').textContent = data.total_issues;
-
-            // Render each category
-            data.results.forEach(category => {
-                renderAuditCategory(category);
-            });
-
-            showToast(`Audit complete: ${data.total_issues} issues found`, 'success');
+            if (data.status === 'queued' || data.status === 'running') {
+                showToast(data.message, 'info');
+                currentAuditJobId = data.job_id;
+                showAuditJobProgress({ job_id: data.job_id, status: data.status, progress: 0 });
+                startAuditJobPolling(data.job_id);
+            } else {
+                showToast('Audit started', 'info');
+            }
 
         } catch (error) {
             console.error('Error running audit:', error);
@@ -7633,6 +7816,13 @@
                 loadAuditResults();
             });
         }
+
+        // Add event listeners for status filter radio buttons
+        document.querySelectorAll('input[name="auditStatusFilter"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                loadAuditResults();
+            });
+        });
     });
 
     // ========== End Code Audit Functions ==========

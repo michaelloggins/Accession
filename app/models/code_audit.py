@@ -23,6 +23,12 @@ class CodeAuditResult(Base):
     location = Column(String(500), nullable=True)  # file:line or general description
     mitigation = Column(Text, nullable=True)
 
+    # Resolution tracking
+    resolution_status = Column(String(20), nullable=False, default="pending")  # pending, mitigated, risk_approved
+    resolution_notes = Column(Text, nullable=True)  # Notes about resolution
+    resolved_by = Column(String(100), nullable=True)  # User who resolved
+    resolved_at = Column(DateTime, nullable=True)  # When resolved
+
     # Additional metadata
     extra_data = Column(JSON, nullable=True)  # For category-specific data (regulation, count, status)
 
@@ -34,6 +40,7 @@ class CodeAuditResult(Base):
         Index("idx_audit_timestamp", "timestamp"),
         Index("idx_audit_category", "category"),
         Index("idx_audit_severity", "severity"),
+        Index("idx_audit_resolution", "resolution_status"),
     )
 
 
@@ -54,3 +61,25 @@ class CodeAuditSchedule(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     updated_by = Column(String(100), nullable=True)
+
+
+class CodeAuditJob(Base):
+    """Background job tracking for code audits."""
+
+    __tablename__ = "code_audit_jobs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    job_id = Column(String(36), nullable=False, unique=True, index=True)  # UUID for job tracking
+    run_id = Column(String(36), nullable=True)  # Links to CodeAuditResult.run_id when complete
+    status = Column(String(20), nullable=False, default="queued")  # queued, running, completed, failed
+    progress = Column(Integer, nullable=False, default=0)  # 0-100 percent
+    categories = Column(JSON, nullable=False)  # Categories being audited
+    triggered_by = Column(String(100), nullable=True)  # User who triggered or "scheduled"
+    error_message = Column(Text, nullable=True)  # Error details if failed
+    created_at = Column(DateTime, server_default=func.now())
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("idx_job_status", "status"),
+    )

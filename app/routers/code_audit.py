@@ -1,6 +1,6 @@
 """Code audit API endpoints for security and quality analysis."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
@@ -10,9 +10,11 @@ from datetime import datetime, timedelta
 import logging
 import uuid
 import io
+import asyncio
+import threading
 
-from app.database import get_db
-from app.models.code_audit import CodeAuditResult, CodeAuditSchedule
+from app.database import get_db, SessionLocal
+from app.models.code_audit import CodeAuditResult, CodeAuditSchedule, CodeAuditJob
 from app.models.audit_log import AuditLog
 from app.config import settings
 
@@ -23,11 +25,16 @@ logger = logging.getLogger(__name__)
 # Pydantic models
 class AuditIssue(BaseModel):
     """Single audit issue."""
+    id: Optional[int] = None
     severity: str
     issue: str
     location: Optional[str] = None
     mitigation: Optional[str] = None
     extra_data: Optional[dict] = None
+    resolution_status: str = "pending"
+    resolution_notes: Optional[str] = None
+    resolved_by: Optional[str] = None
+    resolved_at: Optional[str] = None
 
 
 class AuditCategoryResult(BaseModel):
@@ -35,6 +42,9 @@ class AuditCategoryResult(BaseModel):
     category: str
     issues: List[AuditIssue]
     count: int
+    pending_count: int = 0
+    mitigated_count: int = 0
+    risk_approved_count: int = 0
 
 
 class AuditRunRequest(BaseModel):
@@ -43,11 +53,21 @@ class AuditRunRequest(BaseModel):
 
 
 class AuditRunResponse(BaseModel):
-    """Response from running an audit."""
-    run_id: str
-    timestamp: str
-    total_issues: int
-    results: List[AuditCategoryResult]
+    """Response from running an audit (now returns job info for async)."""
+    job_id: str
+    status: str
+    message: str
+
+
+class AuditJobStatusResponse(BaseModel):
+    """Status of a running audit job."""
+    job_id: str
+    status: str
+    progress: int
+    run_id: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: Optional[str] = None
+    completed_at: Optional[str] = None
 
 
 class AuditResultsResponse(BaseModel):
@@ -55,8 +75,18 @@ class AuditResultsResponse(BaseModel):
     run_id: Optional[str] = None
     timestamp: Optional[str] = None
     total_issues: int = 0
+    pending_count: int = 0
+    mitigated_count: int = 0
+    risk_approved_count: int = 0
     results: List[AuditCategoryResult] = []
     schedule_status: Optional[str] = None
+    active_job: Optional[AuditJobStatusResponse] = None
+
+
+class UpdateResolutionRequest(BaseModel):
+    """Request to update issue resolution status."""
+    resolution_status: str  # pending, mitigated, risk_approved
+    resolution_notes: Optional[str] = None
 
 
 class ScheduleRequest(BaseModel):
@@ -164,15 +194,34 @@ def get_user_from_request(request) -> dict:
 
 
 @router.get("/results", response_model=AuditResultsResponse)
-async def get_audit_results(db: Session = Depends(get_db)):
-    """Get the latest audit results."""
+async def get_audit_results(
+    status_filter: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get the latest audit results with optional status filtering."""
+    # Check for any active/running jobs
+    active_job = db.query(CodeAuditJob)\
+        .filter(CodeAuditJob.status.in_(["queued", "running"]))\
+        .order_by(desc(CodeAuditJob.created_at))\
+        .first()
+
+    active_job_response = None
+    if active_job:
+        active_job_response = AuditJobStatusResponse(
+            job_id=active_job.job_id,
+            status=active_job.status,
+            progress=active_job.progress,
+            run_id=active_job.run_id,
+            created_at=active_job.created_at.isoformat() if active_job.created_at else None
+        )
+
     # Get the most recent run_id
     latest_run = db.query(CodeAuditResult.run_id, CodeAuditResult.timestamp)\
         .order_by(desc(CodeAuditResult.timestamp))\
         .first()
 
     if not latest_run:
-        # Return baseline findings if no audit has been run yet
+        # Return empty if no audit has been run yet
         schedule = db.query(CodeAuditSchedule).first()
         schedule_status = "Not Scheduled"
         if schedule and schedule.enabled:
@@ -183,31 +232,66 @@ async def get_audit_results(db: Session = Depends(get_db)):
             timestamp=None,
             total_issues=0,
             results=[],
-            schedule_status=schedule_status
+            schedule_status=schedule_status,
+            active_job=active_job_response
         )
 
-    # Get all results for this run
-    results = db.query(CodeAuditResult)\
+    # Build query with optional status filter
+    query = db.query(CodeAuditResult)\
+        .filter(CodeAuditResult.run_id == latest_run.run_id)
+
+    if status_filter and status_filter != "all":
+        query = query.filter(CodeAuditResult.resolution_status == status_filter)
+
+    results = query.order_by(CodeAuditResult.category, CodeAuditResult.severity).all()
+
+    # Get total counts by status (unfiltered)
+    all_results = db.query(CodeAuditResult)\
         .filter(CodeAuditResult.run_id == latest_run.run_id)\
-        .order_by(CodeAuditResult.category, CodeAuditResult.severity)\
         .all()
+
+    total_pending = sum(1 for r in all_results if (r.resolution_status or "pending") == "pending")
+    total_mitigated = sum(1 for r in all_results if r.resolution_status == "mitigated")
+    total_risk_approved = sum(1 for r in all_results if r.resolution_status == "risk_approved")
 
     # Group by category
     categories = {}
     for result in results:
         if result.category not in categories:
-            categories[result.category] = []
-        categories[result.category].append(AuditIssue(
+            categories[result.category] = {"issues": [], "pending": 0, "mitigated": 0, "risk_approved": 0}
+
+        resolution_status = result.resolution_status or "pending"
+        categories[result.category]["issues"].append(AuditIssue(
+            id=result.id,
             severity=result.severity,
             issue=result.issue,
             location=result.location,
             mitigation=result.mitigation,
-            extra_data=result.extra_data
+            extra_data=result.extra_data,
+            resolution_status=resolution_status,
+            resolution_notes=result.resolution_notes,
+            resolved_by=result.resolved_by,
+            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None
         ))
 
+        # Count by status
+        if resolution_status == "pending":
+            categories[result.category]["pending"] += 1
+        elif resolution_status == "mitigated":
+            categories[result.category]["mitigated"] += 1
+        elif resolution_status == "risk_approved":
+            categories[result.category]["risk_approved"] += 1
+
     category_results = [
-        AuditCategoryResult(category=cat, issues=issues, count=len(issues))
-        for cat, issues in categories.items()
+        AuditCategoryResult(
+            category=cat,
+            issues=data["issues"],
+            count=len(data["issues"]),
+            pending_count=data["pending"],
+            mitigated_count=data["mitigated"],
+            risk_approved_count=data["risk_approved"]
+        )
+        for cat, data in categories.items()
     ]
 
     # Get schedule status
@@ -219,20 +303,96 @@ async def get_audit_results(db: Session = Depends(get_db)):
     return AuditResultsResponse(
         run_id=latest_run.run_id,
         timestamp=latest_run.timestamp.isoformat() if latest_run.timestamp else None,
-        total_issues=len(results),
+        total_issues=len(all_results),
+        pending_count=total_pending,
+        mitigated_count=total_mitigated,
+        risk_approved_count=total_risk_approved,
         results=category_results,
-        schedule_status=schedule_status
+        schedule_status=schedule_status,
+        active_job=active_job_response
     )
 
 
-@router.post("/run", response_model=AuditRunResponse)
-async def run_audit(request: AuditRunRequest, db: Session = Depends(get_db)):
-    """Run code audit for selected categories."""
-    run_id = str(uuid.uuid4())
-    timestamp = datetime.utcnow()
-    total_issues = 0
-    results = []
+def run_audit_background(job_id: str, categories: List[str], triggered_by: str):
+    """Background task to run code audit."""
+    db = SessionLocal()
+    try:
+        # Update job status to running
+        job = db.query(CodeAuditJob).filter(CodeAuditJob.job_id == job_id).first()
+        if not job:
+            logger.error(f"Job {job_id} not found")
+            return
 
+        job.status = "running"
+        job.started_at = datetime.utcnow()
+        db.commit()
+
+        run_id = str(uuid.uuid4())
+        timestamp = datetime.utcnow()
+        total_categories = len(categories)
+
+        for idx, category in enumerate(categories):
+            findings = BASELINE_AUDIT_FINDINGS.get(category, [])
+
+            for finding in findings:
+                audit_result = CodeAuditResult(
+                    run_id=run_id,
+                    timestamp=timestamp,
+                    category=category,
+                    severity=finding["severity"],
+                    issue=finding["issue"],
+                    location=finding.get("location"),
+                    mitigation=finding.get("mitigation"),
+                    extra_data=finding.get("extra_data"),
+                    triggered_by=triggered_by,
+                    resolution_status="pending"
+                )
+                db.add(audit_result)
+
+            # Update progress
+            job.progress = int(((idx + 1) / total_categories) * 100)
+            db.commit()
+
+        # Mark job as completed
+        job.status = "completed"
+        job.run_id = run_id
+        job.progress = 100
+        job.completed_at = datetime.utcnow()
+        db.commit()
+
+        # Log the audit run
+        audit_log = AuditLog(
+            user_id="system",
+            user_email=triggered_by,
+            action="run_code_audit",
+            resource_type="code_audit",
+            resource_id=run_id,
+            success=True
+        )
+        db.add(audit_log)
+        db.commit()
+
+        logger.info(f"Background audit completed: job_id={job_id}, run_id={run_id}")
+
+    except Exception as e:
+        logger.error(f"Background audit failed: {e}")
+        if job:
+            job.status = "failed"
+            job.error_message = str(e)
+            job.completed_at = datetime.utcnow()
+            db.commit()
+    finally:
+        db.close()
+
+
+@router.post("/run", response_model=AuditRunResponse)
+async def run_audit(
+    request: AuditRunRequest,
+    background_tasks: BackgroundTasks,
+    req: Request,
+    db: Session = Depends(get_db)
+):
+    """Queue a code audit job for background processing."""
     valid_categories = ["owasp", "hipaa", "performance", "dead_code", "ada", "opswat"]
     selected = [c for c in request.categories if c in valid_categories]
 
@@ -242,62 +402,122 @@ async def run_audit(request: AuditRunRequest, db: Session = Depends(get_db)):
             detail="No valid categories selected"
         )
 
-    for category in selected:
-        findings = BASELINE_AUDIT_FINDINGS.get(category, [])
-        issues = []
+    # Check for existing running job
+    existing_job = db.query(CodeAuditJob)\
+        .filter(CodeAuditJob.status.in_(["queued", "running"]))\
+        .first()
 
-        for finding in findings:
-            # Store in database
-            audit_result = CodeAuditResult(
-                run_id=run_id,
-                timestamp=timestamp,
-                category=category,
-                severity=finding["severity"],
-                issue=finding["issue"],
-                location=finding.get("location"),
-                mitigation=finding.get("mitigation"),
-                extra_data=finding.get("extra_data"),
-                triggered_by="manual"
-            )
-            db.add(audit_result)
+    if existing_job:
+        return AuditRunResponse(
+            job_id=existing_job.job_id,
+            status=existing_job.status,
+            message="An audit is already in progress"
+        )
 
-            issues.append(AuditIssue(
-                severity=finding["severity"],
-                issue=finding["issue"],
-                location=finding.get("location"),
-                mitigation=finding.get("mitigation"),
-                extra_data=finding.get("extra_data")
-            ))
+    # Get user email from request
+    user_email = req.cookies.get("user_email", "system")
 
-        total_issues += len(issues)
-        results.append(AuditCategoryResult(
-            category=category,
-            issues=issues,
-            count=len(issues)
-        ))
-
+    # Create job record
+    job_id = str(uuid.uuid4())
+    job = CodeAuditJob(
+        job_id=job_id,
+        status="queued",
+        progress=0,
+        categories=selected,
+        triggered_by=user_email
+    )
+    db.add(job)
     db.commit()
 
-    # Log the audit run
+    # Queue background task
+    background_tasks.add_task(run_audit_background, job_id, selected, user_email)
+
+    logger.info(f"Audit job queued: job_id={job_id}, categories={selected}")
+
+    return AuditRunResponse(
+        job_id=job_id,
+        status="queued",
+        message=f"Audit queued for {len(selected)} categories"
+    )
+
+
+@router.get("/job/{job_id}", response_model=AuditJobStatusResponse)
+async def get_job_status(job_id: str, db: Session = Depends(get_db)):
+    """Get the status of a running audit job."""
+    job = db.query(CodeAuditJob).filter(CodeAuditJob.job_id == job_id).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    return AuditJobStatusResponse(
+        job_id=job.job_id,
+        status=job.status,
+        progress=job.progress,
+        run_id=job.run_id,
+        error_message=job.error_message,
+        created_at=job.created_at.isoformat() if job.created_at else None,
+        completed_at=job.completed_at.isoformat() if job.completed_at else None
+    )
+
+
+@router.put("/issue/{issue_id}/status")
+async def update_issue_status(
+    issue_id: int,
+    request: UpdateResolutionRequest,
+    req: Request,
+    db: Session = Depends(get_db)
+):
+    """Update the resolution status of a specific audit issue."""
+    issue = db.query(CodeAuditResult).filter(CodeAuditResult.id == issue_id).first()
+
+    if not issue:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Issue not found"
+        )
+
+    valid_statuses = ["pending", "mitigated", "risk_approved"]
+    if request.resolution_status not in valid_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+        )
+
+    # Get user from request
+    user_email = req.cookies.get("user_email", "system")
+
+    # Update the issue
+    old_status = issue.resolution_status
+    issue.resolution_status = request.resolution_status
+    issue.resolution_notes = request.resolution_notes
+    issue.resolved_by = user_email
+    issue.resolved_at = datetime.utcnow()
+
+    # Log the status change
     audit_log = AuditLog(
         user_id="system",
-        user_email="admin",
-        action="run_code_audit",
-        resource_type="code_audit",
-        resource_id=run_id,
-        success=True
+        user_email=user_email,
+        action="update_audit_issue_status",
+        resource_type="code_audit_result",
+        resource_id=str(issue_id),
+        success=True,
+        details=f"Status changed from {old_status} to {request.resolution_status}"
     )
     db.add(audit_log)
     db.commit()
 
-    logger.info(f"Code audit completed: run_id={run_id}, categories={selected}, issues={total_issues}")
+    logger.info(f"Issue {issue_id} status updated: {old_status} -> {request.resolution_status} by {user_email}")
 
-    return AuditRunResponse(
-        run_id=run_id,
-        timestamp=timestamp.isoformat(),
-        total_issues=total_issues,
-        results=results
-    )
+    return {
+        "id": issue.id,
+        "resolution_status": issue.resolution_status,
+        "resolution_notes": issue.resolution_notes,
+        "resolved_by": issue.resolved_by,
+        "resolved_at": issue.resolved_at.isoformat() if issue.resolved_at else None
+    }
 
 
 @router.get("/schedule", response_model=ScheduleResponse)
