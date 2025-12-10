@@ -121,11 +121,16 @@ async def upload_document(
 @router.post("/bulk-upload")
 async def bulk_upload_documents(
     request: Request,
+    background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     source: str = Form("upload"),
     db: Session = Depends(get_db)
 ):
-    """Upload multiple documents for background processing."""
+    """Upload multiple documents for processing.
+
+    For <= 4 files: Queue directly for Extraction Worker (faster for small batches)
+    For > 4 files: Use Background Jobs system (better progress tracking for large batches)
+    """
     if len(files) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -135,6 +140,65 @@ async def bulk_upload_documents(
     doc_service = DocumentService(db)
     audit_service = AuditService(db)
     current_user = get_current_user_from_request(request, db)
+
+    # For larger uploads (>4 files), use Background Jobs for better progress tracking
+    if len(files) > 4:
+        # Read all file contents first (needed for background processing)
+        files_data = []
+        validation_errors = []
+
+        for file in files:
+            try:
+                # Validate file first
+                doc_service.validate_file(file)
+
+                # Read content
+                content = await file.read()
+                files_data.append({
+                    'filename': file.filename,
+                    'content': content,
+                    'content_type': file.content_type or 'application/pdf'
+                })
+            except Exception as e:
+                logger.error(f"Failed to validate {file.filename}: {e}")
+                validation_errors.append({
+                    "filename": file.filename,
+                    "error": str(e)
+                })
+
+        if not files_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid files to process"
+            )
+
+        # Create background job
+        job_id = str(uuid.uuid4())
+        db_url = settings.DATABASE_URL
+
+        # Queue the background task
+        background_tasks.add_task(
+            process_bulk_upload,
+            job_id=job_id,
+            files_data=files_data,
+            source=source,
+            uploaded_by=current_user["user_email"],
+            db_url=db_url
+        )
+
+        logger.info(f"Background job {job_id} created for {len(files_data)} files")
+
+        return {
+            "status": "background_job_created",
+            "job_id": job_id,
+            "total_files": len(files),
+            "queued_count": len(files_data),
+            "error_count": len(validation_errors),
+            "errors": validation_errors,
+            "message": f"Background job created to process {len(files_data)} documents. Track progress in Admin > Background Jobs."
+        }
+
+    # For small batches (<=4 files), use direct queue approach
     uploaded_docs = []
     errors = []
 
