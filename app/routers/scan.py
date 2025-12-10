@@ -911,6 +911,87 @@ async def run_migrations(
         return {"success": False, "error": str(e)}
 
 
+@router.post("/training/add-training-columns")
+async def add_training_columns(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Add training columns directly via SQL (bypasses Alembic version issues)."""
+    current_user = get_current_user_from_request(request, db)
+
+    # Only admins can run this
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from sqlalchemy import text
+
+    results = []
+
+    # SQL statements to add missing columns (with IF NOT EXISTS checks)
+    sql_statements = [
+        # Document types training columns
+        ("training_enabled", """
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('document_types') AND name = 'training_enabled')
+            ALTER TABLE document_types ADD training_enabled BIT NOT NULL DEFAULT 1
+        """),
+        ("use_form_recognizer", """
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('document_types') AND name = 'use_form_recognizer')
+            ALTER TABLE document_types ADD use_form_recognizer BIT NOT NULL DEFAULT 0
+        """),
+        ("form_recognizer_model_id", """
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('document_types') AND name = 'form_recognizer_model_id')
+            ALTER TABLE document_types ADD form_recognizer_model_id NVARCHAR(200) NULL
+        """),
+        ("fr_confidence_threshold", """
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('document_types') AND name = 'fr_confidence_threshold')
+            ALTER TABLE document_types ADD fr_confidence_threshold FLOAT NOT NULL DEFAULT 0.90
+        """),
+        ("fr_extraction_count", """
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('document_types') AND name = 'fr_extraction_count')
+            ALTER TABLE document_types ADD fr_extraction_count INT NOT NULL DEFAULT 0
+        """),
+        ("openai_extraction_count", """
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('document_types') AND name = 'openai_extraction_count')
+            ALTER TABLE document_types ADD openai_extraction_count INT NOT NULL DEFAULT 0
+        """),
+        ("openai_fallback_count", """
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('document_types') AND name = 'openai_fallback_count')
+            ALTER TABLE document_types ADD openai_fallback_count INT NOT NULL DEFAULT 0
+        """),
+        # Documents extraction_method column
+        ("extraction_method", """
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('documents') AND name = 'extraction_method')
+            ALTER TABLE documents ADD extraction_method NVARCHAR(50) NULL
+        """),
+    ]
+
+    for column_name, sql in sql_statements:
+        try:
+            db.execute(text(sql))
+            db.commit()
+            results.append({"column": column_name, "status": "success"})
+        except Exception as e:
+            db.rollback()
+            results.append({"column": column_name, "status": "error", "error": str(e)})
+
+    # Also update alembic_version to latest
+    try:
+        db.execute(text("""
+            DELETE FROM alembic_version;
+            INSERT INTO alembic_version (version_num) VALUES ('20251209_add_training_columns');
+        """))
+        db.commit()
+        results.append({"column": "alembic_version", "status": "updated to 20251209_add_training_columns"})
+    except Exception as e:
+        db.rollback()
+        results.append({"column": "alembic_version", "status": "error", "error": str(e)})
+
+    return {
+        "success": all(r.get("status") == "success" or "updated" in str(r.get("status", "")) for r in results),
+        "results": results
+    }
+
+
 @router.get("/training/extraction-stats")
 async def get_extraction_stats(
     request: Request,
