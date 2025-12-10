@@ -504,6 +504,9 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="bi bi-cloud-fill"></i> Environment Settings (Azure)</h5>
                         <div>
+                            <button class="btn btn-sm btn-outline-success me-2" onclick="showAddEnvSettingModal()">
+                                <i class="bi bi-plus-lg"></i> Add Setting
+                            </button>
                             <button class="btn btn-sm btn-outline-primary" onclick="loadEnvSettings()">
                                 <i class="bi bi-arrow-clockwise"></i> Refresh
                             </button>
@@ -527,16 +530,17 @@
                             <table class="table table-hover table-sm">
                                 <thead>
                                     <tr>
-                                        <th>Setting</th>
-                                        <th>Current Value</th>
-                                        <th>Category</th>
-                                        <th>Restart Required</th>
-                                        <th style="width: 50px;">Edit</th>
+                                        <th style="width: 200px;">Setting</th>
+                                        <th style="width: 200px;">Current Value</th>
+                                        <th>Description</th>
+                                        <th style="width: 120px;">Category</th>
+                                        <th style="width: 100px;">Restart</th>
+                                        <th style="width: 80px;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="envSettingsTable">
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted">Loading...</td>
+                                        <td colspan="6" class="text-center text-muted">Loading...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2035,6 +2039,112 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="saveScimConfig()">
                     <i class="bi bi-check-lg"></i> Save Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Environment Setting Modal -->
+<div class="modal fade" id="editEnvSettingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Environment Setting</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editEnvSettingForm">
+                    <div class="mb-3">
+                        <label class="form-label">Setting Name</label>
+                        <input type="text" class="form-control" id="editEnvSettingKey" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <input type="text" class="form-control" id="editEnvSettingCategory" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" id="editEnvSettingDescription" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Value</label>
+                        <div id="editEnvSettingValueContainer">
+                            <!-- Will be populated dynamically based on value type -->
+                        </div>
+                    </div>
+                    <div class="alert alert-warning" id="editEnvRestartWarning" style="display: none;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Warning:</strong> Changing this setting requires an application restart to take effect.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditedEnvSetting()">
+                    <i class="bi bi-check-lg"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Environment Setting Modal -->
+<div class="modal fade" id="addEnvSettingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-lg"></i> Add Setting Variable</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addEnvSettingForm">
+                    <div class="mb-3">
+                        <label class="form-label">Setting Type</label>
+                        <select class="form-select" id="addEnvSettingType" onchange="toggleAddSettingFields()">
+                            <option value="env">Environment Variable (Azure)</option>
+                            <option value="db">System Configuration (Database)</option>
+                        </select>
+                        <small class="text-muted">Environment variables are stored in Azure App Settings. System configurations are stored in the database.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Setting Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="addEnvSettingKey" placeholder="e.g., MY_CUSTOM_SETTING" required>
+                        <small class="text-muted">Use UPPERCASE_WITH_UNDERSCORES for environment variables</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category <span class="text-danger">*</span></label>
+                        <select class="form-select" id="addEnvSettingCategory">
+                            <option value="general">General</option>
+                            <option value="authentication">Authentication</option>
+                            <option value="azure">Azure</option>
+                            <option value="database">Database</option>
+                            <option value="security">Security</option>
+                            <option value="integration">Integration</option>
+                            <option value="document">Document Processing</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Value <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="addEnvSettingValue" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" id="addEnvSettingDescription" placeholder="Brief description of this setting">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="addEnvSettingRestart">
+                        <label class="form-check-label" for="addEnvSettingRestart">
+                            Requires restart to take effect
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveNewEnvSetting()">
+                    <i class="bi bi-plus-lg"></i> Add Setting
                 </button>
             </div>
         </div>
@@ -3935,7 +4045,7 @@
         } catch (error) {
             console.error('Error loading environment settings:', error);
             document.getElementById('envSettingsTable').innerHTML = `
-                <tr><td colspan="5" class="text-center text-danger">Error loading environment settings: ${error.message}</td></tr>
+                <tr><td colspan="6" class="text-center text-danger">Error loading environment settings: ${error.message}</td></tr>
             `;
         }
     }
@@ -3948,29 +4058,25 @@
         }
 
         tbody.innerHTML = settings.map(setting => {
-            // Create editable input based on value type
-            let inputHtml;
-            if (setting.value_type === 'bool') {
-                inputHtml = `
-                    <select class="form-select form-select-sm" id="env_${setting.key}" data-original="${setting.value}">
-                        <option value="true" ${setting.value === 'true' ? 'selected' : ''}>true</option>
-                        <option value="false" ${setting.value === 'false' ? 'selected' : ''}>false</option>
-                    </select>`;
-            } else if (setting.value_type === 'select' && setting.options) {
-                const optionsHtml = setting.options.map(opt => 
-                    `<option value="${opt}" ${setting.value === opt ? 'selected' : ''}>${opt}</option>`
-                ).join('');
-                inputHtml = `<select class="form-select form-select-sm" id="env_${setting.key}" data-original="${setting.value}">${optionsHtml}</select>`;
-            } else {
-                inputHtml = `<input type="text" class="form-control form-control-sm" id="env_${setting.key}" 
-                                   value="${setting.value || ''}" data-original="${setting.value || ''}" 
-                                   style="min-width: 200px;">`;
+            // Display value (mask sensitive values)
+            let displayValue = setting.value || '-';
+            const isSensitive = setting.key && (
+                setting.key.toLowerCase().includes('secret') ||
+                setting.key.toLowerCase().includes('password') ||
+                setting.key.toLowerCase().includes('key') ||
+                setting.key.toLowerCase().includes('token')
+            );
+            if (isSensitive && displayValue && displayValue !== '-') {
+                displayValue = '••••••••';
             }
+
+            // Escape HTML in display value
+            const escapedValue = String(displayValue).replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
             return `
             <tr>
-                <td><strong>${setting.key}</strong></td>
-                <td>${inputHtml}</td>
+                <td><code class="small">${setting.key}</code></td>
+                <td><span class="text-truncate d-inline-block" style="max-width: 180px;" title="${String(setting.value || '').replace(/"/g, '&quot;')}">${escapedValue}</span></td>
                 <td><small class="text-muted">${setting.description || '-'}</small></td>
                 <td><span class="badge bg-secondary">${setting.category}</span></td>
                 <td>
@@ -3978,9 +4084,12 @@
                         ? '<span class="badge bg-warning text-dark"><i class="bi bi-arrow-repeat"></i> Yes</span>'
                         : '<span class="badge bg-light text-dark">No</span>'}
                 </td>
-                <td>
-                    <button class="btn btn-sm btn-primary" onclick="saveEnvSetting('${setting.key}')">
-                        <i class="bi bi-check"></i> Save
+                <td class="text-nowrap">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="showEditEnvSettingModal('${setting.key}')" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteEnvSetting('${setting.key}')" title="Delete">
+                        <i class="bi bi-trash"></i>
                     </button>
                 </td>
             </tr>
@@ -4049,6 +4158,232 @@
 
         } catch (error) {
             alert('Error restarting app: ' + error.message);
+        }
+    }
+
+    // Store env settings data for edit modal
+    let envSettingsCache = [];
+
+    // Store current setting being edited
+    let currentEditSetting = null;
+
+    // Show Edit Environment Setting Modal
+    async function showEditEnvSettingModal(key) {
+        try {
+            // Fetch fresh data for this setting
+            const response = await fetch('/api/config/env/settings', {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to load setting');
+
+            const data = await response.json();
+            const setting = data.settings.find(s => s.key === key);
+
+            if (!setting) {
+                alert('Setting not found: ' + key);
+                return;
+            }
+
+            currentEditSetting = setting;
+
+            // Populate modal fields
+            document.getElementById('editEnvSettingKey').value = setting.key;
+            document.getElementById('editEnvSettingCategory').value = setting.category || '';
+            document.getElementById('editEnvSettingDescription').value = setting.description || '';
+
+            // Show/hide restart warning
+            document.getElementById('editEnvRestartWarning').style.display =
+                setting.requires_restart ? 'block' : 'none';
+
+            // Create appropriate input for value based on type
+            const container = document.getElementById('editEnvSettingValueContainer');
+            if (setting.value_type === 'bool') {
+                container.innerHTML = `
+                    <select class="form-select" id="editEnvSettingValue">
+                        <option value="true" ${setting.value === 'true' ? 'selected' : ''}>true</option>
+                        <option value="false" ${setting.value === 'false' ? 'selected' : ''}>false</option>
+                    </select>`;
+            } else if (setting.value_type === 'select' && setting.options) {
+                const optionsHtml = setting.options.map(opt =>
+                    `<option value="${opt}" ${setting.value === opt ? 'selected' : ''}>${opt}</option>`
+                ).join('');
+                container.innerHTML = `<select class="form-select" id="editEnvSettingValue">${optionsHtml}</select>`;
+            } else {
+                container.innerHTML = `<input type="text" class="form-control" id="editEnvSettingValue" value="${setting.value || ''}">`;
+            }
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editEnvSettingModal'));
+            modal.show();
+
+        } catch (error) {
+            alert('Error loading setting: ' + error.message);
+        }
+    }
+
+    // Save Edited Environment Setting
+    async function saveEditedEnvSetting() {
+        if (!currentEditSetting) return;
+
+        const key = currentEditSetting.key;
+        const newValue = document.getElementById('editEnvSettingValue').value;
+
+        if (newValue === currentEditSetting.value) {
+            bootstrap.Modal.getInstance(document.getElementById('editEnvSettingModal')).hide();
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/config/env/settings/' + key, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ value: newValue })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to save setting');
+            }
+
+            const result = await response.json();
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('editEnvSettingModal')).hide();
+
+            // Refresh the table
+            await loadEnvSettings();
+
+            // Show restart notice if needed
+            if (result.requires_restart) {
+                const restartNow = confirm(
+                    'Setting "' + key + '" saved successfully. ' +
+                    'This setting requires an app restart to take effect. Restart now?'
+                );
+                if (restartNow) {
+                    await restartApp();
+                }
+            } else {
+                alert('Setting "' + key + '" saved successfully.');
+            }
+
+        } catch (error) {
+            alert('Error saving setting: ' + error.message);
+        }
+    }
+
+    // Delete Environment Setting
+    async function deleteEnvSetting(key) {
+        if (!confirm('Are you sure you want to delete the setting "' + key + '"?\n\nThis action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/config/env/settings/' + key, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to delete setting');
+            }
+
+            alert('Setting "' + key + '" deleted successfully.');
+            await loadEnvSettings();
+
+        } catch (error) {
+            alert('Error deleting setting: ' + error.message);
+        }
+    }
+
+    // Show Add Environment Setting Modal
+    function showAddEnvSettingModal() {
+        // Reset form
+        document.getElementById('addEnvSettingForm').reset();
+        document.getElementById('addEnvSettingType').value = 'env';
+        toggleAddSettingFields();
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('addEnvSettingModal'));
+        modal.show();
+    }
+
+    // Toggle fields based on setting type (env vs db)
+    function toggleAddSettingFields() {
+        const type = document.getElementById('addEnvSettingType').value;
+        // Both types use similar fields, but could add type-specific options here
+    }
+
+    // Save New Environment Setting
+    async function saveNewEnvSetting() {
+        const type = document.getElementById('addEnvSettingType').value;
+        const key = document.getElementById('addEnvSettingKey').value.trim();
+        const category = document.getElementById('addEnvSettingCategory').value;
+        const value = document.getElementById('addEnvSettingValue').value;
+        const description = document.getElementById('addEnvSettingDescription').value.trim();
+        const requiresRestart = document.getElementById('addEnvSettingRestart').checked;
+
+        if (!key) {
+            alert('Setting name is required');
+            return;
+        }
+
+        if (!value && value !== '') {
+            alert('Value is required');
+            return;
+        }
+
+        try {
+            if (type === 'env') {
+                // Save to Azure Environment Variables
+                const response = await fetch('/api/config/env/settings', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        key: key,
+                        value: value,
+                        category: category,
+                        description: description,
+                        requires_restart: requiresRestart
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to add setting');
+                }
+
+                alert('Environment setting "' + key + '" added successfully.');
+                await loadEnvSettings();
+
+            } else {
+                // Save to Database (System Config)
+                const response = await fetch('/api/config/', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        key: key,
+                        value: value,
+                        category: category,
+                        description: description
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to add configuration');
+                }
+
+                alert('System configuration "' + key + '" added successfully.');
+                await loadConfigs();
+            }
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('addEnvSettingModal')).hide();
+
+        } catch (error) {
+            alert('Error adding setting: ' + error.message);
         }
     }
 

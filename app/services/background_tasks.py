@@ -12,6 +12,8 @@ from pathlib import Path
 from app.services.document_service import DocumentService
 from app.services.extraction_factory import get_extraction_service
 from app.services.audit_service import AuditService
+from app.services.config_service import ConfigService
+from app.services.training_service import TrainingService
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +208,20 @@ async def process_bulk_upload(
         doc_service = DocumentService(db)
         extraction_service = get_extraction_service()
         audit_service = AuditService(db)
+        config_service = ConfigService(db)
+
+        # Check if learning mode is enabled
+        try:
+            ai_config_str = config_service.get("AI_SERVICE_CONFIG", "{}")
+            ai_config = json.loads(ai_config_str) if isinstance(ai_config_str, str) else ai_config_str
+            learning_mode = ai_config.get("learning_mode", False)
+        except Exception as e:
+            logger.warning(f"Could not load AI config for learning mode: {e}")
+            learning_mode = False
+
+        training_service = TrainingService(db) if learning_mode else None
+        if learning_mode:
+            logger.info(f"Learning mode enabled for job {job_id}")
 
         processed = 0
         successful = 0
@@ -273,6 +289,19 @@ async def process_bulk_upload(
                     resource_id=str(document.id),
                     success=True
                 )
+
+                # Run training analysis if learning mode is enabled
+                if training_service and training_service.is_configured:
+                    try:
+                        logger.info(f"Running training analysis for document {document.id}")
+                        await training_service.analyze_document(
+                            image_bytes=content,
+                            document_id=document.id,
+                            blob_name=blob_name,
+                            user_email=uploaded_by
+                        )
+                    except Exception as train_error:
+                        logger.warning(f"Training analysis failed for document {document.id}: {train_error}")
 
                 successful += 1
                 BackgroundTaskManager.add_result(job_id, {
