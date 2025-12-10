@@ -24,9 +24,10 @@ from app.models import (
     Document, User, AuditLog, SystemConfig, ExtractionBatch,
     Facility, FacilityPhysician, FacilityMatchLog, Species, Patient,
     Test, TestSpecimenType, Order, OrderTest, Integration, ApiKey,
-    IntegrationLog, ScanningStation, LabelPrinter, UserWorkstationPreference
+    IntegrationLog, ScanningStation, LabelPrinter, UserWorkstationPreference,
+    CodeAuditResult, CodeAuditSchedule
 )
-from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation, scan, print as print_router
+from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation, scan, print as print_router, code_audit
 from app.middleware.audit import AuditMiddleware
 from app.middleware.auth import AuthMiddleware
 from app.middleware.security import (
@@ -328,6 +329,7 @@ app.include_router(patients.router, prefix="/api/patients", tags=["Patients"])
 app.include_router(workstation.router, prefix="/api/workstation", tags=["Workstation Equipment"])
 app.include_router(scan.router, prefix="/api/scan", tags=["Scanner"])
 app.include_router(print_router.router, prefix="/api/print", tags=["Printing"])
+app.include_router(code_audit.router, prefix="/api/audit", tags=["Code Audit"])
 
 
 @app.get("/")

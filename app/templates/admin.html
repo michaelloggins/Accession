@@ -285,6 +285,11 @@
                     <i class="bi bi-clipboard-check"></i> Compliance
                 </button>
             </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#code-audit">
+                    <i class="bi bi-shield-check"></i> Code Audit
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content mt-3">
@@ -1694,6 +1699,277 @@
                 </div>
             </div>
 
+            <!-- Code Audit Tab -->
+            <div class="tab-pane fade" id="code-audit">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-shield-check"></i> Code Security & Quality Audit</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-success me-2" onclick="runSelectedAudits()">
+                                <i class="bi bi-play-fill"></i> Run Selected
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary me-2" onclick="showScheduleAuditModal()">
+                                <i class="bi bi-calendar-event"></i> Schedule
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary me-2" onclick="exportAuditToExcel()">
+                                <i class="bi bi-file-earmark-excel"></i> Export Excel
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadAuditResults()">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            Select audit categories and click <strong>Run Selected</strong> to analyze the codebase, or <strong>Schedule</strong> for automatic periodic audits.
+                            Results are stored and can be exported to Excel.
+                        </div>
+
+                        <!-- Last Audit Info -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Last Audit Run</small>
+                                        <div id="lastAuditTime" class="fw-bold">Never</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Total Issues Found</small>
+                                        <div id="totalIssuesCount" class="fw-bold">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body py-2">
+                                        <small class="text-muted">Schedule Status</small>
+                                        <div id="auditScheduleStatus" class="fw-bold">Not Scheduled</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Select All / Deselect All -->
+                        <div class="mb-3">
+                            <button class="btn btn-sm btn-outline-secondary me-2" onclick="selectAllAuditCategories()">
+                                <i class="bi bi-check-all"></i> Select All
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAllAuditCategories()">
+                                <i class="bi bi-x-lg"></i> Deselect All
+                            </button>
+                        </div>
+
+                        <!-- Audit Categories Accordion -->
+                        <div class="accordion" id="auditCategoriesAccordion">
+
+                            <!-- 1. Security Vulnerabilities (OWASP) -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#auditOwasp">
+                                        <div class="form-check me-3" onclick="event.stopPropagation();">
+                                            <input class="form-check-input audit-category-check" type="checkbox" id="checkOwasp" value="owasp" checked>
+                                        </div>
+                                        <i class="bi bi-shield-exclamation text-danger me-2"></i>
+                                        <strong>Security Vulnerabilities (OWASP Top 10)</strong>
+                                        <span class="badge bg-danger ms-2" id="owaspCount">-</span>
+                                    </button>
+                                </h2>
+                                <div id="auditOwasp" class="accordion-collapse collapse" data-bs-parent="#auditCategoriesAccordion">
+                                    <div class="accordion-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 100px;">Severity</th>
+                                                        <th>Issue</th>
+                                                        <th>Location</th>
+                                                        <th>Mitigation</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="auditOwaspTable">
+                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. HIPAA Compliance -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#auditHipaa">
+                                        <div class="form-check me-3" onclick="event.stopPropagation();">
+                                            <input class="form-check-input audit-category-check" type="checkbox" id="checkHipaa" value="hipaa" checked>
+                                        </div>
+                                        <i class="bi bi-heart-pulse text-warning me-2"></i>
+                                        <strong>HIPAA Compliance</strong>
+                                        <span class="badge bg-warning text-dark ms-2" id="hipaaCount">-</span>
+                                    </button>
+                                </h2>
+                                <div id="auditHipaa" class="accordion-collapse collapse" data-bs-parent="#auditCategoriesAccordion">
+                                    <div class="accordion-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 120px;">Regulation</th>
+                                                        <th>Issue</th>
+                                                        <th>Location</th>
+                                                        <th>Mitigation</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="auditHipaaTable">
+                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Performance & Efficiency -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#auditPerformance">
+                                        <div class="form-check me-3" onclick="event.stopPropagation();">
+                                            <input class="form-check-input audit-category-check" type="checkbox" id="checkPerformance" value="performance" checked>
+                                        </div>
+                                        <i class="bi bi-speedometer2 text-info me-2"></i>
+                                        <strong>Performance & Efficiency</strong>
+                                        <span class="badge bg-info ms-2" id="performanceCount">-</span>
+                                    </button>
+                                </h2>
+                                <div id="auditPerformance" class="accordion-collapse collapse" data-bs-parent="#auditCategoriesAccordion">
+                                    <div class="accordion-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 100px;">Severity</th>
+                                                        <th>Issue</th>
+                                                        <th>Location</th>
+                                                        <th>Mitigation</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="auditPerformanceTable">
+                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 4. Unused/Dead Code -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#auditDeadCode">
+                                        <div class="form-check me-3" onclick="event.stopPropagation();">
+                                            <input class="form-check-input audit-category-check" type="checkbox" id="checkDeadCode" value="dead_code" checked>
+                                        </div>
+                                        <i class="bi bi-trash text-secondary me-2"></i>
+                                        <strong>Unused/Dead Code</strong>
+                                        <span class="badge bg-secondary ms-2" id="deadCodeCount">-</span>
+                                    </button>
+                                </h2>
+                                <div id="auditDeadCode" class="accordion-collapse collapse" data-bs-parent="#auditCategoriesAccordion">
+                                    <div class="accordion-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 100px;">Priority</th>
+                                                        <th>Issue</th>
+                                                        <th>Location</th>
+                                                        <th>Mitigation</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="auditDeadCodeTable">
+                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 5. ADA/WCAG Accessibility -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#auditAda">
+                                        <div class="form-check me-3" onclick="event.stopPropagation();">
+                                            <input class="form-check-input audit-category-check" type="checkbox" id="checkAda" value="ada" checked>
+                                        </div>
+                                        <i class="bi bi-universal-access text-primary me-2"></i>
+                                        <strong>ADA/WCAG Accessibility</strong>
+                                        <span class="badge bg-primary ms-2" id="adaCount">-</span>
+                                    </button>
+                                </h2>
+                                <div id="auditAda" class="accordion-collapse collapse" data-bs-parent="#auditCategoriesAccordion">
+                                    <div class="accordion-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 100px;">Severity</th>
+                                                        <th>Issue</th>
+                                                        <th>Count</th>
+                                                        <th>Mitigation</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="auditAdaTable">
+                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 6. OPSWAT & Data Sanitization -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#auditOpswat">
+                                        <div class="form-check me-3" onclick="event.stopPropagation();">
+                                            <input class="form-check-input audit-category-check" type="checkbox" id="checkOpswat" value="opswat" checked>
+                                        </div>
+                                        <i class="bi bi-funnel text-success me-2"></i>
+                                        <strong>OPSWAT & Data Sanitization</strong>
+                                        <span class="badge bg-success ms-2" id="opswatCount">-</span>
+                                    </button>
+                                </h2>
+                                <div id="auditOpswat" class="accordion-collapse collapse" data-bs-parent="#auditCategoriesAccordion">
+                                    <div class="accordion-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 100px;">Status</th>
+                                                        <th>Category</th>
+                                                        <th>Issue</th>
+                                                        <th>Mitigation</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="auditOpswatTable">
+                                                    <tr><td colspan="4" class="text-center text-muted">Run audit to see results</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 <!-- Scanning Station Modal -->
 <div class="modal fade" id="stationModal" tabindex="-1">
     <div class="modal-dialog">
@@ -2145,6 +2421,99 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-success" onclick="saveNewEnvSetting()">
                     <i class="bi bi-plus-lg"></i> Add Setting
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Audit Modal -->
+<div class="modal fade" id="scheduleAuditModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-event"></i> Schedule Code Audit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Configure automatic code audits to run on a schedule. Results will be stored and available for review.
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="auditScheduleEnabled">
+                        <label class="form-check-label" for="auditScheduleEnabled">Enable Scheduled Audits</label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="auditScheduleFrequency">Frequency</label>
+                    <select class="form-select" id="auditScheduleFrequency">
+                        <option value="daily">Daily</option>
+                        <option value="weekly" selected>Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="auditScheduleDay">Day of Week (for weekly)</label>
+                    <select class="form-select" id="auditScheduleDay">
+                        <option value="0">Sunday</option>
+                        <option value="1" selected>Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="auditScheduleTime">Time (UTC)</label>
+                    <input type="time" class="form-control" id="auditScheduleTime" value="02:00">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Categories to Audit</label>
+                    <div class="form-check">
+                        <input class="form-check-input schedule-category-check" type="checkbox" id="scheduleOwasp" value="owasp" checked>
+                        <label class="form-check-label" for="scheduleOwasp">Security (OWASP)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input schedule-category-check" type="checkbox" id="scheduleHipaa" value="hipaa" checked>
+                        <label class="form-check-label" for="scheduleHipaa">HIPAA Compliance</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input schedule-category-check" type="checkbox" id="schedulePerformance" value="performance" checked>
+                        <label class="form-check-label" for="schedulePerformance">Performance</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input schedule-category-check" type="checkbox" id="scheduleDeadCode" value="dead_code" checked>
+                        <label class="form-check-label" for="scheduleDeadCode">Dead Code</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input schedule-category-check" type="checkbox" id="scheduleAda" value="ada" checked>
+                        <label class="form-check-label" for="scheduleAda">ADA/WCAG</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input schedule-category-check" type="checkbox" id="scheduleOpswat" value="opswat" checked>
+                        <label class="form-check-label" for="scheduleOpswat">OPSWAT</label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="auditEmailNotify">
+                        <label class="form-check-label" for="auditEmailNotify">Email results to admins</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveAuditSchedule()">
+                    <i class="bi bi-check-lg"></i> Save Schedule
                 </button>
             </div>
         </div>
@@ -6833,6 +7202,298 @@
             showToast('Failed to generate alignment test', 'danger');
         }
     }
+
+    // ========== Code Audit Functions ==========
+
+    async function loadAuditResults() {
+        try {
+            const response = await fetch('/api/audit/results', {
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) throw new Error('Failed to load audit results');
+
+            const data = await response.json();
+
+            // Update summary cards
+            document.getElementById('lastAuditTime').textContent = data.timestamp
+                ? new Date(data.timestamp).toLocaleString()
+                : 'Never';
+            document.getElementById('totalIssuesCount').textContent = data.total_issues || '-';
+            document.getElementById('auditScheduleStatus').textContent = data.schedule_status || 'Not Scheduled';
+
+            // Update category tables
+            if (data.results && data.results.length > 0) {
+                data.results.forEach(category => {
+                    renderAuditCategory(category);
+                });
+            }
+
+            // Load schedule status
+            loadAuditSchedule();
+
+        } catch (error) {
+            console.error('Error loading audit results:', error);
+            showToast('Failed to load audit results', 'danger');
+        }
+    }
+
+    function renderAuditCategory(category) {
+        const tableId = getAuditTableId(category.category);
+        const countId = getAuditCountId(category.category);
+        const table = document.getElementById(tableId);
+        const countBadge = document.getElementById(countId);
+
+        if (!table) return;
+
+        // Update count badge
+        if (countBadge) {
+            countBadge.textContent = category.count || 0;
+        }
+
+        if (!category.issues || category.issues.length === 0) {
+            table.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No issues found</td></tr>';
+            return;
+        }
+
+        let html = '';
+        category.issues.forEach(issue => {
+            const severityClass = getSeverityClass(issue.severity);
+            const firstCol = getFirstColumnContent(category.category, issue);
+
+            html += `
+                <tr>
+                    <td><span class="badge ${severityClass}">${escapeHtml(firstCol)}</span></td>
+                    <td>${escapeHtml(issue.issue)}</td>
+                    <td><code>${escapeHtml(issue.location || '-')}</code></td>
+                    <td>${escapeHtml(issue.mitigation || '-')}</td>
+                </tr>
+            `;
+        });
+
+        table.innerHTML = html;
+    }
+
+    function getAuditTableId(category) {
+        const mapping = {
+            'owasp': 'auditOwaspTable',
+            'hipaa': 'auditHipaaTable',
+            'performance': 'auditPerformanceTable',
+            'dead_code': 'auditDeadCodeTable',
+            'ada': 'auditAdaTable',
+            'opswat': 'auditOpswatTable'
+        };
+        return mapping[category] || category + 'Table';
+    }
+
+    function getAuditCountId(category) {
+        const mapping = {
+            'owasp': 'owaspCount',
+            'hipaa': 'hipaaCount',
+            'performance': 'performanceCount',
+            'dead_code': 'deadCodeCount',
+            'ada': 'adaCount',
+            'opswat': 'opswatCount'
+        };
+        return mapping[category] || category + 'Count';
+    }
+
+    function getSeverityClass(severity) {
+        const mapping = {
+            'CRITICAL': 'bg-danger',
+            'HIGH': 'bg-warning text-dark',
+            'MEDIUM': 'bg-info',
+            'LOW': 'bg-secondary'
+        };
+        return mapping[severity] || 'bg-secondary';
+    }
+
+    function getFirstColumnContent(category, issue) {
+        if (category === 'hipaa' && issue.extra_data && issue.extra_data.regulation) {
+            return issue.extra_data.regulation;
+        }
+        if (category === 'ada' && issue.extra_data && issue.extra_data.count) {
+            return issue.severity + ' (' + issue.extra_data.count + ')';
+        }
+        if (category === 'opswat' && issue.extra_data && issue.extra_data.status) {
+            return issue.extra_data.status;
+        }
+        return issue.severity;
+    }
+
+    function selectAllAuditCategories() {
+        document.querySelectorAll('.audit-category-check').forEach(cb => {
+            cb.checked = true;
+        });
+    }
+
+    function deselectAllAuditCategories() {
+        document.querySelectorAll('.audit-category-check').forEach(cb => {
+            cb.checked = false;
+        });
+    }
+
+    async function runSelectedAudits() {
+        const selected = [];
+        document.querySelectorAll('.audit-category-check:checked').forEach(cb => {
+            selected.push(cb.value);
+        });
+
+        if (selected.length === 0) {
+            showToast('Please select at least one audit category', 'warning');
+            return;
+        }
+
+        try {
+            showToast('Running audit analysis...', 'info');
+
+            const response = await fetch('/api/audit/run', {
+                method: 'POST',
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ categories: selected })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to run audit');
+            }
+
+            const data = await response.json();
+
+            // Update UI with results
+            document.getElementById('lastAuditTime').textContent = new Date(data.timestamp).toLocaleString();
+            document.getElementById('totalIssuesCount').textContent = data.total_issues;
+
+            // Render each category
+            data.results.forEach(category => {
+                renderAuditCategory(category);
+            });
+
+            showToast(`Audit complete: ${data.total_issues} issues found`, 'success');
+
+        } catch (error) {
+            console.error('Error running audit:', error);
+            showToast('Failed to run audit: ' + error.message, 'danger');
+        }
+    }
+
+    async function showScheduleAuditModal() {
+        try {
+            // Load current schedule
+            const response = await fetch('/api/audit/schedule', {
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const schedule = await response.json();
+                document.getElementById('auditScheduleEnabled').checked = schedule.enabled;
+                document.getElementById('auditScheduleFrequency').value = schedule.frequency;
+                document.getElementById('auditScheduleDay').value = schedule.day_of_week;
+                document.getElementById('auditScheduleTime').value = schedule.time_utc;
+                document.getElementById('auditEmailNotify').checked = schedule.email_notify;
+
+                // Set category checkboxes
+                document.querySelectorAll('.schedule-category-check').forEach(cb => {
+                    cb.checked = schedule.categories.includes(cb.value);
+                });
+            }
+
+            new bootstrap.Modal(document.getElementById('scheduleAuditModal')).show();
+
+        } catch (error) {
+            console.error('Error loading schedule:', error);
+            showToast('Failed to load schedule', 'danger');
+        }
+    }
+
+    async function loadAuditSchedule() {
+        try {
+            const response = await fetch('/api/audit/schedule', {
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const schedule = await response.json();
+                if (schedule.enabled) {
+                    let statusText = `${schedule.frequency.charAt(0).toUpperCase() + schedule.frequency.slice(1)}`;
+                    if (schedule.next_run) {
+                        statusText += ` (Next: ${new Date(schedule.next_run).toLocaleDateString()})`;
+                    }
+                    document.getElementById('auditScheduleStatus').textContent = statusText;
+                } else {
+                    document.getElementById('auditScheduleStatus').textContent = 'Not Scheduled';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading schedule:', error);
+        }
+    }
+
+    async function saveAuditSchedule() {
+        const categories = [];
+        document.querySelectorAll('.schedule-category-check:checked').forEach(cb => {
+            categories.push(cb.value);
+        });
+
+        const schedule = {
+            enabled: document.getElementById('auditScheduleEnabled').checked,
+            frequency: document.getElementById('auditScheduleFrequency').value,
+            day_of_week: parseInt(document.getElementById('auditScheduleDay').value),
+            time_utc: document.getElementById('auditScheduleTime').value,
+            categories: categories,
+            email_notify: document.getElementById('auditEmailNotify').checked
+        };
+
+        try {
+            const response = await fetch('/api/audit/schedule', {
+                method: 'POST',
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(schedule)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to save schedule');
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('scheduleAuditModal')).hide();
+            showToast('Audit schedule saved', 'success');
+            loadAuditSchedule();
+
+        } catch (error) {
+            console.error('Error saving schedule:', error);
+            showToast('Failed to save schedule: ' + error.message, 'danger');
+        }
+    }
+
+    function exportAuditToExcel() {
+        // Direct download via API
+        const link = document.createElement('a');
+        link.href = '/api/audit/export';
+        link.download = 'code_audit_report.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('Downloading audit report...', 'info');
+    }
+
+    // Load audit results when Code Audit tab is shown
+    document.addEventListener('DOMContentLoaded', function() {
+        const codeAuditTab = document.querySelector('[data-bs-target="#code-audit"]');
+        if (codeAuditTab) {
+            codeAuditTab.addEventListener('shown.bs.tab', function() {
+                loadAuditResults();
+            });
+        }
+    });
+
+    // ========== End Code Audit Functions ==========
 
     function escapeHtml(text) {
         if (!text) return '';

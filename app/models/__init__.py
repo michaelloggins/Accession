@@ -14,6 +14,7 @@ from app.models.test import Test, TestSpecimenType
 from app.models.order import Order, OrderTest
 from app.models.integration import Integration, ApiKey, IntegrationLog
 from app.models.workstation import ScanningStation, LabelPrinter, UserWorkstationPreference
+from app.models.code_audit import CodeAuditResult, CodeAuditSchedule
 
 __all__ = [
     "Document",
@@ -36,4 +37,6 @@ __all__ = [
     "ScanningStation",
     "LabelPrinter",
     "UserWorkstationPreference",
+    "CodeAuditResult",
+    "CodeAuditSchedule",
 ]
