@@ -51,8 +51,8 @@ async def upload_document(
         # Validate file
         doc_service.validate_file(file)
 
-        # Upload to blob storage
-        blob_name = await doc_service.upload_to_blob(file)
+        # Upload to blob storage with standardized filename
+        blob_name = await doc_service.upload_to_blob(file, user_email=current_user["user_email"])
 
         # Check if auto-extraction is enabled
         auto_extract = get_config_bool(db, "AUTO_EXTRACT_ENABLED", default=True)
@@ -146,8 +146,8 @@ async def bulk_upload_documents(
             # Validate file
             doc_service.validate_file(file)
 
-            # Upload to blob storage
-            blob_name = await doc_service.upload_to_blob(file)
+            # Upload to blob storage with standardized filename
+            blob_name = await doc_service.upload_to_blob(file, user_email=current_user["user_email"])
 
             # Create document record based on auto-extract setting
             if auto_extract:

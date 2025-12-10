@@ -371,15 +371,21 @@ async def sso_status():
     """
     Check SSO configuration status.
     """
-    entra_service = get_entra_id_service()
+    # Check the appropriate service based on SSO method
+    if settings.SSO_METHOD == "saml":
+        saml_service = get_saml_service()
+        sso_configured = saml_service.is_configured
+    else:
+        entra_service = get_entra_id_service()
+        sso_configured = entra_service.is_configured
 
     return {
         "sso_enabled": settings.SSO_ENABLED,
         "sso_method": settings.SSO_METHOD,
-        "entra_id_configured": entra_service.is_configured,
+        "entra_id_configured": sso_configured,
         "tenant_id": settings.AZURE_AD_TENANT_ID[:8] + "..." if settings.AZURE_AD_TENANT_ID else None,
         "client_id": settings.AZURE_AD_CLIENT_ID[:8] + "..." if settings.AZURE_AD_CLIENT_ID else None,
-        "redirect_uri_configured": bool(settings.AZURE_AD_REDIRECT_URI)
+        "redirect_uri_configured": bool(settings.AZURE_AD_REDIRECT_URI) if settings.SSO_METHOD != "saml" else True
     }
 
 

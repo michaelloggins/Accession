@@ -246,9 +246,9 @@ async def process_bulk_upload(
                 # Validate file
                 doc_service.validate_file(file_obj)
 
-                # Upload to blob storage
+                # Upload to blob storage with standardized filename
                 file_obj.file.seek(0)  # Reset file pointer
-                blob_name = await doc_service.upload_to_blob(file_obj)
+                blob_name = await doc_service.upload_to_blob(file_obj, user_email=uploaded_by)
 
                 # Extract data using Azure OpenAI
                 file_obj.file.seek(0)  # Reset file pointer again

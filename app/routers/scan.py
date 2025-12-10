@@ -11,7 +11,7 @@ from datetime import datetime
 from app.database import get_db
 from app.config import settings
 from app.services.auth_service import get_current_user_from_request
-from app.services.document_service import DocumentService
+from app.services.document_service import DocumentService, generate_standardized_filename
 from app.services.audit_service import AuditService
 from app.services.config_service import ConfigService
 from app.services.document_intelligence_service import get_document_intelligence_service
@@ -165,13 +165,11 @@ async def process_scan_batch(
                 doc_content = page_contents[first_page] if first_page < len(page_contents) else page_contents[0]
                 logger.info(f"Multi-page document detected (pages {page_indices}), using first page for now")
 
-            # Generate filename with station name if available
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-            station_prefix = scan_station.get("name", "").replace(" ", "_")[:20] if scan_station.get("name") else ""
-            if station_prefix:
-                filename = f"scan_{station_prefix}_{batch_id}_{doc_idx + 1:03d}_{timestamp}.png"
-            else:
-                filename = f"scan_{batch_id}_{doc_idx + 1:03d}_{timestamp}.png"
+            # Generate standardized filename: User_YYYYMMDDhhmmss_originalname.ext
+            # Include batch/doc info in original name for traceability
+            station_prefix = scan_station.get("name", "").replace(" ", "_")[:20] if scan_station.get("name") else "scan"
+            original_name = f"{station_prefix}_{batch_id}_{doc_idx + 1:03d}.png"
+            filename = generate_standardized_filename(scanned_by, original_name)
 
             # Upload to blob storage with metadata
             blob_metadata = {
@@ -185,6 +183,9 @@ async def process_scan_batch(
             blob_name = await doc_service.upload_bytes_to_blob(
                 doc_content, filename, source="scanner", metadata=blob_metadata
             )
+
+            # Export to UNC path if enabled
+            doc_service.export_to_unc_if_enabled(doc_content, filename, scanned_by)
 
             # Determine processing status based on config
             if use_openai_extract:

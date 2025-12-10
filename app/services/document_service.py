@@ -67,7 +67,7 @@ class DocumentService:
         Args:
             content: The file content as bytes
             filename: The filename to use (should be standardized format)
-            unc_path: The UNC path to copy to (e.g., \server\shareolder)
+            unc_path: The UNC path to copy to (e.g., server/share/folder)
 
         Returns:
             True if copy was successful, False otherwise
@@ -102,6 +102,36 @@ class DocumentService:
             logger.error(f"Unexpected error copying to UNC path {unc_path}: {e}")
             return False
 
+    def export_to_unc_if_enabled(self, content: bytes, filename: str, user_email: str) -> bool:
+        """Check if UNC export is enabled and copy file if so.
+
+        Args:
+            content: The file content as bytes
+            filename: The original filename
+            user_email: The user's email for standardized filename
+
+        Returns:
+            True if UNC export was successful or not enabled, False if enabled but failed
+        """
+        from app.services.config_service import ConfigService
+
+        config_service = ConfigService(self.db)
+        unc_enabled = config_service.get_bool("UNC_EXPORT_ENABLED", False)
+
+        if not unc_enabled:
+            logger.debug("UNC export not enabled, skipping")
+            return True  # Not enabled is considered success
+
+        unc_path = config_service.get("UNC_EXPORT_PATH", "")
+        if not unc_path:
+            logger.warning("UNC export enabled but path not configured")
+            return False
+
+        # Generate standardized filename
+        standardized_name = generate_standardized_filename(user_email, filename)
+
+        return self.copy_to_unc_path(content, standardized_name, unc_path)
+
     def validate_file(self, file: UploadFile):
         """Validate uploaded file."""
         # Check file extension
@@ -124,12 +154,13 @@ class DocumentService:
         #         detail=f"File too large. Maximum size: {settings.MAX_FILE_SIZE_MB}MB"
         #     )
 
-    async def upload_to_blob(self, file: UploadFile, accession_number: str = None) -> str:
+    async def upload_to_blob(self, file: UploadFile, accession_number: str = None, user_email: str = None) -> str:
         """Upload file to Azure Blob Storage or local mock storage.
 
         Args:
             file: The file to upload
             accession_number: Optional accession number to add as blob metadata
+            user_email: Optional user email for standardized filename and UNC export
         """
         # Use mock storage if Azure not configured
         if not settings.AZURE_STORAGE_CONNECTION_STRING:
@@ -144,15 +175,17 @@ class DocumentService:
                 settings.AZURE_STORAGE_CONTAINER
             )
 
-            # Generate blob name with date-based organization (YYYY/MM/filename)
-            # Add timestamp prefix to filename to avoid collisions
-            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-            safe_filename = f"{timestamp}_{file.filename}"
+            # Generate standardized filename if user_email provided, otherwise use timestamp prefix
+            if user_email:
+                safe_filename = generate_standardized_filename(user_email, file.filename)
+            else:
+                timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+                safe_filename = f"{timestamp}_{file.filename}"
             blob_name = f"{datetime.utcnow().strftime('%Y/%m')}/{safe_filename}"
 
             # Upload file with metadata
             blob_client = container_client.get_blob_client(blob_name)
-            content = await file.read()
+            file_content = await file.read()
 
             # Prepare metadata for the blob
             metadata = {
@@ -162,9 +195,14 @@ class DocumentService:
             if accession_number:
                 metadata["accession_number"] = accession_number
 
-            blob_client.upload_blob(content, overwrite=True, metadata=metadata)
+            blob_client.upload_blob(file_content, overwrite=True, metadata=metadata)
 
             logger.info(f"File uploaded to blob: {blob_name} with metadata: {metadata}")
+
+            # Export to UNC path if enabled
+            if user_email:
+                self.export_to_unc_if_enabled(file_content, safe_filename, user_email)
+
             return blob_name
 
         except Exception as e:

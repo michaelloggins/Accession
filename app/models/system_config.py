@@ -302,7 +302,7 @@ class SystemConfig(Base):
         "UNC_EXPORT_PATH": {
             "value": "",
             "value_type": "string",
-            "description": "UNC network path for file export (e.g., \\server\share\folder). Only used when UNC_EXPORT_ENABLED is true.",
+            "description": "UNC network path for file export. Only used when UNC_EXPORT_ENABLED is true.",
             "category": "integration",
             "display_order": "035"
         },
