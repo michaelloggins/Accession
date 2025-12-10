@@ -874,6 +874,43 @@ async def verify_training_sample(
     }
 
 
+@router.post("/training/run-migrations")
+async def run_migrations(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Run database migrations (admin only)."""
+    current_user = get_current_user_from_request(request, db)
+
+    # Only admins can run migrations
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    import subprocess
+    import os
+
+    try:
+        # Run alembic upgrade
+        result = subprocess.run(
+            ["python", "-m", "alembic", "upgrade", "head"],
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            timeout=120
+        )
+
+        return {
+            "success": result.returncode == 0,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode
+        }
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "Migration timed out"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @router.get("/training/extraction-stats")
 async def get_extraction_stats(
     request: Request,

@@ -1,0 +1,14 @@
+<step title="Incoming Request" date="2025-12-09T22:20:57.786" instance="f8f925" url="/api/publish?type=zip&amp;async=True" method="POST" type="request" pid="774,1,36" Accept="*/*" Host="app-accession-dev.scm.azurewebsites.net" User-Agent="AZURECLI/2.77.0 (MSI)" Accept-Encoding="gzip, deflate" Authorization="Bea..." Cache-Control="no-cache" Content-Type="application/octet-stream" Cookie="ARRAffinity=f8f9256783c926223799dc593171fa3ef38a62fe018e98b19a09df27f9df439e; ARRAffinitySameSite=f8f9256783c926223799dc593171fa3ef38a62fe018e98b19a09df27f9df439e" Content-Length="22154802" x-ms-client-request-id="5236bb2f-d54d-11f0-ae4f-70089467f08a" x-ms-artifact-checksum="0550efef99de32bf0351c2210c24c757916ee966971f265ca1db8cd1ee54c134" X-ARR-LOG-ID="5236bb2f-d54d-11f0-ae4f-70089467f08a" CLIENT-IP="4.43.234.130:60043" X-SITE-DEPLOYMENT-ID="app-accession-dev" WAS-DEFAULT-HOSTNAME="app-accession-dev.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/publish?type=zip&amp;async=True" X-Client-IP="4.43.234.130" X-Client-Port="60043" >
+  <step title="OneDeploy" date="2025-12-09T22:20:58.027" >
+    <step title="Starting PushDeployAsync" date="2025-12-09T22:20:58.268" /><!-- duration: 20ms -->
+    <step title="Writing artifact to /tmp/zipdeploy/5dcba396-f40e-4f5f-b8b1-99db58b0c8ad.zip" date="2025-12-09T22:20:58.388" >
+      <step title="Writing multipart request body to /tmp/zipdeploy/5dcba396-f40e-4f5f-b8b1-99db58b0c8ad.zip" date="2025-12-09T22:20:58.474" /><!-- duration: 20ms -->
+    </step><!-- duration: 2247ms -->
+    <step title="Start deployment in the background" date="2025-12-09T22:21:00.671" >
+      <step title="Acquiring Deployment Lock" date="2025-12-09T22:21:01.210" /><!-- duration: 167ms -->
+      <step title="Cannot Acquire Deployment Lock already held" date="2025-12-09T22:21:01.538" /><!-- duration: 84ms -->
+    </step><!-- duration: 1642ms -->
+    <step title="There is a deployment currently in progress. Please try again when it completes." date="2025-12-09T22:21:02.363" /><!-- duration: 12ms -->
+  </step><!-- duration: 4376ms -->
+  <step title="Outgoing response" date="2025-12-09T22:21:02.467" type="response" statusCode="409" statusText="Conflict" /><!-- duration: 27ms -->
+</step><!-- duration: 4782ms -->

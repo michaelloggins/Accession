@@ -1,0 +1,9 @@
+<step title="Incoming Request" date="2025-12-04T20:12:48.646" instance="f8f925" url="/api/deployments/latest" method="GET" type="request" pid="776,1,45" Accept="*/*" Host="app-accession-dev.scm.azurewebsites.net" User-Agent="AZURECLI/2.77.0 (MSI)" Accept-Encoding="gzip, deflate" Authorization="Bea..." x-ms-client-request-id="93f3dee1-d14d-11f0-8d23-70089467f08a" X-ARR-LOG-ID="93f3dee1-d14d-11f0-8d23-70089467f08a" CLIENT-IP="4.43.234.130:3946" X-SITE-DEPLOYMENT-ID="app-accession-dev" WAS-DEFAULT-HOSTNAME="app-accession-dev.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest" X-Client-IP="4.43.234.130" X-Client-Port="3946" >
+  <step title="Cleanup Xml Logs" date="2025-12-04T20:12:48.667" /><!-- duration: 25ms -->
+  <step title="DeploymentService.GetResult" date="2025-12-04T20:12:48.756" >
+    <step title="DeploymentService.GetLatestDeployment" date="2025-12-04T20:12:48.764" >
+      <step title="DeploymentManager.GetResults" date="2025-12-04T20:12:48.810" /><!-- duration: 756ms -->
+    </step><!-- duration: 821ms -->
+  </step><!-- duration: 838ms -->
+  <step title="Outgoing response" date="2025-12-04T20:12:49.621" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 10ms -->
+</step><!-- duration: 1002ms -->
