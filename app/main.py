@@ -333,6 +333,16 @@ app.include_router(code_audit.router, prefix="/api/audit", tags=["Code Audit"])
 app.include_router(training.router, prefix="/api/training", tags=["AI Training"])
 
 
+@app.get("/robots.txt")
+async def robots_txt():
+    """Serve robots.txt to prevent search engine indexing."""
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse(
+        "User-agent: *\nDisallow: /\n",
+        media_type="text/plain"
+    )
+
+
 @app.get("/")
 async def root(request: Request):
     # Check if auth bypass is enabled (skip login)
