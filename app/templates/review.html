@@ -1153,18 +1153,7 @@
                         <label>Species</label>
                         <select id="species" onchange="handleSpeciesChange(this.value)">
                             <option value="">Select species...</option>
-                            <option value="Human">Human</option>
-                            <option value="Canine">Canine (Dog)</option>
-                            <option value="Feline">Feline (Cat)</option>
-                            <option value="Equine">Equine (Horse)</option>
-                            <option value="Bovine">Bovine (Cattle)</option>
-                            <option value="Ovine">Ovine (Sheep)</option>
-                            <option value="Caprine">Caprine (Goat)</option>
-                            <option value="Porcine">Porcine (Pig)</option>
-                            <option value="Avian">Avian (Bird)</option>
-                            <option value="Reptilian">Reptilian</option>
-                            <option value="Rodent">Rodent</option>
-                            <option value="Aquatic">Aquatic</option>
+                            <!-- Populated dynamically from database via loadSpeciesOptions() -->
                         </select>
                     </div>
                     <div class="form-field">
@@ -1427,6 +1416,72 @@
         }
     }
 
+    // Load species options from API
+    async function loadSpeciesOptions() {
+        try {
+            const response = await fetch('/api/config/species');
+            if (!response.ok) {
+                console.error('Failed to load species from API, using fallback defaults');
+                populateSpeciesFallback();
+                return;
+            }
+            const data = await response.json();
+            const speciesSelect = document.getElementById('species');
+
+            // Separate by category
+            const humanSpecies = (data.species || []).filter(s => s.test_category === 'human');
+            const vetSpecies = (data.species || []).filter(s => s.test_category === 'veterinary');
+
+            // Build options HTML
+            let optionsHtml = '<option value="">Select species...</option>';
+
+            // Human species first
+            if (humanSpecies.length > 0) {
+                optionsHtml += '<optgroup label="Human">';
+                humanSpecies.forEach(s => {
+                    const displayName = s.common_name ? `${s.name} (${s.common_name})` : s.name;
+                    optionsHtml += `<option value="${s.common_name || s.name}">${displayName}</option>`;
+                });
+                optionsHtml += '</optgroup>';
+            }
+
+            // Veterinary species
+            if (vetSpecies.length > 0) {
+                optionsHtml += '<optgroup label="Veterinary">';
+                vetSpecies.forEach(s => {
+                    const displayName = s.common_name ? `${s.name} (${s.common_name})` : s.name;
+                    optionsHtml += `<option value="${s.common_name || s.name}">${displayName}</option>`;
+                });
+                optionsHtml += '</optgroup>';
+            }
+
+            // If no species in database, use fallback
+            if (humanSpecies.length === 0 && vetSpecies.length === 0) {
+                populateSpeciesFallback();
+                return;
+            }
+
+            speciesSelect.innerHTML = optionsHtml;
+            console.log('Loaded', data.species.length, 'species from API');
+        } catch (error) {
+            console.error('Error loading species from API:', error);
+            populateSpeciesFallback();
+        }
+    }
+
+    // Fallback species options if database is empty
+    function populateSpeciesFallback() {
+        const speciesSelect = document.getElementById('species');
+        speciesSelect.innerHTML = `
+            <option value="">Select species...</option>
+            <option value="Human">Human</option>
+            <option value="Canine">Canine (Dog)</option>
+            <option value="Feline">Feline (Cat)</option>
+            <option value="Equine">Equine (Horse)</option>
+            <option value="Other">Other</option>
+        `;
+    }
+
     // Toast notification helper
     function showToast(message, type = 'info') {
         const container = document.getElementById('toastContainer');
@@ -1570,6 +1625,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         loadTestsFromAPI(); // Load tests from API
+        loadSpeciesOptions(); // Load species from API
         loadDocumentData();
     });
 
