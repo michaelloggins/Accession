@@ -96,39 +96,46 @@
             </div>
         </div>
 
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <div class="stat-card pending">
-                <div class="stat-top">
-                    <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
-                    <span class="stat-change up" id="stat-pending-change">--</span>
+        <!-- Stats Toggle and Grid -->
+        <div class="stats-container">
+            <button class="stats-toggle" id="statsToggle" onclick="toggleStats()" title="Toggle KPIs">
+                <i class="bi bi-bar-chart-line"></i>
+                <span id="statsToggleText">Hide</span>
+                <i class="bi bi-chevron-up" id="statsToggleIcon"></i>
+            </button>
+            <div class="stats-grid-compact" id="statsGrid">
+                <div class="stat-chip pending">
+                    <div class="stat-chip-icon"><i class="bi bi-hourglass-split"></i></div>
+                    <div class="stat-chip-content">
+                        <span class="stat-chip-value" id="pendingCount">0</span>
+                        <span class="stat-chip-label">Pending</span>
+                    </div>
+                    <span class="stat-chip-change up" id="stat-pending-change">--</span>
                 </div>
-                <div class="stat-value" id="pendingCount">0</div>
-                <div class="stat-label">Pending Review</div>
-            </div>
-            <div class="stat-card review">
-                <div class="stat-top">
-                    <div class="stat-icon"><i class="bi bi-eye"></i></div>
-                    <span class="stat-change up" id="stat-today-change">--</span>
+                <div class="stat-chip review">
+                    <div class="stat-chip-icon"><i class="bi bi-eye"></i></div>
+                    <div class="stat-chip-content">
+                        <span class="stat-chip-value" id="todayCount">0</span>
+                        <span class="stat-chip-label">Today</span>
+                    </div>
+                    <span class="stat-chip-change up" id="stat-today-change">--</span>
                 </div>
-                <div class="stat-value" id="todayCount">0</div>
-                <div class="stat-label">Processed Today</div>
-            </div>
-            <div class="stat-card approved">
-                <div class="stat-top">
-                    <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
-                    <span class="stat-change up" id="stat-auto-change">--</span>
+                <div class="stat-chip approved">
+                    <div class="stat-chip-icon"><i class="bi bi-check2-circle"></i></div>
+                    <div class="stat-chip-content">
+                        <span class="stat-chip-value" id="automationRate">0%</span>
+                        <span class="stat-chip-label">Auto</span>
+                    </div>
+                    <span class="stat-chip-change up" id="stat-auto-change">--</span>
                 </div>
-                <div class="stat-value" id="automationRate">0%</div>
-                <div class="stat-label">Auto-Approved Rate</div>
-            </div>
-            <div class="stat-card total">
-                <div class="stat-top">
-                    <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
-                    <span class="stat-change up" id="stat-conf-change">--</span>
+                <div class="stat-chip total">
+                    <div class="stat-chip-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                    <div class="stat-chip-content">
+                        <span class="stat-chip-value" id="avgConfidence">0%</span>
+                        <span class="stat-chip-label">Confidence</span>
+                    </div>
+                    <span class="stat-chip-change up" id="stat-conf-change">--</span>
                 </div>
-                <div class="stat-value" id="avgConfidence">0%</div>
-                <div class="stat-label">Avg Confidence</div>
             </div>
         </div>
     </div>
@@ -138,6 +145,144 @@
 {% block extra_css %}
 <style>
     /* Dashboard-specific styles that extend base theme */
+
+    /* Compact Stats Container */
+    .stats-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .stats-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .stats-toggle:hover {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .stats-toggle i:first-child {
+        font-size: 0.85rem;
+    }
+
+    #statsToggleIcon {
+        transition: transform 0.2s;
+    }
+
+    .stats-toggle.collapsed #statsToggleIcon {
+        transform: rotate(180deg);
+    }
+
+    .stats-grid-compact {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+
+    .stats-grid-compact.hidden {
+        max-height: 0;
+        opacity: 0;
+        gap: 0;
+        pointer-events: none;
+    }
+
+    .stat-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        border-left: 3px solid var(--chip-color);
+        transition: all 0.2s;
+    }
+
+    .stat-chip:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+    }
+
+    .stat-chip.pending { --chip-color: #f59e0b; }
+    .stat-chip.review { --chip-color: #3b82f6; }
+    .stat-chip.approved { --chip-color: var(--mv-green); }
+    .stat-chip.total { --chip-color: var(--mv-green); }
+
+    .stat-chip-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+    }
+
+    .stat-chip.pending .stat-chip-icon { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .stat-chip.review .stat-chip-icon { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .stat-chip.approved .stat-chip-icon { background: rgba(139, 197, 63, 0.15); color: var(--mv-green); }
+    .stat-chip.total .stat-chip-icon { background: rgba(139, 197, 63, 0.15); color: var(--mv-green); }
+
+    .stat-chip-content {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.2;
+    }
+
+    .stat-chip-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .stat-chip-label {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-chip-change {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-weight: 500;
+        margin-left: auto;
+    }
+
+    .stat-chip-change.up { background: rgba(139, 197, 63, 0.15); color: #16a34a; }
+    .stat-chip-change.down { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+    @media (max-width: 768px) {
+        .stats-container {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .stats-toggle {
+            justify-content: center;
+        }
+        .stats-grid-compact {
+            flex-direction: column;
+        }
+        .stat-chip {
+            width: 100%;
+        }
+    }
 
     /* Content Grid Layout */
     .content-grid {
@@ -951,6 +1096,30 @@
     // Species cache (loaded from API)
     let SPECIES_DATA = { human: [], veterinary: [] };
 
+    // KPI Stats toggle functionality
+    function toggleStats() {
+        const grid = document.getElementById('statsGrid');
+        const toggle = document.getElementById('statsToggle');
+        const text = document.getElementById('statsToggleText');
+        const isHidden = grid.classList.toggle('hidden');
+        toggle.classList.toggle('collapsed', isHidden);
+        text.textContent = isHidden ? 'Show' : 'Hide';
+        localStorage.setItem('kpi_hidden', isHidden);
+    }
+
+    // Initialize KPI visibility from localStorage
+    function initStatsVisibility() {
+        const isHidden = localStorage.getItem('kpi_hidden') === 'true';
+        if (isHidden) {
+            const grid = document.getElementById('statsGrid');
+            const toggle = document.getElementById('statsToggle');
+            const text = document.getElementById('statsToggleText');
+            if (grid) grid.classList.add('hidden');
+            if (toggle) toggle.classList.add('collapsed');
+            if (text) text.textContent = 'Show';
+        }
+    }
+
     function getAuthHeaders() {
         // Check localStorage first (for manual login)
         let token = localStorage.getItem('access_token');
@@ -996,6 +1165,7 @@
 
     // Initialize on DOM load
     document.addEventListener('DOMContentLoaded', function() {
+        initStatsVisibility();
         loadConfig();
         loadTestsFromAPI();
         loadSpeciesFromAPI();
