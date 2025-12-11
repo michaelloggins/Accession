@@ -1578,32 +1578,18 @@
         speciesSelect.innerHTML = '<option value="">Select...</option>';
 
         if (patientType === 'Human') {
-            // Use human species from API, fallback to "Human" if none defined
-            if (SPECIES_DATA.human.length > 0) {
-                SPECIES_DATA.human.forEach((s, idx) => {
-                    const selected = idx === 0 ? 'selected' : '';
-                    speciesSelect.innerHTML += `<option value="${s.common_name || s.name}" ${selected}>${s.name}${s.common_name ? ' (' + s.common_name + ')' : ''}</option>`;
-                });
-            } else {
-                speciesSelect.innerHTML += '<option value="Human" selected>Human</option>';
-            }
+            // Use human species from API
+            SPECIES_DATA.human.forEach((s, idx) => {
+                const selected = idx === 0 ? 'selected' : '';
+                speciesSelect.innerHTML += `<option value="${s.common_name || s.name}" ${selected}>${s.name}${s.common_name ? ' (' + s.common_name + ')' : ''}</option>`;
+            });
             petNameContainer.style.display = 'none';
             eprSection.style.display = 'block';
         } else if (patientType === 'Veterinary') {
-            // Use veterinary species from API, fallback to defaults if none defined
-            if (SPECIES_DATA.veterinary.length > 0) {
-                SPECIES_DATA.veterinary.forEach(s => {
-                    speciesSelect.innerHTML += `<option value="${s.common_name || s.name}">${s.name}${s.common_name ? ' (' + s.common_name + ')' : ''}</option>`;
-                });
-            } else {
-                // Fallback defaults if no species in database
-                speciesSelect.innerHTML += `
-                    <option value="Canine">Canine</option>
-                    <option value="Feline">Feline</option>
-                    <option value="Equine">Equine</option>
-                    <option value="Other">Other</option>
-                `;
-            }
+            // Use veterinary species from API
+            SPECIES_DATA.veterinary.forEach(s => {
+                speciesSelect.innerHTML += `<option value="${s.common_name || s.name}">${s.name}${s.common_name ? ' (' + s.common_name + ')' : ''}</option>`;
+            });
             petNameContainer.style.display = 'block';
             eprSection.style.display = 'none';
         } else {

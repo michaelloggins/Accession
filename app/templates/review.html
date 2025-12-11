@@ -1421,8 +1421,7 @@
         try {
             const response = await fetch('/api/config/species');
             if (!response.ok) {
-                console.error('Failed to load species from API, using fallback defaults');
-                populateSpeciesFallback();
+                console.error('Failed to load species from API');
                 return;
             }
             const data = await response.json();
@@ -1455,31 +1454,11 @@
                 optionsHtml += '</optgroup>';
             }
 
-            // If no species in database, use fallback
-            if (humanSpecies.length === 0 && vetSpecies.length === 0) {
-                populateSpeciesFallback();
-                return;
-            }
-
             speciesSelect.innerHTML = optionsHtml;
-            console.log('Loaded', data.species.length, 'species from API');
+            console.log('Loaded', (data.species || []).length, 'species from API');
         } catch (error) {
             console.error('Error loading species from API:', error);
-            populateSpeciesFallback();
         }
-    }
-
-    // Fallback species options if database is empty
-    function populateSpeciesFallback() {
-        const speciesSelect = document.getElementById('species');
-        speciesSelect.innerHTML = `
-            <option value="">Select species...</option>
-            <option value="Human">Human</option>
-            <option value="Canine">Canine (Dog)</option>
-            <option value="Feline">Feline (Cat)</option>
-            <option value="Equine">Equine (Horse)</option>
-            <option value="Other">Other</option>
-        `;
     }
 
     // Toast notification helper
