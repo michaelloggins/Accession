@@ -1170,6 +1170,42 @@ a:hover {
     font-size: 1rem;
 }
 
+/* Smaller HIPAA badge for footer */
+.hipaa-badge-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--mv-green);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.65rem;
+    color: var(--mv-green);
+    letter-spacing: 0.3px;
+}
+
+.hipaa-badge-sm i {
+    font-size: 0.7rem;
+}
+
+/* User avatar with photo support */
+.user-avatar {
+    overflow: hidden;
+    position: relative;
+}
+
+.user-avatar img {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.user-avatar:has(img[style*="display: block"]) span,
+.user-avatar:has(img:not([style*="display: none"])) span {
+    display: none;
+}
+
 /* =============================================================================
    FILTER ROW
    ============================================================================= */
