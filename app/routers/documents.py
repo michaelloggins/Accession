@@ -402,7 +402,7 @@ async def get_all_documents(
 
                 # Check for nested facility structure
                 if "facility" in decrypted_data and isinstance(decrypted_data["facility"], dict):
-                    facility_name = decrypted_data["facility"].get("name")
+                    facility_name = decrypted_data["facility"].get("facility_name")
                     facility_id = decrypted_data["facility"].get("facility_id")
                 # Fallback to legacy flat structure
                 elif "facility_name" in decrypted_data:
@@ -465,7 +465,7 @@ async def get_pending_documents(
 
                 # Check for nested facility structure
                 if "facility" in decrypted_data and isinstance(decrypted_data["facility"], dict):
-                    facility_name = decrypted_data["facility"].get("name")
+                    facility_name = decrypted_data["facility"].get("facility_name")
                     facility_id = decrypted_data["facility"].get("facility_id")
                 # Fallback to legacy flat structure
                 elif "facility_name" in decrypted_data:

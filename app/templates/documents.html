@@ -326,7 +326,7 @@
                 <td class="text-truncate" style="max-width: 180px;" title="${doc.facility_name || ''}">
                     ${doc.facility_name || '<span class="text-muted">-</span>'}
                 </td>
-                <td>${getSourceBadge(doc.source)}</td>
+                <td>${getSourceBadge(doc.how_received)}</td>
                 <td>${formatLocalDate(doc.upload_date)}</td>
                 <td>${formatConfidence(doc.confidence_score, doc.processing_status)}</td>
                 <td>${getStatusBadge(doc.status)}</td>
