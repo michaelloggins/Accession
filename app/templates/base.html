@@ -289,12 +289,13 @@
                 }
             }
 
-            // Development mode - show admin initials
+            // Development mode fallback - only show if no real user is logged in
             const isLocalhost = window.location.hostname === 'localhost' ||
                                window.location.hostname === '127.0.0.1';
             const isDev = document.body.dataset.environment === 'development';
+            const hasRealUser = userJson && JSON.parse(userJson).email;
 
-            if ((isLocalhost || isDev) && initialsEl) {
+            if ((isLocalhost || isDev) && !hasRealUser && initialsEl) {
                 initialsEl.textContent = 'DV';
                 if (emailEl) emailEl.textContent = 'dev@localhost';
             }
