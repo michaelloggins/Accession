@@ -109,6 +109,13 @@ class SystemConfig(Base):
             "category": "documents",
             "display_order": "020"
         },
+        "CONCURRENT_UPLOAD_LIMIT": {
+            "value": "3",
+            "value_type": "int",
+            "description": "Maximum concurrent file extractions during background job processing (1-10)",
+            "category": "documents",
+            "display_order": "030"
+        },
         # Compliance Settings
         "AUDIT_LOG_RETENTION_DAYS": {
             "value": "2555",
