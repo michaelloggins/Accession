@@ -73,6 +73,8 @@ class CodeAuditJob(Base):
     run_id = Column(String(36), nullable=True)  # Links to CodeAuditResult.run_id when complete
     status = Column(String(20), nullable=False, default="queued")  # queued, running, completed, failed
     progress = Column(Integer, nullable=False, default=0)  # 0-100 percent
+    current_category = Column(String(50), nullable=True)  # Currently processing category
+    completed_categories = Column(Integer, nullable=False, default=0)  # Number of categories completed
     categories = Column(JSON, nullable=False)  # Categories being audited
     triggered_by = Column(String(100), nullable=True)  # User who triggered or "scheduled"
     error_message = Column(Text, nullable=True)  # Error details if failed

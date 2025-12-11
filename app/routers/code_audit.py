@@ -64,6 +64,9 @@ class AuditJobStatusResponse(BaseModel):
     job_id: str
     status: str
     progress: int
+    current_category: Optional[str] = None
+    completed_categories: int = 0
+    total_categories: int = 0
     run_id: Optional[str] = None
     error_message: Optional[str] = None
     created_at: Optional[str] = None
@@ -207,10 +210,14 @@ async def get_audit_results(
 
     active_job_response = None
     if active_job:
+        total_cats = len(active_job.categories) if active_job.categories else 0
         active_job_response = AuditJobStatusResponse(
             job_id=active_job.job_id,
             status=active_job.status,
             progress=active_job.progress,
+            current_category=active_job.current_category if hasattr(active_job, 'current_category') else None,
+            completed_categories=active_job.completed_categories if hasattr(active_job, 'completed_categories') else 0,
+            total_categories=total_cats,
             run_id=active_job.run_id,
             created_at=active_job.created_at.isoformat() if active_job.created_at else None
         )
@@ -325,6 +332,7 @@ def run_audit_background(job_id: str, categories: List[str], triggered_by: str):
 
         job.status = "running"
         job.started_at = datetime.utcnow()
+        job.completed_categories = 0
         db.commit()
 
         run_id = str(uuid.uuid4())
@@ -332,6 +340,17 @@ def run_audit_background(job_id: str, categories: List[str], triggered_by: str):
         total_categories = len(categories)
 
         for idx, category in enumerate(categories):
+            # Check if job was cancelled
+            db.refresh(job)
+            if job.status == "cancelled":
+                logger.info(f"Job {job_id} was cancelled")
+                return
+
+            # Update current category being processed
+            job.current_category = category
+            job.run_id = run_id  # Set run_id early so partial results can be fetched
+            db.commit()
+
             findings = BASELINE_AUDIT_FINDINGS.get(category, [])
 
             for finding in findings:
@@ -349,13 +368,14 @@ def run_audit_background(job_id: str, categories: List[str], triggered_by: str):
                 )
                 db.add(audit_result)
 
-            # Update progress
+            # Update progress after completing each category
+            job.completed_categories = idx + 1
             job.progress = int(((idx + 1) / total_categories) * 100)
             db.commit()
 
         # Mark job as completed
         job.status = "completed"
-        job.run_id = run_id
+        job.current_category = None
         job.progress = 100
         job.completed_at = datetime.utcnow()
         db.commit()
@@ -452,15 +472,49 @@ async def get_job_status(job_id: str, db: Session = Depends(get_db)):
             detail="Job not found"
         )
 
+    # Get total categories from the job
+    total_cats = len(job.categories) if job.categories else 0
+
     return AuditJobStatusResponse(
         job_id=job.job_id,
         status=job.status,
         progress=job.progress,
+        current_category=job.current_category if hasattr(job, 'current_category') else None,
+        completed_categories=job.completed_categories if hasattr(job, 'completed_categories') else 0,
+        total_categories=total_cats,
         run_id=job.run_id,
         error_message=job.error_message,
         created_at=job.created_at.isoformat() if job.created_at else None,
         completed_at=job.completed_at.isoformat() if job.completed_at else None
     )
+
+
+
+
+@router.post("/job/{job_id}/cancel")
+async def cancel_audit_job(job_id: str, db: Session = Depends(get_db)):
+    """Cancel a running audit job."""
+    job = db.query(CodeAuditJob).filter(CodeAuditJob.job_id == job_id).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    if job.status not in ["queued", "running"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot cancel job with status: {job.status}"
+        )
+
+    job.status = "cancelled"
+    job.completed_at = datetime.utcnow()
+    db.commit()
+
+    logger.info(f"Audit job {job_id} cancelled")
+
+    return {"job_id": job_id, "status": "cancelled", "message": "Audit cancelled"}
 
 
 @router.put("/issue/{issue_id}/status")

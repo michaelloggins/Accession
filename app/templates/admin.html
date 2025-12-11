@@ -1961,10 +1961,18 @@
                         <div id="auditJobProgress" class="alert alert-info d-none mb-3">
                             <div class="d-flex align-items-center">
                                 <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                                <span id="auditJobMessage">Running audit...</span>
-                                <div class="progress flex-grow-1 mx-3" style="height: 20px;">
-                                    <div id="auditJobProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span id="auditJobMessage">Running audit...</span>
+                                        <small id="auditJobDetail" class="text-muted"></small>
+                                    </div>
+                                    <div class="progress" style="height: 20px;">
+                                        <div id="auditJobProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
+                                    </div>
                                 </div>
+                                <button id="auditCancelBtn" class="btn btn-outline-danger btn-sm ms-3" onclick="cancelAuditJob()">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </button>
                             </div>
                         </div>
 
@@ -8185,11 +8193,74 @@ Loading...
         const progressDiv = document.getElementById('auditJobProgress');
         const progressBar = document.getElementById('auditJobProgressBar');
         const message = document.getElementById('auditJobMessage');
+        const detail = document.getElementById('auditJobDetail');
+        const cancelBtn = document.getElementById('auditCancelBtn');
 
         progressDiv.classList.remove('d-none');
         progressBar.style.width = job.progress + '%';
-        progressBar.textContent = job.progress + '%';
-        message.textContent = job.status === 'queued' ? 'Audit queued...' : 'Running audit...';
+
+        // Show detailed progress: "3 of 6 (50%)"
+        const completed = job.completed_categories || 0;
+        const total = job.total_categories || 0;
+        if (total > 0) {
+            progressBar.textContent = completed + ' of ' + total + ' (' + job.progress + '%)';
+        } else {
+            progressBar.textContent = job.progress + '%';
+        }
+
+        // Show current category being processed
+        if (job.status === 'queued') {
+            message.textContent = 'Audit queued...';
+            if (detail) detail.textContent = '';
+        } else if (job.current_category) {
+            message.textContent = 'Running audit...';
+            if (detail) detail.textContent = 'Processing: ' + getCategoryDisplayName(job.current_category);
+        } else {
+            message.textContent = 'Running audit...';
+            if (detail) detail.textContent = '';
+        }
+
+        // Show/hide cancel button based on status
+        if (cancelBtn) {
+            cancelBtn.style.display = (job.status === 'queued' || job.status === 'running') ? 'block' : 'none';
+        }
+    }
+
+    function getCategoryDisplayName(category) {
+        const names = {
+            'owasp': 'Security (OWASP)',
+            'hipaa': 'HIPAA Compliance',
+            'performance': 'Performance',
+            'dead_code': 'Dead Code',
+            'ada': 'ADA/WCAG',
+            'opswat': 'OPSWAT'
+        };
+        return names[category] || category;
+    }
+
+    async function cancelAuditJob() {
+        if (!currentAuditJobId) return;
+
+        if (!confirm('Are you sure you want to cancel this audit?')) return;
+
+        try {
+            const response = await fetch('/api/audit/job/' + currentAuditJobId + '/cancel', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                showToast('Audit cancelled', 'warning');
+                hideAuditJobProgress();
+                loadAuditResults();
+            } else {
+                const data = await response.json();
+                showToast('Failed to cancel: ' + (data.detail || 'Unknown error'), 'danger');
+            }
+        } catch (error) {
+            console.error('Error cancelling audit:', error);
+            showToast('Error cancelling audit', 'danger');
+        }
     }
 
     function hideAuditJobProgress() {
@@ -8202,19 +8273,30 @@ Loading...
     }
 
     function startAuditJobPolling(jobId) {
+        let lastCompletedCategories = 0;
+
         auditJobPollInterval = setInterval(async () => {
             try {
-                const response = await fetch(`/api/audit/job/${jobId}`, {
+                const response = await fetch('/api/audit/job/' + jobId, {
                     headers: getAuthHeaders()
                 });
                 if (response.ok) {
                     const job = await response.json();
                     showAuditJobProgress(job);
 
-                    if (job.status === 'completed' || job.status === 'failed') {
+                    // Load partial results when a new category completes
+                    if (job.completed_categories > lastCompletedCategories && job.run_id) {
+                        lastCompletedCategories = job.completed_categories;
+                        loadAuditResults();  // Refresh results to show completed categories
+                    }
+
+                    if (job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') {
                         hideAuditJobProgress();
                         if (job.status === 'completed') {
                             showToast('Audit completed successfully', 'success');
+                            loadAuditResults();
+                        } else if (job.status === 'cancelled') {
+                            showToast('Audit was cancelled', 'warning');
                             loadAuditResults();
                         } else {
                             showToast('Audit failed: ' + (job.error_message || 'Unknown error'), 'danger');
