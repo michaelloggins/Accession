@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta
 
 from app.config import settings
+from app.services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +56,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
             token = session_cookie
 
         if not token:
-            # In development mode, allow API access without authentication
-            # This enables testing without login since dashboard bypasses auth
-            if settings.ENVIRONMENT == "development":
-                logger.debug(f"Development mode: allowing unauthenticated access to {path}")
+            # Check if auth bypass is enabled (allows unauthenticated access)
+            config_service = ConfigService()
+            if config_service.get_bool("DEV_AUTH_BYPASS", False):
+                logger.debug(f"Auth bypass enabled: allowing unauthenticated access to {path}")
                 return await call_next(request)
 
             # For API requests, return 401
@@ -72,10 +73,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # Verify token
         if not self._verify_token(token):
-            # In development mode, treat invalid tokens as "no token" and allow access
-            # This handles stale cookies from previous sessions
-            if settings.ENVIRONMENT == "development":
-                logger.debug(f"Development mode: ignoring invalid token for {path}")
+            # If auth bypass enabled, treat invalid tokens as "no token" and allow access
+            config_service = ConfigService()
+            if config_service.get_bool("DEV_AUTH_BYPASS", False):
+                logger.debug(f"Auth bypass enabled: ignoring invalid token for {path}")
                 return await call_next(request)
 
             # For API requests, return 401

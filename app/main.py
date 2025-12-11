@@ -335,9 +335,11 @@ app.include_router(training.router, prefix="/api/training", tags=["AI Training"]
 
 @app.get("/")
 async def root(request: Request):
-    # In development mode, skip login and go straight to dashboard
-    if settings.ENVIRONMENT == "development":
-        from fastapi.responses import RedirectResponse
+    # Check if auth bypass is enabled (skip login)
+    from app.services.config_service import ConfigService
+    from fastapi.responses import RedirectResponse
+    config_service = ConfigService()
+    if config_service.get_bool("DEV_AUTH_BYPASS", False):
         return RedirectResponse(url="/dashboard")
     return templates.TemplateResponse("login.html", {
         "request": request,
