@@ -337,9 +337,15 @@ app.include_router(training.router, prefix="/api/training", tags=["AI Training"]
 async def root(request: Request):
     # Check if auth bypass is enabled (skip login)
     from app.services.config_service import ConfigService
+    from app.database import SessionLocal
     from fastapi.responses import RedirectResponse
-    config_service = ConfigService()
-    if config_service.get_bool("DEV_AUTH_BYPASS", False):
+    db = SessionLocal()
+    try:
+        config_service = ConfigService(db)
+        bypass_enabled = config_service.get_bool("DEV_AUTH_BYPASS", False)
+    finally:
+        db.close()
+    if bypass_enabled:
         return RedirectResponse(url="/dashboard")
     return templates.TemplateResponse("login.html", {
         "request": request,
