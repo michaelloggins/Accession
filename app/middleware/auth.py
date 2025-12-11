@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from app.config import settings
 from app.services.config_service import ConfigService
+from app.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +58,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         if not token:
             # Check if auth bypass is enabled (allows unauthenticated access)
-            config_service = ConfigService()
-            if config_service.get_bool("DEV_AUTH_BYPASS", False):
+            db = SessionLocal()
+            try:
+                config_service = ConfigService(db)
+                bypass_enabled = config_service.get_bool("DEV_AUTH_BYPASS", False)
+            finally:
+                db.close()
+            if bypass_enabled:
                 logger.debug(f"Auth bypass enabled: allowing unauthenticated access to {path}")
                 return await call_next(request)
 
@@ -74,8 +80,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Verify token
         if not self._verify_token(token):
             # If auth bypass enabled, treat invalid tokens as "no token" and allow access
-            config_service = ConfigService()
-            if config_service.get_bool("DEV_AUTH_BYPASS", False):
+            db = SessionLocal()
+            try:
+                config_service = ConfigService(db)
+                bypass_enabled = config_service.get_bool("DEV_AUTH_BYPASS", False)
+            finally:
+                db.close()
+            if bypass_enabled:
                 logger.debug(f"Auth bypass enabled: ignoring invalid token for {path}")
                 return await call_next(request)
 
