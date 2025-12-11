@@ -1362,7 +1362,7 @@
         showToast('Refreshed!', 'success');
     }
 
-    // Upload form handler
+    // Upload form handler - always uses /bulk-upload (server handles threshold logic)
     document.getElementById('uploadForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const uploadBtn = document.getElementById('uploadBtn');
@@ -1377,34 +1377,46 @@
 
         uploadBtn.disabled = true;
         progressDiv.classList.remove('d-none');
+        progressDiv.querySelector('.progress-bar').textContent = 'Uploading ' + files.length + ' file(s)...';
 
-        let successCount = 0, failCount = 0;
+        const authHeaders = getAuthHeaders();
 
-        for (let i = 0; i < files.length; i++) {
+        try {
+            // Always use /bulk-upload - server decides based on BULK_UPLOAD_THRESHOLD config:
+            // - Below threshold: Direct queue (fast, no background job)
+            // - At/above threshold: Background job (progress tracking, concurrent processing)
             const formData = new FormData();
-            formData.append('file', files[i]);
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
             formData.append('source', source);
 
-            try {
-                // Get token from localStorage or js_access_token cookie (SSO)
-                const authHeaders = getAuthHeaders();
-                const response = await fetch('/api/documents/upload', {
-                    method: 'POST',
-                    headers: { 'Authorization': authHeaders['Authorization'] },
-                    body: formData
-                });
-                if (response.ok) successCount++;
-                else failCount++;
-            } catch (error) {
-                failCount++;
-            }
-            progressDiv.querySelector('.progress-bar').textContent = `Processing ${i + 1} of ${files.length}...`;
-        }
+            const response = await fetch('/api/documents/bulk-upload', {
+                method: 'POST',
+                headers: { 'Authorization': authHeaders['Authorization'] },
+                body: formData
+            });
 
-        if (successCount > 0) {
-            showToast(`Uploaded ${successCount} file(s)${failCount > 0 ? `, ${failCount} failed` : ''}`, failCount > 0 ? 'warning' : 'success');
-        } else {
-            showToast(`All ${failCount} upload(s) failed`, 'error');
+            const result = await response.json();
+
+            if (response.ok) {
+                if (result.status === 'background_job_created') {
+                    // Large batch - background job with progress tracking
+                    showToast('Background job started for ' + result.queued_count + ' files. Track in Admin > Background Jobs.', 'success');
+                } else {
+                    // Small batch - queued directly for Extraction Worker
+                    const successCount = result.uploaded_count || result.queued_count || files.length;
+                    const failCount = result.error_count || 0;
+                    let msg = 'Queued ' + successCount + ' file(s) for extraction';
+                    if (failCount > 0) msg += ', ' + failCount + ' failed';
+                    showToast(msg, failCount > 0 ? 'warning' : 'success');
+                }
+            } else {
+                showToast('Upload failed: ' + (result.detail || 'Server error'), 'error');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            showToast('Upload failed: Network error', 'error');
         }
 
         refreshQueue();

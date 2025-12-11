@@ -14,6 +14,7 @@ from app.services.extraction_factory import get_extraction_service
 from app.services.audit_service import AuditService
 from app.services.config_service import ConfigService
 from app.services.training_service import TrainingService
+from app.models.training_data import DocumentType
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,10 @@ class BackgroundTaskManager:
                 _save_jobs_to_file()
 
 
+# Default concurrency for parallel file processing
+DEFAULT_CONCURRENT_UPLOADS = 3
+
+
 async def process_bulk_upload(
     job_id: str,
     files_data: List[dict],
@@ -183,7 +188,7 @@ async def process_bulk_upload(
     db_url: str
 ) -> None:
     """
-    Process multiple files in the background.
+    Process multiple files in the background with concurrent processing.
 
     Args:
         job_id: Unique identifier for this job
@@ -195,130 +200,154 @@ async def process_bulk_upload(
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    logger.info(f"Starting background job {job_id} with {len(files_data)} files")
+    logger.info(f"Starting background job {job_id} with {len(files_data)} files (concurrent processing)")
 
     BackgroundTaskManager.create_job(job_id, len(files_data))
+
+    # Shared counters with lock for thread safety
+    progress_lock = threading.Lock()
+    progress = {'processed': 0, 'successful': 0, 'failed': 0}
 
     try:
         # Create new database session for background task
         engine = create_engine(db_url)
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+        # Get concurrency limit from config (default 3)
         db = SessionLocal()
-
-        doc_service = DocumentService(db)
-        extraction_service = get_extraction_service()
-        audit_service = AuditService(db)
         config_service = ConfigService(db)
+        concurrent_limit = config_service.get_int("CONCURRENT_UPLOAD_LIMIT", DEFAULT_CONCURRENT_UPLOADS)
+        db.close()
 
-        # Check if learning mode is enabled
-        try:
-            ai_config_str = config_service.get("AI_SERVICE_CONFIG", "{}")
-            ai_config = json.loads(ai_config_str) if isinstance(ai_config_str, str) else ai_config_str
-            learning_mode = ai_config.get("learning_mode", False)
-        except Exception as e:
-            logger.warning(f"Could not load AI config for learning mode: {e}")
-            learning_mode = False
+        # Semaphore to limit concurrent Azure OpenAI calls
+        semaphore = asyncio.Semaphore(concurrent_limit)
 
-        training_service = TrainingService(db) if learning_mode else None
-        if learning_mode:
-            logger.info(f"Learning mode enabled for job {job_id}")
-
-        processed = 0
-        successful = 0
-        failed = 0
-
-        for file_data in files_data:
-            # Check if job was cancelled
+        async def process_single_file(file_data: dict, index: int) -> None:
+            """Process a single file with semaphore limiting."""
+            # Check if job was cancelled before starting
             with _job_store_lock:
                 cancelled = job_status_store.get(job_id, {}).get('cancelled', False)
             if cancelled:
-                logger.info(f"Job {job_id} was cancelled. Stopping processing.")
-                break
+                return
 
-            try:
-                filename = file_data['filename']
-                content = file_data['content']
-                content_type = file_data['content_type']
+            async with semaphore:
+                # Check again after acquiring semaphore
+                with _job_store_lock:
+                    cancelled = job_status_store.get(job_id, {}).get('cancelled', False)
+                if cancelled:
+                    return
 
-                logger.info(f"Processing file {processed + 1}/{len(files_data)}: {filename}")
+                # Each task gets its own DB session
+                db = SessionLocal()
+                try:
+                    doc_service = DocumentService(db)
+                    extraction_service = get_extraction_service()
+                    audit_service = AuditService(db)
+                    training_service = TrainingService(db)
 
-                # Create mock upload file object
-                from io import BytesIO
-                from fastapi import UploadFile
-                from starlette.datastructures import Headers
+                    filename = file_data['filename']
+                    content = file_data['content']
+                    content_type = file_data['content_type']
 
-                # Create headers with content type
-                headers = Headers({
-                    'content-type': content_type
-                })
+                    logger.info(f"Processing file {index + 1}/{len(files_data)}: {filename}")
 
-                file_obj = UploadFile(
-                    filename=filename,
-                    file=BytesIO(content),
-                    size=len(content),
-                    headers=headers
-                )
+                    # Create mock upload file object
+                    from io import BytesIO
+                    from fastapi import UploadFile
+                    from starlette.datastructures import Headers
 
-                # Validate file
-                doc_service.validate_file(file_obj)
+                    headers = Headers({'content-type': content_type})
+                    file_obj = UploadFile(
+                        filename=filename,
+                        file=BytesIO(content),
+                        size=len(content),
+                        headers=headers
+                    )
 
-                # Upload to blob storage with standardized filename
-                file_obj.file.seek(0)  # Reset file pointer
-                blob_name = await doc_service.upload_to_blob(file_obj, user_email=uploaded_by)
+                    # Validate file
+                    doc_service.validate_file(file_obj)
 
-                # Extract data using Azure OpenAI
-                file_obj.file.seek(0)  # Reset file pointer again
-                extracted_data, confidence_score = await extraction_service.extract_data(file_obj)
+                    # Upload to blob storage
+                    file_obj.file.seek(0)
+                    blob_name = await doc_service.upload_to_blob(file_obj, user_email=uploaded_by)
 
-                # Save document record
-                document = doc_service.create_document(
-                    filename=filename,
-                    blob_name=blob_name,
-                    extracted_data=extracted_data,
-                    confidence_score=confidence_score,
-                    source=source,
-                    uploaded_by=uploaded_by
-                )
+                    # Extract data using Azure OpenAI
+                    file_obj.file.seek(0)
+                    extracted_data, confidence_score = await extraction_service.extract_data(file_obj)
 
-                # Log upload action
-                audit_service.log_action(
-                    user_id=uploaded_by,
-                    user_email="background@system.local",
-                    action="CREATE",
-                    resource_type="DOCUMENT",
-                    resource_id=str(document.id),
-                    success=True
-                )
+                    # Save document record
+                    document = doc_service.create_document(
+                        filename=filename,
+                        blob_name=blob_name,
+                        extracted_data=extracted_data,
+                        confidence_score=confidence_score,
+                        source=source,
+                        uploaded_by=uploaded_by
+                    )
 
-                # Run training analysis if learning mode is enabled
-                if training_service and training_service.is_configured:
-                    try:
-                        logger.info(f"Running training analysis for document {document.id}")
-                        await training_service.analyze_document(
-                            image_bytes=content,
-                            document_id=document.id,
-                            blob_name=blob_name,
-                            user_email=uploaded_by
+                    # Log upload action
+                    audit_service.log_action(
+                        user_id=uploaded_by,
+                        user_email="background@system.local",
+                        action="CREATE",
+                        resource_type="DOCUMENT",
+                        resource_id=str(document.id),
+                        success=True
+                    )
+
+                    # Run training analysis (check per-type training_enabled)
+                    if training_service and training_service.is_configured:
+                        try:
+                            should_train = True
+                            if document.document_type:
+                                doc_type = db.query(DocumentType).filter(
+                                    DocumentType.name == document.document_type,
+                                    DocumentType.is_active == True
+                                ).first()
+                                if doc_type and not doc_type.training_enabled:
+                                    should_train = False
+                                    logger.debug(f"Training disabled for type: {document.document_type}")
+
+                            if should_train:
+                                logger.info(f"Running training analysis for document {document.id}")
+                                await training_service.analyze_document(
+                                    image_bytes=content,
+                                    document_id=document.id,
+                                    blob_name=blob_name,
+                                    user_email=uploaded_by
+                                )
+                        except Exception as train_error:
+                            logger.warning(f"Training analysis failed for document {document.id}: {train_error}")
+
+                    # Update progress
+                    with progress_lock:
+                        progress['processed'] += 1
+                        progress['successful'] += 1
+                        BackgroundTaskManager.update_job_progress(
+                            job_id, progress['processed'], progress['successful'], progress['failed']
                         )
-                    except Exception as train_error:
-                        logger.warning(f"Training analysis failed for document {document.id}: {train_error}")
 
-                successful += 1
-                BackgroundTaskManager.add_result(job_id, {
-                    'filename': filename,
-                    'status': 'success',
-                    'document_id': document.id,
-                    'accession_number': document.accession_number,
-                    'confidence_score': float(confidence_score) if confidence_score else None
-                })
+                    BackgroundTaskManager.add_result(job_id, {
+                        'filename': filename,
+                        'status': 'success',
+                        'document_id': document.id,
+                        'accession_number': document.accession_number,
+                        'confidence_score': float(confidence_score) if confidence_score else None
+                    })
 
-            except Exception as e:
-                logger.error(f"Failed to process file {file_data['filename']}: {e}")
-                failed += 1
-                BackgroundTaskManager.add_result(job_id, {
-                    'filename': file_data['filename'],
-                    'status': 'failed',
-                    'error': str(e)
+                except Exception as e:
+                    logger.error(f"Failed to process file {file_data['filename']}: {e}")
+                    with progress_lock:
+                        progress['processed'] += 1
+                        progress['failed'] += 1
+                        BackgroundTaskManager.update_job_progress(
+                            job_id, progress['processed'], progress['successful'], progress['failed']
+                        )
+
+                    BackgroundTaskManager.add_result(job_id, {
+                        'filename': file_data['filename'],
+                        'status': 'failed',
+                        'error': str(e)
                 })
 
             processed += 1

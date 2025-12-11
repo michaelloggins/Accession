@@ -516,8 +516,8 @@ class ExtractionWorker:
             except Exception as e:
                 error = f"OpenAI extraction failed: {str(e)}"
 
-        # If learning mode is enabled and we have data, run training analysis
-        if learning_mode and extracted_data and not error:
+        # Run training analysis if extraction succeeded (per-type check is inside)
+        if extracted_data and not error:
             await self._run_training_analysis(db, doc, content, extracted_data)
 
         return {

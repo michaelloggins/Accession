@@ -90,7 +90,7 @@ async def process_scan_batch(
     ai_config = get_ai_service_config(db)
     use_doc_intel = ai_config.get("doc_intel_classify", True) and doc_intel_service.is_configured
     use_openai_extract = ai_config.get("openai_extract", True)
-    learning_mode = ai_config.get("learning_mode", False)
+    learning_mode = True  # Always learn (per-document-type check happens during training)
 
     # Get user's scan station
     scan_station = get_user_scan_station(db, current_user.get("user_id", current_user["user_email"]))
