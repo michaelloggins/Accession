@@ -608,21 +608,21 @@
     }
 
     .ai-info-badge.training {
-        background: rgba(255, 193, 7, 0.15);
-        color: #856404;
-        border: 1px solid rgba(255, 193, 7, 0.3);
+        background: #fff3cd;
+        color: #664d03;
+        border: 1px solid #ffda6a;
     }
 
     .ai-info-badge.training.used {
-        background: rgba(25, 135, 84, 0.15);
-        color: #198754;
-        border: 1px solid rgba(25, 135, 84, 0.3);
+        background: #d1e7dd;
+        color: #0f5132;
+        border: 1px solid #a3cfbb;
     }
 
     .ai-info-badge.training.disabled {
-        background: rgba(108, 117, 125, 0.1);
-        color: #6c757d;
-        border: 1px solid rgba(108, 117, 125, 0.2);
+        background: #e9ecef;
+        color: #495057;
+        border: 1px solid #ced4da;
     }
 
     /* Confidence Badge - Large prominent circle with solid colors */
@@ -1659,12 +1659,13 @@
                     infoHtml += '<span class="ai-info-badge classification" title="Document classification"><i class="bi bi-tag"></i> ' + documentData.document_type + '</span>';
                 }
 
-                // Training badge
+                // Training badge - include document type if available
+                const docTypeSuffix = documentData.document_type ? ' - ' + documentData.document_type : '';
                 if (documentData.learning_mode_enabled) {
                     if (documentData.used_for_training) {
-                        infoHtml += '<span class="ai-info-badge training used" title="Used for AI learning"><i class="bi bi-mortarboard-fill"></i> Trained</span>';
+                        infoHtml += '<span class="ai-info-badge training used" title="Used for AI learning"><i class="bi bi-mortarboard-fill"></i> Trained' + docTypeSuffix + '</span>';
                     } else {
-                        infoHtml += '<span class="ai-info-badge training" title="Learning mode active"><i class="bi bi-mortarboard"></i> Learning</span>';
+                        infoHtml += '<span class="ai-info-badge training" title="Learning mode active"><i class="bi bi-mortarboard"></i> Learning' + docTypeSuffix + '</span>';
                     }
                 } else {
                     infoHtml += '<span class="ai-info-badge training disabled" title="Learning mode is off"><i class="bi bi-mortarboard"></i> Learning Off</span>';
