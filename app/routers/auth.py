@@ -327,6 +327,7 @@ async def sso_callback(
         response.set_cookie(
             key="user_info",
             value=user_info_cookie,
+            path="/",
             httponly=False,
             secure=settings.ENVIRONMENT != "development",
             samesite="lax",
@@ -727,6 +728,7 @@ async def saml_acs(
         response.set_cookie(
             key="user_info",
             value=user_info_cookie,
+            path="/",
             httponly=False,
             secure=settings.ENVIRONMENT != "development",
             samesite="lax",
