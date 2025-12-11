@@ -386,6 +386,7 @@ class ExtractionWorker:
     ) -> List[Dict]:
         """
         Extract documents using Form Recognizer with OpenAI fallback.
+        Now processes documents concurrently for better performance.
 
         Flow:
         1. Check if document has a known type with Form Recognizer model
@@ -393,41 +394,49 @@ class ExtractionWorker:
         3. If FR confidence < threshold or FR fails: fallback to OpenAI
         4. If learning mode: also run training analysis
         """
-        results = []
-
         # Build a map of document IDs to their data
         doc_data_map = {d['id']: d for d in documents_data}
 
         # Get document types that have FR models configured
         doc_types_with_fr = self._get_document_types_with_fr(db)
 
-        # Process each document
-        for doc in queued_docs:
+        # Get concurrency limit from config
+        config_service = ConfigService(db)
+        concurrent_limit = config_service.get_int("EXTRACTION_CONCURRENT_LIMIT", 3)
+
+        # Semaphore to limit concurrent extractions
+        semaphore = asyncio.Semaphore(concurrent_limit)
+
+        async def extract_with_semaphore(doc: Document) -> Dict:
+            """Extract a single document with semaphore limiting."""
             doc_data = doc_data_map.get(doc.id)
             if not doc_data:
-                results.append({
+                return {
                     'document_id': doc.id,
                     'extracted_data': None,
                     'confidence_score': None,
                     'error': 'Document data not found'
-                })
-                continue
+                }
 
-            try:
-                result = await self._extract_single_document(
-                    db, doc, doc_data, doc_types_with_fr, learning_mode
-                )
-                results.append(result)
-            except Exception as e:
-                logger.error(f"Extraction error for document {doc.id}: {e}")
-                results.append({
-                    'document_id': doc.id,
-                    'extracted_data': None,
-                    'confidence_score': None,
-                    'error': str(e)
-                })
+            async with semaphore:
+                try:
+                    return await self._extract_single_document(
+                        db, doc, doc_data, doc_types_with_fr, learning_mode
+                    )
+                except Exception as e:
+                    logger.error(f"Extraction error for document {doc.id}: {e}")
+                    return {
+                        'document_id': doc.id,
+                        'extracted_data': None,
+                        'confidence_score': None,
+                        'error': str(e)
+                    }
 
-        return results
+        # Process all documents concurrently (limited by semaphore)
+        logger.info(f"Processing {len(queued_docs)} documents with concurrency limit {concurrent_limit}")
+        results = await asyncio.gather(*[extract_with_semaphore(doc) for doc in queued_docs])
+
+        return list(results)
 
     async def _extract_single_document(
         self,

@@ -36,6 +36,20 @@ class SystemConfig(Base):
             "category": "extraction",
             "display_order": "020"
         },
+        "EXTRACTION_CONCURRENT_LIMIT": {
+            "value": "3",
+            "value_type": "int",
+            "description": "Maximum concurrent document extractions (FR + OpenAI) per batch",
+            "category": "extraction",
+            "display_order": "025"
+        },
+        "CLASSIFICATION_CONCURRENT_LIMIT": {
+            "value": "5",
+            "value_type": "int",
+            "description": "Maximum concurrent Document Intelligence classification calls",
+            "category": "extraction",
+            "display_order": "026"
+        },
         "EXTRACTION_MAX_RETRIES": {
             "value": "3",
             "value_type": "int",

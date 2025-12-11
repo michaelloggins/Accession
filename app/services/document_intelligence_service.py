@@ -31,6 +31,11 @@ class DocumentIntelligenceService:
         self.api_key = settings.AZURE_DOC_INTELLIGENCE_KEY
         self.classifier_id = settings.AZURE_DOC_INTELLIGENCE_CLASSIFIER_ID
         self.api_version = "2024-02-29-preview"
+        self._classification_concurrent_limit = 5  # Default, configurable via CLASSIFICATION_CONCURRENT_LIMIT
+
+    def set_concurrent_limit(self, limit: int) -> None:
+        """Set the concurrent classification limit (called from routers with config value)."""
+        self._classification_concurrent_limit = max(1, min(limit, 20))  # Clamp 1-20
 
     @property
     def is_configured(self) -> bool:
@@ -132,14 +137,27 @@ class DocumentIntelligenceService:
     ) -> List[Dict]:
         """
         Classify multiple pages and determine document boundaries.
+        Now classifies pages in parallel for better performance.
         """
+        # Get concurrency limit (default 5 for classification)
+        concurrent_limit = getattr(self, '_classification_concurrent_limit', 5)
+
+        # Semaphore to limit concurrent classification calls
+        semaphore = asyncio.Semaphore(concurrent_limit)
+
+        async def classify_with_semaphore(page: bytes) -> Dict:
+            async with semaphore:
+                return await self._classify_single_page(page)
+
+        # Classify all pages in parallel (respecting concurrency limit)
+        logger.info(f"Classifying {len(pages)} pages with concurrency limit {concurrent_limit}")
+        classifications = await asyncio.gather(*[classify_with_semaphore(page) for page in pages])
+
+        # Process classifications sequentially for boundary detection
         documents = []
         current_doc = None
 
-        for idx, page in enumerate(pages):
-            # Classify each page
-            classification = await self._classify_single_page(page)
-
+        for idx, classification in enumerate(classifications):
             if current_doc is None:
                 # Start new document
                 current_doc = {
