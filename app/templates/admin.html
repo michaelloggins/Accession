@@ -256,6 +256,11 @@
                 </button>
             </li>
             <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ai-learning">
+                    <i class="bi bi-mortarboard"></i> AI Learning
+                </button>
+            </li>
+            <li class="nav-item">
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#reference-data">
                     <i class="bi bi-database"></i> Reference Data
                 </button>
@@ -1095,6 +1100,194 @@
                                 <p class="text-muted">Choose an integration from the list or create a new one</p>
                                 <button class="btn btn-primary" onclick="showAddIntegrationModal()">
                                     <i class="bi bi-plus-circle"></i> Add New Integration
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Learning Tab -->
+            <div class="tab-pane fade" id="ai-learning">
+                <!-- Learning Mode Header -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1"><i class="bi bi-mortarboard-fill text-primary"></i> AI Learning Mode</h5>
+                                <p class="text-muted mb-0">Train AI to recognize document types and extract data automatically</p>
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="learningModeToggle2" onchange="saveAiLearningConfig()" style="transform: scale(1.8);">
+                                    <label class="form-check-label ms-2 fw-bold" id="learningModeLabel">OFF</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Cards - Clickable -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card h-100 kpi-card" onclick="showDocumentTypesDetail()" style="cursor: pointer;">
+                            <div class="card-body text-center">
+                                <div class="fs-1 fw-bold text-primary" id="kpiDocTypes">0</div>
+                                <div class="text-muted">Document Types</div>
+                                <small class="text-primary"><i class="bi bi-eye"></i> Click to view</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card h-100 kpi-card" onclick="showTrainingSamplesDetail()" style="cursor: pointer;">
+                            <div class="card-body text-center">
+                                <div class="fs-1 fw-bold text-success" id="kpiSamples">0</div>
+                                <div class="text-muted">Training Samples</div>
+                                <small class="text-success"><i class="bi bi-eye"></i> Click to view</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card h-100 kpi-card" onclick="showPendingVerification()" style="cursor: pointer;">
+                            <div class="card-body text-center">
+                                <div class="fs-1 fw-bold text-warning" id="kpiPendingVerify">0</div>
+                                <div class="text-muted">Pending Verification</div>
+                                <small class="text-warning"><i class="bi bi-eye"></i> Click to view</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <div class="fs-1 fw-bold text-info" id="kpiFRRate">0%</div>
+                                <div class="text-muted">FR Extraction Rate</div>
+                                <small class="text-muted">Form Recognizer success</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing Workflow -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Document Processing Workflow</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-center flex-wrap gap-2">
+                            <span class="badge bg-info fs-6 px-3 py-2">1. Scan/Upload</span>
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            <span class="badge bg-secondary fs-6 px-3 py-2">2. Classify Type</span>
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            <span class="badge bg-primary fs-6 px-3 py-2" id="workflowExtract">3. Extract (GPT-4)</span>
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            <span class="badge bg-warning text-dark fs-6 px-3 py-2" id="workflowLearn">4. Learn</span>
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            <span class="badge bg-success fs-6 px-3 py-2">5. Review</span>
+                        </div>
+                        <div class="text-center mt-2">
+                            <small class="text-muted" id="workflowDescription">
+                                When Learning Mode is ON, each document is analyzed by GPT-4 to learn document patterns.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document Types Panel -->
+                <div class="card mb-3" id="docTypesPanel">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-collection"></i> Document Types</h6>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="refreshLearningData()">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Document Type</th>
+                                        <th>Samples</th>
+                                        <th>Verified</th>
+                                        <th>Avg Confidence</th>
+                                        <th>FR Model</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="docTypesTableBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            <i class="bi bi-info-circle"></i> No document types learned yet. Enable Learning Mode and process documents.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Samples Panel (initially hidden, shown on KPI click) -->
+                <div class="card mb-3" id="trainingSamplesPanel" style="display: none;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-file-earmark-check"></i> Training Samples</h6>
+                        <div>
+                            <select class="form-select form-select-sm d-inline-block w-auto me-2" id="sampleTypeFilter" onchange="filterTrainingSamples()">
+                                <option value="">All Types</option>
+                            </select>
+                            <select class="form-select form-select-sm d-inline-block w-auto me-2" id="sampleVerifyFilter" onchange="filterTrainingSamples()">
+                                <option value="">All Status</option>
+                                <option value="verified">Verified</option>
+                                <option value="pending">Pending</option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="hideTrainingSamplesPanel()">
+                                <i class="bi bi-x"></i> Close
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;"></th>
+                                        <th>Document Type</th>
+                                        <th>Classification</th>
+                                        <th>Confidence</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="trainingSamplesTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            No training samples yet.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Train Classifier Section -->
+                <div class="card" id="trainClassifierCard">
+                    <div class="card-header bg-warning bg-opacity-25">
+                        <h6 class="mb-0"><i class="bi bi-cpu"></i> Train Document Intelligence Classifier</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <p class="mb-1"><strong>Readiness Status:</strong></p>
+                                <div id="trainingReadinessStatus" class="text-muted">
+                                    <i class="bi bi-hourglass"></i> Checking training readiness...
+                                </div>
+                                <small class="text-muted">Minimum: 5 samples across at least 2 document types</small>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button class="btn btn-warning" id="trainClassifierBtn2" onclick="trainClassifier()" disabled>
+                                    <i class="bi bi-lightning-fill"></i> Build Classifier
                                 </button>
                             </div>
                         </div>
@@ -3170,6 +3363,121 @@
     </div>
 </div>
 
+<!-- Training Sample Viewer Modal -->
+<div class="modal fade" id="trainingSampleModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-check"></i> Training Sample Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Document Preview -->
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-file-pdf"></i> Document Preview</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <div id="sampleDocumentViewer" style="height: 500px; overflow: auto; background: #f8f9fa;">
+                                    <div class="text-center py-5 text-muted">
+                                        <i class="bi bi-file-earmark" style="font-size: 3rem;"></i>
+                                        <p>Loading document...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Sample Details -->
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-robot"></i> AI Classification</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Document Type</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                                        <input type="text" class="form-control" id="sampleDocType" readonly>
+                                        <button class="btn btn-outline-primary" type="button" onclick="editDocumentType()">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Confidence Score</label>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar" id="sampleConfidenceBar" role="progressbar" style="width: 0%;">0%</div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">AI Reasoning</label>
+                                    <div class="border rounded p-2 bg-light small" id="sampleReasoning" style="max-height: 120px; overflow-y: auto;">
+                                        -
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-check-circle"></i> Verification</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Correct Document Type?</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="verifyChoice" id="verifyCorrect" value="correct">
+                                        <label class="btn btn-outline-success" for="verifyCorrect">
+                                            <i class="bi bi-check-lg"></i> Correct
+                                        </label>
+                                        <input type="radio" class="btn-check" name="verifyChoice" id="verifyIncorrect" value="incorrect">
+                                        <label class="btn btn-outline-danger" for="verifyIncorrect">
+                                            <i class="bi bi-x-lg"></i> Incorrect
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3" id="correctedTypeDiv" style="display: none;">
+                                    <label class="form-label fw-bold">Select Correct Type</label>
+                                    <select class="form-select" id="correctedDocType">
+                                        <option value="">Select correct document type...</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Status</label>
+                                    <div id="sampleVerifyStatus">
+                                        <span class="badge bg-warning text-dark">Pending Verification</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-braces"></i> Extracted Features</h6>
+                            </div>
+                            <div class="card-body">
+                                <pre class="small mb-0 bg-light p-2 rounded" id="sampleFeatures" style="max-height: 150px; overflow-y: auto;">
+Loading...
+                                </pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <input type="hidden" id="currentSampleId">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" onclick="verifySample()">
+                    <i class="bi bi-check-circle"></i> Save Verification
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -3203,6 +3511,22 @@
                 loadLabelPrinters();
             });
         }
+
+        // Load AI Learning data when tab is shown
+        const aiLearningTab = document.querySelector('button[data-bs-target="#ai-learning"]');
+        if (aiLearningTab) {
+            aiLearningTab.addEventListener('shown.bs.tab', function() {
+                loadAiLearningData();
+            });
+        }
+
+        // Verification choice radio buttons
+        document.querySelectorAll('input[name="verifyChoice"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.getElementById('correctedTypeDiv').style.display =
+                    this.value === 'incorrect' ? 'block' : 'none';
+            });
+        });
 
         // Filter event listeners
         document.getElementById('filterTestCode')?.addEventListener('input', applyTestFilters);
@@ -3474,6 +3798,400 @@
             'Content-Type': 'application/json',
             'Authorization': token ? `Bearer ${token}` : ''
         };
+    }
+
+    // ============================================
+    // AI Learning Functions
+    // ============================================
+
+    let aiLearningData = { documentTypes: [], samples: [] };
+
+    async function loadAiLearningData() {
+        try {
+            // Load learning mode status
+            const configResponse = await fetch('/api/ai-services/config', { headers: getAuthHeaders() });
+            if (configResponse.ok) {
+                const config = await configResponse.json();
+                const toggle = document.getElementById('learningModeToggle2');
+                const label = document.getElementById('learningModeLabel');
+                if (toggle) {
+                    toggle.checked = config.learning_mode === true;
+                    label.textContent = config.learning_mode ? 'ON' : 'OFF';
+                    label.className = config.learning_mode ? 'form-check-label ms-2 fw-bold text-success' : 'form-check-label ms-2 fw-bold text-muted';
+                }
+            }
+
+            // Load document types and samples
+            const statsResponse = await fetch('/api/training/stats', { headers: getAuthHeaders() });
+            if (statsResponse.ok) {
+                const stats = await statsResponse.json();
+                aiLearningData.documentTypes = stats.document_types || [];
+                aiLearningData.samples = stats.samples || [];
+
+                // Update KPIs
+                document.getElementById('kpiDocTypes').textContent = stats.total_document_types || 0;
+                document.getElementById('kpiSamples').textContent = stats.total_samples || 0;
+                document.getElementById('kpiPendingVerify').textContent = stats.pending_verification || 0;
+                document.getElementById('kpiFRRate').textContent = (stats.fr_extraction_rate || 0) + '%';
+
+                // Update document types table
+                renderDocumentTypesTable(aiLearningData.documentTypes);
+
+                // Update training readiness
+                updateTrainingReadiness(stats);
+            } else {
+                // API might not exist yet, show placeholder
+                document.getElementById('kpiDocTypes').textContent = '0';
+                document.getElementById('kpiSamples').textContent = '0';
+                document.getElementById('kpiPendingVerify').textContent = '0';
+                document.getElementById('kpiFRRate').textContent = '0%';
+            }
+        } catch (error) {
+            console.error('Error loading AI learning data:', error);
+        }
+    }
+
+    async function saveAiLearningConfig() {
+        const toggle = document.getElementById('learningModeToggle2');
+        const label = document.getElementById('learningModeLabel');
+        const learningMode = toggle.checked;
+
+        try {
+            const response = await fetch('/api/ai-services/config', {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ learning_mode: learningMode })
+            });
+
+            if (response.ok) {
+                label.textContent = learningMode ? 'ON' : 'OFF';
+                label.className = learningMode ? 'form-check-label ms-2 fw-bold text-success' : 'form-check-label ms-2 fw-bold text-muted';
+                showToast(learningMode ? 'Learning Mode enabled' : 'Learning Mode disabled', 'success');
+            } else {
+                toggle.checked = !learningMode; // Revert
+                showToast('Failed to update Learning Mode', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving AI learning config:', error);
+            toggle.checked = !learningMode; // Revert
+            showToast('Error updating Learning Mode', 'error');
+        }
+    }
+
+    function renderDocumentTypesTable(docTypes) {
+        const tbody = document.getElementById('docTypesTableBody');
+        if (!docTypes || docTypes.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        <i class="bi bi-info-circle"></i> No document types learned yet. Enable Learning Mode and process documents.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = docTypes.map(dt => {
+            const verifiedCount = dt.verified_count || 0;
+            const totalSamples = dt.sample_count || 0;
+            const avgConf = dt.avg_confidence ? Math.round(dt.avg_confidence * 100) : 0;
+            const confClass = avgConf >= 90 ? 'bg-success' : avgConf >= 70 ? 'bg-warning' : 'bg-danger';
+            const frBadge = dt.form_recognizer_model_id
+                ? '<span class="badge bg-primary"><i class="bi bi-check"></i> Configured</span>'
+                : '<span class="badge bg-secondary">Not Set</span>';
+
+            return `
+                <tr>
+                    <td><strong>${dt.name}</strong></td>
+                    <td><span class="badge bg-info">${totalSamples}</span></td>
+                    <td><span class="badge ${verifiedCount === totalSamples && totalSamples > 0 ? 'bg-success' : 'bg-warning'}">${verifiedCount}/${totalSamples}</span></td>
+                    <td>
+                        <div class="progress" style="height: 20px; min-width: 80px;">
+                            <div class="progress-bar ${confClass}" style="width: ${avgConf}%">${avgConf}%</div>
+                        </div>
+                    </td>
+                    <td>${frBadge}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewDocTypeSamples(${dt.id})" title="View Samples">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="editDocType(${dt.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function updateTrainingReadiness(stats) {
+        const statusDiv = document.getElementById('trainingReadinessStatus');
+        const btn = document.getElementById('trainClassifierBtn2');
+        const docTypes = stats.total_document_types || 0;
+        const samples = stats.total_samples || 0;
+        const verified = stats.verified_count || 0;
+
+        if (docTypes >= 2 && samples >= 5) {
+            statusDiv.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Ready! ${docTypes} document types, ${samples} samples (${verified} verified)</span>`;
+            btn.disabled = false;
+        } else {
+            const needs = [];
+            if (docTypes < 2) needs.push(`${2 - docTypes} more document type(s)`);
+            if (samples < 5) needs.push(`${5 - samples} more sample(s)`);
+            statusDiv.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Need: ${needs.join(', ')}</span>`;
+            btn.disabled = true;
+        }
+    }
+
+    function refreshLearningData() {
+        loadAiLearningData();
+        showToast('Refreshed learning data', 'info');
+    }
+
+    // KPI Click handlers
+    function showDocumentTypesDetail() {
+        // Document types table is already visible, just highlight it
+        document.getElementById('docTypesPanel').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showTrainingSamplesDetail() {
+        document.getElementById('trainingSamplesPanel').style.display = 'block';
+        loadTrainingSamples();
+        document.getElementById('trainingSamplesPanel').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showPendingVerification() {
+        document.getElementById('trainingSamplesPanel').style.display = 'block';
+        document.getElementById('sampleVerifyFilter').value = 'pending';
+        loadTrainingSamples();
+        document.getElementById('trainingSamplesPanel').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function hideTrainingSamplesPanel() {
+        document.getElementById('trainingSamplesPanel').style.display = 'none';
+    }
+
+    async function loadTrainingSamples() {
+        try {
+            const typeFilter = document.getElementById('sampleTypeFilter').value;
+            const verifyFilter = document.getElementById('sampleVerifyFilter').value;
+
+            let url = '/api/training/samples?';
+            if (typeFilter) url += `document_type_id=${typeFilter}&`;
+            if (verifyFilter === 'verified') url += 'verified=true&';
+            if (verifyFilter === 'pending') url += 'verified=false&';
+
+            const response = await fetch(url, { headers: getAuthHeaders() });
+            if (!response.ok) {
+                throw new Error('Failed to load samples');
+            }
+
+            const data = await response.json();
+            renderTrainingSamplesTable(data.samples || []);
+
+            // Update type filter options
+            const typeSelect = document.getElementById('sampleTypeFilter');
+            if (aiLearningData.documentTypes.length > 0 && typeSelect.options.length <= 1) {
+                aiLearningData.documentTypes.forEach(dt => {
+                    const opt = document.createElement('option');
+                    opt.value = dt.id;
+                    opt.textContent = dt.name;
+                    typeSelect.appendChild(opt);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading training samples:', error);
+            document.getElementById('trainingSamplesTableBody').innerHTML = `
+                <tr><td colspan="7" class="text-center text-danger">Error loading samples</td></tr>
+            `;
+        }
+    }
+
+    function renderTrainingSamplesTable(samples) {
+        const tbody = document.getElementById('trainingSamplesTableBody');
+        if (!samples || samples.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No training samples found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = samples.map(s => {
+            const conf = s.gpt_confidence ? Math.round(s.gpt_confidence * 100) : 0;
+            const confClass = conf >= 90 ? 'bg-success' : conf >= 70 ? 'bg-warning' : 'bg-danger';
+            const statusBadge = s.is_verified
+                ? '<span class="badge bg-success">Verified</span>'
+                : '<span class="badge bg-warning text-dark">Pending</span>';
+            const thumbnail = s.thumbnail_url
+                ? `<img src="${s.thumbnail_url}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px;">`
+                : '<i class="bi bi-file-earmark text-muted" style="font-size: 1.5rem;"></i>';
+
+            return `
+                <tr>
+                    <td class="text-center">${thumbnail}</td>
+                    <td>${s.document_type_name || 'Unknown'}</td>
+                    <td>${s.gpt_classification || '-'}</td>
+                    <td><span class="badge ${confClass}">${conf}%</span></td>
+                    <td>${statusBadge}</td>
+                    <td>${formatLocalDateOnly(s.created_at)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewTrainingSample(${s.id})" title="View & Verify">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function filterTrainingSamples() {
+        loadTrainingSamples();
+    }
+
+    async function viewTrainingSample(sampleId) {
+        try {
+            const response = await fetch(`/api/training/samples/${sampleId}`, { headers: getAuthHeaders() });
+            if (!response.ok) throw new Error('Failed to load sample');
+
+            const sample = await response.json();
+
+            // Populate modal
+            document.getElementById('currentSampleId').value = sampleId;
+            document.getElementById('sampleDocType').value = sample.document_type_name || sample.gpt_classification || 'Unknown';
+
+            const conf = sample.gpt_confidence ? Math.round(sample.gpt_confidence * 100) : 0;
+            const confBar = document.getElementById('sampleConfidenceBar');
+            confBar.style.width = conf + '%';
+            confBar.textContent = conf + '%';
+            confBar.className = 'progress-bar ' + (conf >= 90 ? 'bg-success' : conf >= 70 ? 'bg-warning' : 'bg-danger');
+
+            document.getElementById('sampleReasoning').textContent = sample.gpt_reasoning || 'No reasoning provided';
+
+            const features = sample.gpt_features ? JSON.parse(sample.gpt_features) : {};
+            document.getElementById('sampleFeatures').textContent = JSON.stringify(features, null, 2);
+
+            // Set verification status
+            const statusDiv = document.getElementById('sampleVerifyStatus');
+            if (sample.is_verified) {
+                statusDiv.innerHTML = `<span class="badge bg-success">Verified by ${sample.verified_by || 'Unknown'}</span>`;
+                document.getElementById('verifyCorrect').checked = !sample.corrected_type;
+                document.getElementById('verifyIncorrect').checked = !!sample.corrected_type;
+            } else {
+                statusDiv.innerHTML = '<span class="badge bg-warning text-dark">Pending Verification</span>';
+                document.getElementById('verifyCorrect').checked = false;
+                document.getElementById('verifyIncorrect').checked = false;
+            }
+
+            // Load document preview
+            const viewer = document.getElementById('sampleDocumentViewer');
+            if (sample.document_url) {
+                viewer.innerHTML = `<iframe src="${sample.document_url}" style="width: 100%; height: 100%; border: none;"></iframe>`;
+            } else if (sample.blob_name) {
+                viewer.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 4rem;"></i>
+                        <p class="mt-2">${sample.blob_name}</p>
+                        <small class="text-muted">Document preview not available</small>
+                    </div>
+                `;
+            }
+
+            // Populate corrected type dropdown
+            const correctedSelect = document.getElementById('correctedDocType');
+            correctedSelect.innerHTML = '<option value="">Select correct document type...</option>';
+            aiLearningData.documentTypes.forEach(dt => {
+                correctedSelect.innerHTML += `<option value="${dt.id}">${dt.name}</option>`;
+            });
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('trainingSampleModal'));
+            modal.show();
+        } catch (error) {
+            console.error('Error viewing sample:', error);
+            showToast('Error loading sample details', 'error');
+        }
+    }
+
+    async function verifySample() {
+        const sampleId = document.getElementById('currentSampleId').value;
+        const isCorrect = document.getElementById('verifyCorrect').checked;
+        const isIncorrect = document.getElementById('verifyIncorrect').checked;
+
+        if (!isCorrect && !isIncorrect) {
+            showToast('Please select whether the classification is correct or incorrect', 'warning');
+            return;
+        }
+
+        const correctedTypeId = isIncorrect ? document.getElementById('correctedDocType').value : null;
+        if (isIncorrect && !correctedTypeId) {
+            showToast('Please select the correct document type', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/training/samples/${sampleId}/verify`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    is_correct: isCorrect,
+                    corrected_type_id: correctedTypeId ? parseInt(correctedTypeId) : null
+                })
+            });
+
+            if (response.ok) {
+                showToast('Sample verified successfully', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('trainingSampleModal')).hide();
+                loadTrainingSamples();
+                loadAiLearningData(); // Refresh KPIs
+            } else {
+                throw new Error('Failed to verify sample');
+            }
+        } catch (error) {
+            console.error('Error verifying sample:', error);
+            showToast('Error saving verification', 'error');
+        }
+    }
+
+    function viewDocTypeSamples(docTypeId) {
+        document.getElementById('trainingSamplesPanel').style.display = 'block';
+        document.getElementById('sampleTypeFilter').value = docTypeId;
+        document.getElementById('sampleVerifyFilter').value = '';
+        loadTrainingSamples();
+        document.getElementById('trainingSamplesPanel').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function editDocType(docTypeId) {
+        // TODO: Implement document type editing modal
+        showToast('Document type editing coming soon', 'info');
+    }
+
+    async function trainClassifier() {
+        if (!confirm('This will build a Document Intelligence classifier from the training data. This may take several minutes. Continue?')) {
+            return;
+        }
+
+        const btn = document.getElementById('trainClassifierBtn2');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Building...';
+
+        try {
+            const response = await fetch('/api/training/build-classifier', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                showToast('Classifier built successfully! Model ID: ' + result.model_id, 'success');
+                loadAiLearningData();
+            } else {
+                throw new Error('Failed to build classifier');
+            }
+        } catch (error) {
+            console.error('Error building classifier:', error);
+            showToast('Error building classifier: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-lightning-fill"></i> Build Classifier';
+        }
     }
 
     // ============================================
