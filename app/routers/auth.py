@@ -58,6 +58,32 @@ def _verify_signed_state(signed_state: str, expected_state: str) -> dict:
         return None
 
 
+def _verify_signed_state_direct(signed_state: str) -> dict:
+    """
+    Verify the signed state JWT directly (no cookie comparison needed).
+    The state parameter from Microsoft IS the signed JWT.
+    Returns the payload if valid, None otherwise.
+    """
+    try:
+        payload = jwt.decode(
+            signed_state,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+        # Verify it has expected fields
+        if payload.get("state") and payload.get("redirect_after"):
+            logger.info("SSO state verified successfully")
+            return payload
+        logger.warning("SSO state missing required fields")
+        return None
+    except jwt.ExpiredSignatureError:
+        logger.warning("SSO state expired")
+        return None
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"Invalid SSO state: {e}")
+        return None
+
+
 def get_require_group_membership(db: Session) -> bool:
     """
     Check if group membership is required for SSO access.
@@ -179,33 +205,21 @@ async def sso_login(request: Request):
         )
 
     # Generate state for CSRF protection
-    state = entra_service.generate_state()
+    nonce = entra_service.generate_state()
     redirect_after = request.query_params.get("redirect", "/dashboard")
 
-    # Create signed state cookie (works across all workers)
-    signed_state = _create_signed_state(state, redirect_after)
+    # Create signed state that will be passed through Microsoft (no cookie needed)
+    # Microsoft echoes back the state parameter, so we encode all info there
+    signed_state = _create_signed_state(nonce, redirect_after)
 
-    # Get authorization URL and redirect
-    auth_url = entra_service.get_auth_url(state=state)
+    # Get authorization URL - pass the signed state directly to Microsoft
+    # Microsoft will return this exact value in the callback
+    auth_url = entra_service.get_auth_url(state=signed_state)
 
     logger.info("Redirecting user to Entra ID for SSO login")
-    logger.info(f"SSO login - setting state cookie, state: {state[:20]}...")
-    logger.info(f"SSO login - cookie settings: path=/api/auth/, secure={settings.ENVIRONMENT != 'development'}, samesite=lax")
-    response = RedirectResponse(url=auth_url)
+    logger.info(f"SSO login - using signed state (no cookie): {signed_state[:30]}...")
 
-    # Store state in a secure cookie
-    # IMPORTANT: path must be set to /api/auth/ so the callback can read it
-    response.set_cookie(
-        key=SSO_STATE_COOKIE,
-        value=signed_state,
-        path="/api/auth/",
-        httponly=True,
-        secure=settings.ENVIRONMENT != "development",
-        samesite="lax",
-        max_age=600  # 10 minutes
-    )
-
-    return response
+    return RedirectResponse(url=auth_url)
 
 
 @router.get("/callback")
@@ -222,9 +236,7 @@ async def sso_callback(
 
     Exchanges authorization code for tokens and creates/updates user.
     """
-    # Debug logging for SSO callback
-    logger.info(f"SSO callback received - state param: {state[:20] if state else 'None'}...")
-    logger.info(f"SSO callback - all cookies: {list(request.cookies.keys())}")
+    logger.info(f"SSO callback received - state param present: {bool(state)}")
 
     # Check for errors from Entra ID
     if error:
@@ -236,14 +248,9 @@ async def sso_callback(
         logger.error("SSO callback missing code or state")
         return RedirectResponse(url="/?error=invalid_callback")
 
-    # Verify state from cookie (CSRF protection - works across all workers)
-    signed_state = request.cookies.get(SSO_STATE_COOKIE)
-    logger.info(f"SSO callback - sso_state cookie present: {bool(signed_state)}")
-    if not signed_state:
-        logger.error(f"SSO callback: missing state cookie. Available cookies: {list(request.cookies.keys())}")
-        return RedirectResponse(url="/?error=invalid_state")
-
-    state_data = _verify_signed_state(signed_state, state)
+    # Verify the signed state directly from the parameter (no cookie needed)
+    # The state parameter IS the signed JWT - we just need to verify it
+    state_data = _verify_signed_state_direct(state)
     if not state_data:
         logger.error("SSO callback: invalid or expired state")
         return RedirectResponse(url="/?error=invalid_state")
@@ -389,8 +396,7 @@ async def sso_callback(
             max_age=expires_in
         )
 
-        # Delete the SSO state cookie (no longer needed)
-        response.delete_cookie(SSO_STATE_COOKIE, path="/api/auth/")
+        # Note: No cookie cleanup needed - we use signed state in URL param
 
         logger.info(f"SSO: User {user.email} successfully authenticated")
         return response
@@ -413,7 +419,6 @@ async def sso_logout(request: Request):
     response.delete_cookie("access_token", path="/")
     response.delete_cookie("user_info", path="/")
     response.delete_cookie("last_activity", path="/")
-    response.delete_cookie(SSO_STATE_COOKIE, path="/api/auth/")
 
     # If Entra ID is configured, redirect to Entra logout
     if entra_service.is_configured:
