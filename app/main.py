@@ -27,7 +27,7 @@ from app.models import (
     IntegrationLog, ScanningStation, LabelPrinter, LaserPrinter, UserWorkstationPreference,
     CodeAuditResult, CodeAuditSchedule, CodeAuditJob
 )
-from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation, scan, print as print_router, code_audit, training
+from app.routers import auth, documents, compliance, stats, tests, facilities, config, scim, queue, integrations, patients, workstation, scan, print as print_router, code_audit, training, ai_services
 from app.middleware.audit import AuditMiddleware
 from app.middleware.auth import AuthMiddleware
 from app.middleware.security import (
@@ -188,6 +188,29 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Documents extraction_method migration error: {e}")
 
+    # Add code_audit_jobs columns if missing
+    try:
+        inspector = inspect(engine)
+        if 'code_audit_jobs' in inspector.get_table_names():
+            existing_cols = [col['name'] for col in inspector.get_columns('code_audit_jobs')]
+            audit_cols = {
+                'current_category': 'NVARCHAR(50) NULL',
+                'completed_categories': 'INT NOT NULL DEFAULT 0'
+            }
+            for col_name, col_def in audit_cols.items():
+                if col_name not in existing_cols:
+                    with engine.connect() as conn:
+                        try:
+                            conn.execute(text(f"ALTER TABLE code_audit_jobs ADD {col_name} {col_def}"))
+                            conn.commit()
+                            logger.info(f"Added column '{col_name}' to code_audit_jobs table")
+                        except Exception as col_err:
+                            if "already exists" not in str(col_err).lower():
+                                logger.warning(f"Could not add column '{col_name}': {col_err}")
+        logger.info("Code audit jobs migration completed")
+    except Exception as e:
+        logger.error(f"Code audit jobs migration error: {e}")
+
     # Initialize default configuration values and read startup config
     blob_watch_enabled = True  # Default if config service fails
     from app.database import SessionLocal
@@ -331,6 +354,7 @@ app.include_router(scan.router, prefix="/api/scan", tags=["Scanner"])
 app.include_router(print_router.router, prefix="/api/print", tags=["Printing"])
 app.include_router(code_audit.router, prefix="/api/audit", tags=["Code Audit"])
 app.include_router(training.router, prefix="/api/training", tags=["AI Training"])
+app.include_router(ai_services.router, prefix="/api/ai-services", tags=["AI Services"])
 
 
 @app.get("/robots.txt")
