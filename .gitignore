@@ -173,3 +173,7 @@ scripts/jobs_store.json
 2.0.36
 jobs_store.json
 nul
+
+# Local deploy files
+deploy.zip
+deploy.ps1
