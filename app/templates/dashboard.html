@@ -1246,13 +1246,22 @@
         if (!userJson) {
             const cookies = document.cookie.split(';');
             for (const cookie of cookies) {
-                const [name, value] = cookie.trim().split('=');
+                const trimmed = cookie.trim();
+                const eqIndex = trimmed.indexOf('=');
+                if (eqIndex === -1) continue;
+
+                const name = trimmed.substring(0, eqIndex);
+                const value = trimmed.substring(eqIndex + 1);
+
                 if (name === 'user_info' && value) {
                     try {
                         userJson = decodeURIComponent(value);
                         // Store in localStorage for future use
                         localStorage.setItem('user', userJson);
-                    } catch (e) {}
+                        console.log('User info loaded from cookie:', userJson);
+                    } catch (e) {
+                        console.warn('Error decoding user_info cookie:', e);
+                    }
                     break;
                 }
             }
@@ -1282,15 +1291,17 @@
                 document.getElementById('dropdown-user-name').textContent = fullName;
                 document.getElementById('dropdown-user-email').textContent = email;
 
+                console.log('User display updated:', fullName, initials);
                 return; // User found, don't fall through to Developer
             } catch (e) {
-                console.warn('Error parsing user info:', e);
+                console.warn('Error parsing user info:', e, userJson);
             }
         }
 
         // Development mode fallback - only show if no real user is logged in
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const isDev = document.body.dataset.environment === 'development';
+        console.log('No user found, isLocalhost:', isLocalhost, 'isDev:', isDev);
         if (isLocalhost || isDev) {
             document.getElementById('hero-user-name').textContent = 'Developer';
             document.getElementById('user-initials').textContent = 'DV';
