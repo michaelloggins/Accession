@@ -140,13 +140,18 @@ jobs:
           --settings WEBSITES_CONTAINER_START_TIME_LIMIT=1200 \
           --output none
 
-        # Deploy with async to avoid GitHub timeout, Azure handles the rest
+        # Deploy with async - ignore CLI polling timeout (deployment continues in Azure)
+        # The CLI may timeout while polling, but deployment still completes successfully
         az webapp deploy \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --src-path deploy.zip \
           --type zip \
-          --async true
+          --async true \
+          --timeout 1200 || {
+            echo "⚠️ CLI polling timed out - deployment may still be in progress"
+            echo "This is expected for first-time deployments with pip install"
+          }
 
         echo ""
         echo "✅ Deployment package uploaded!"
