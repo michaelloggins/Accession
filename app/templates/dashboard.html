@@ -1239,7 +1239,23 @@
         document.getElementById('hero-date').textContent = new Date().toLocaleDateString('en-US', options);
     }
 
-    function updateHeroUserName() {
+    async function updateHeroUserName() {
+        // Try to fetch user info from API (works even when cookies are blocked by tracking prevention)
+        try {
+            const response = await fetch('/api/auth/me', {
+                credentials: 'include'  // Include cookies for authentication
+            });
+
+            if (response.ok) {
+                const user = await response.json();
+                displayUserInfo(user);
+                return;
+            }
+        } catch (e) {
+            console.log('Could not fetch user from API, trying localStorage/cookie');
+        }
+
+        // Fallback: Check localStorage
         let userJson = localStorage.getItem('user');
 
         // If not in localStorage, check user_info cookie (set by SAML/SSO login)
@@ -1256,12 +1272,8 @@
                 if (name === 'user_info' && value) {
                     try {
                         userJson = decodeURIComponent(value);
-                        // Store in localStorage for future use
                         localStorage.setItem('user', userJson);
-                        console.log('User info loaded from cookie:', userJson);
-                    } catch (e) {
-                        console.warn('Error decoding user_info cookie:', e);
-                    }
+                    } catch (e) {}
                     break;
                 }
             }
@@ -1270,44 +1282,43 @@
         if (userJson) {
             try {
                 const user = JSON.parse(userJson);
-                const fullName = user.full_name || 'User';
-                const email = user.email || '';
-
-                // Get first name for welcome message
-                const firstName = fullName.split(' ')[0];
-                document.getElementById('hero-user-name').textContent = firstName;
-
-                // Set initials in avatar (e.g., "Michael Loggins" -> "ML")
-                const nameParts = fullName.split(' ').filter(p => p.length > 0);
-                let initials = '--';
-                if (nameParts.length >= 2) {
-                    initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
-                } else if (nameParts.length === 1) {
-                    initials = nameParts[0].substring(0, 2).toUpperCase();
-                }
-                document.getElementById('user-initials').textContent = initials;
-
-                // Set dropdown info
-                document.getElementById('dropdown-user-name').textContent = fullName;
-                document.getElementById('dropdown-user-email').textContent = email;
-
-                console.log('User display updated:', fullName, initials);
-                return; // User found, don't fall through to Developer
+                displayUserInfo(user);
+                return;
             } catch (e) {
-                console.warn('Error parsing user info:', e, userJson);
+                console.warn('Error parsing user info:', e);
             }
         }
 
         // Development mode fallback - only show if no real user is logged in
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const isDev = document.body.dataset.environment === 'development';
-        console.log('No user found, isLocalhost:', isLocalhost, 'isDev:', isDev);
-        if (isLocalhost || isDev) {
-            document.getElementById('hero-user-name').textContent = 'Developer';
-            document.getElementById('user-initials').textContent = 'DV';
-            document.getElementById('dropdown-user-name').textContent = 'Developer';
-            document.getElementById('dropdown-user-email').textContent = 'dev@localhost';
+        if (isLocalhost) {
+            displayUserInfo({ full_name: 'Developer', email: 'dev@localhost' });
         }
+    }
+
+    function displayUserInfo(user) {
+        const fullName = user.full_name || 'User';
+        const email = user.email || '';
+
+        // Get first name for welcome message
+        const firstName = fullName.split(' ')[0];
+        document.getElementById('hero-user-name').textContent = firstName;
+
+        // Set initials in avatar (e.g., "Michael Loggins" -> "ML")
+        const nameParts = fullName.split(' ').filter(p => p.length > 0);
+        let initials = '--';
+        if (nameParts.length >= 2) {
+            initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+        } else if (nameParts.length === 1) {
+            initials = nameParts[0].substring(0, 2).toUpperCase();
+        }
+        document.getElementById('user-initials').textContent = initials;
+
+        // Set dropdown info
+        document.getElementById('dropdown-user-name').textContent = fullName;
+        document.getElementById('dropdown-user-email').textContent = email;
+
+        console.log('User display updated:', fullName, initials);
     }
 
     async function loadConfig() {
