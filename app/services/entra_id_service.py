@@ -180,6 +180,48 @@ class EntraIDService:
         logger.info(f"Retrieved user info for: {user_info['email']} with {len(group_ids)} groups")
         return user_info
 
+    async def get_user_photo(self, access_token: str) -> Optional[str]:
+        """
+        Get user profile photo from Microsoft Graph API.
+
+        Args:
+            access_token: Access token from Entra ID
+
+        Returns:
+            Base64 data URI string of the photo, or None if not available
+        """
+        import base64
+
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # Get photo binary data
+                photo_response = await client.get(
+                    f"{GRAPH_API_BASE}/me/photo/$value",
+                    headers=headers
+                )
+
+                if photo_response.status_code == 200:
+                    # Convert to base64 data URI
+                    photo_bytes = photo_response.content
+                    content_type = photo_response.headers.get("Content-Type", "image/jpeg")
+                    base64_photo = base64.b64encode(photo_bytes).decode('utf-8')
+                    data_uri = f"data:{content_type};base64,{base64_photo}"
+                    logger.info("Successfully retrieved user profile photo")
+                    return data_uri
+                elif photo_response.status_code == 404:
+                    logger.info("User does not have a profile photo")
+                    return None
+                else:
+                    logger.warning(f"Could not fetch profile photo: {photo_response.status_code}")
+                    return None
+        except Exception as e:
+            logger.warning(f"Error fetching profile photo: {e}")
+            return None
+
     def map_groups_to_role(self, group_ids: List[str]) -> Optional[str]:
         """
         Map Entra ID group memberships to application role.

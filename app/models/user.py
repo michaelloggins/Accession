@@ -1,6 +1,6 @@
 """User model for authentication and authorization."""
 
-from sqlalchemy import Column, String, DateTime, Boolean, Integer, Index
+from sqlalchemy import Column, String, DateTime, Boolean, Integer, Index, Text
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -26,6 +26,7 @@ class User(Base):
     entra_upn = Column(String(255), nullable=True)  # User Principal Name from Entra ID
     auth_provider = Column(String(50), default="local")  # "local" or "entra_id"
     last_synced_at = Column(DateTime, nullable=True)  # Last SCIM sync timestamp
+    photo_url = Column(Text, nullable=True)  # Profile photo as data URI (base64)
 
     # Security
     mfa_enabled = Column(Boolean, default=False)

@@ -350,6 +350,8 @@ a:hover {
     border: 1px solid var(--border-subtle);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     background: var(--card-bg);
+    z-index: 9999 !important;
+    position: absolute;
 }
 
 .user-dropdown .dropdown-header {

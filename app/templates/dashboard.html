@@ -1248,6 +1248,8 @@
 
             if (response.ok) {
                 const user = await response.json();
+                // Save to localStorage so other functions (like saveWorkstationPreference) can access it
+                localStorage.setItem('user', JSON.stringify(user));
                 displayUserInfo(user);
                 return;
             }
@@ -1314,11 +1316,23 @@
         }
         document.getElementById('user-initials').textContent = initials;
 
+        // Set profile photo if available, otherwise show initials
+        const photoEl = document.getElementById('user-photo');
+        const initialsEl = document.getElementById('user-initials');
+        if (user.photo_url) {
+            photoEl.src = user.photo_url;
+            photoEl.style.display = 'block';
+            initialsEl.style.display = 'none';
+        } else {
+            photoEl.style.display = 'none';
+            initialsEl.style.display = 'flex';
+        }
+
         // Set dropdown info
         document.getElementById('dropdown-user-name').textContent = fullName;
         document.getElementById('dropdown-user-email').textContent = email;
 
-        console.log('User display updated:', fullName, initials);
+        console.log('User display updated:', fullName, user.photo_url ? 'with photo' : initials);
     }
 
     async function loadConfig() {

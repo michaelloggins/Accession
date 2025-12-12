@@ -203,7 +203,8 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
             "id": user.id,
             "email": user.email,
             "full_name": user.full_name,
-            "role": user.role
+            "role": user.role,
+            "photo_url": user.photo_url
         }
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -299,6 +300,9 @@ async def sso_callback(
         access_token = token_result.get("access_token")
         user_info = await entra_service.get_user_info(access_token)
 
+        # Fetch profile photo (non-blocking, optional)
+        photo_url = await entra_service.get_user_photo(access_token)
+
         # Check if group membership is required (from database or env var)
         require_group = get_require_group_membership(db)
 
@@ -339,6 +343,8 @@ async def sso_callback(
             user.last_login = now_eastern()
             user.last_synced_at = now_eastern()
             user.failed_login_attempts = 0
+            if photo_url:
+                user.photo_url = photo_url
 
             logger.info(f"SSO: Updated existing user: {user.email}")
         else:
@@ -355,7 +361,8 @@ async def sso_callback(
                 last_login=now_eastern(),
                 last_synced_at=now_eastern(),
                 created_at=now_eastern(),
-                created_by="SSO"
+                created_by="SSO",
+                photo_url=photo_url
             )
             db.add(user)
             logger.info(f"SSO: Created new user via JIT: {user.email}")
