@@ -189,6 +189,8 @@ async def sso_login(request: Request):
     auth_url = entra_service.get_auth_url(state=state)
 
     logger.info("Redirecting user to Entra ID for SSO login")
+    logger.info(f"SSO login - setting state cookie, state: {state[:20]}...")
+    logger.info(f"SSO login - cookie settings: path=/api/auth/, secure={settings.ENVIRONMENT != 'development'}, samesite=lax")
     response = RedirectResponse(url=auth_url)
 
     # Store state in a secure cookie
@@ -220,6 +222,10 @@ async def sso_callback(
 
     Exchanges authorization code for tokens and creates/updates user.
     """
+    # Debug logging for SSO callback
+    logger.info(f"SSO callback received - state param: {state[:20] if state else 'None'}...")
+    logger.info(f"SSO callback - all cookies: {list(request.cookies.keys())}")
+
     # Check for errors from Entra ID
     if error:
         logger.error(f"SSO callback error: {error} - {error_description}")
@@ -232,8 +238,9 @@ async def sso_callback(
 
     # Verify state from cookie (CSRF protection - works across all workers)
     signed_state = request.cookies.get(SSO_STATE_COOKIE)
+    logger.info(f"SSO callback - sso_state cookie present: {bool(signed_state)}")
     if not signed_state:
-        logger.error("SSO callback: missing state cookie")
+        logger.error(f"SSO callback: missing state cookie. Available cookies: {list(request.cookies.keys())}")
         return RedirectResponse(url="/?error=invalid_state")
 
     state_data = _verify_signed_state(signed_state, state)
