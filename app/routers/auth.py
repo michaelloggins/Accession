@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import logging
 import secrets
+import jwt
 
 from app.database import get_db
 from app.config import settings
@@ -20,8 +21,41 @@ from app.utils.timezone import now_eastern
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# In-memory state storage for CSRF protection (use Redis in production)
-_sso_states = {}
+# SSO state cookie name
+SSO_STATE_COOKIE = "sso_state"
+
+
+def _create_signed_state(state: str, redirect_after: str) -> str:
+    """Create a signed JWT containing the SSO state for cookie storage."""
+    payload = {
+        "state": state,
+        "redirect_after": redirect_after,
+        "exp": datetime.utcnow() + timedelta(minutes=10)
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def _verify_signed_state(signed_state: str, expected_state: str) -> dict:
+    """
+    Verify the signed state cookie and return the payload if valid.
+    Returns None if invalid or expired.
+    """
+    try:
+        payload = jwt.decode(
+            signed_state,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+        if payload.get("state") == expected_state:
+            return payload
+        logger.warning("SSO state mismatch")
+        return None
+    except jwt.ExpiredSignatureError:
+        logger.warning("SSO state cookie expired")
+        return None
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"Invalid SSO state cookie: {e}")
+        return None
 
 
 def get_require_group_membership(db: Session) -> bool:
@@ -146,21 +180,28 @@ async def sso_login(request: Request):
 
     # Generate state for CSRF protection
     state = entra_service.generate_state()
+    redirect_after = request.query_params.get("redirect", "/dashboard")
 
-    # Store state temporarily (expires after 10 minutes)
-    _sso_states[state] = {
-        "created_at": now_eastern(),
-        "redirect_after": request.query_params.get("redirect", "/dashboard")
-    }
-
-    # Clean up old states (older than 10 minutes)
-    _cleanup_old_states()
+    # Create signed state cookie (works across all workers)
+    signed_state = _create_signed_state(state, redirect_after)
 
     # Get authorization URL and redirect
     auth_url = entra_service.get_auth_url(state=state)
 
     logger.info("Redirecting user to Entra ID for SSO login")
-    return RedirectResponse(url=auth_url)
+    response = RedirectResponse(url=auth_url)
+
+    # Store state in a secure cookie
+    response.set_cookie(
+        key=SSO_STATE_COOKIE,
+        value=signed_state,
+        httponly=True,
+        secure=settings.ENVIRONMENT != "development",
+        samesite="lax",
+        max_age=600  # 10 minutes
+    )
+
+    return response
 
 
 @router.get("/callback")
@@ -187,8 +228,13 @@ async def sso_callback(
         logger.error("SSO callback missing code or state")
         return RedirectResponse(url="/?error=invalid_callback")
 
-    # Verify state (CSRF protection)
-    state_data = _sso_states.pop(state, None)
+    # Verify state from cookie (CSRF protection - works across all workers)
+    signed_state = request.cookies.get(SSO_STATE_COOKIE)
+    if not signed_state:
+        logger.error("SSO callback: missing state cookie")
+        return RedirectResponse(url="/?error=invalid_state")
+
+    state_data = _verify_signed_state(signed_state, state)
     if not state_data:
         logger.error("SSO callback: invalid or expired state")
         return RedirectResponse(url="/?error=invalid_state")
@@ -334,6 +380,9 @@ async def sso_callback(
             max_age=expires_in
         )
 
+        # Delete the SSO state cookie (no longer needed)
+        response.delete_cookie(SSO_STATE_COOKIE)
+
         logger.info(f"SSO: User {user.email} successfully authenticated")
         return response
 
@@ -355,6 +404,7 @@ async def sso_logout(request: Request):
     response.delete_cookie("access_token")
     response.delete_cookie("user_info")
     response.delete_cookie("last_activity")
+    response.delete_cookie(SSO_STATE_COOKIE)
 
     # If Entra ID is configured, redirect to Entra logout
     if entra_service.is_configured:
@@ -391,17 +441,6 @@ async def sso_status():
         "client_id": settings.AZURE_AD_CLIENT_ID[:8] + "..." if settings.AZURE_AD_CLIENT_ID else None,
         "redirect_uri_configured": bool(settings.AZURE_AD_REDIRECT_URI) if settings.SSO_METHOD != "saml" else True
     }
-
-
-def _cleanup_old_states():
-    """Remove expired SSO states (older than 10 minutes)."""
-    cutoff = now_eastern() - timedelta(minutes=10)
-    expired = [
-        state for state, data in _sso_states.items()
-        if data["created_at"] < cutoff
-    ]
-    for state in expired:
-        _sso_states.pop(state, None)
 
 
 # =============================================================================

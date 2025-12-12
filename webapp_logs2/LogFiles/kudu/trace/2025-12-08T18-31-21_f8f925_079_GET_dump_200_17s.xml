@@ -1,6 +1,0 @@
-<step title="Incoming Request" date="2025-12-08T18:31:21.262" instance="f8f925" url="/dump" method="GET" type="request" pid="774,1,25" Host="app-accession-dev.scm.azurewebsites.net" User-Agent="AZURECLI/2.77.0 (MSI)" Accept-Encoding="identity" Authorization="Bea..." x-ms-client-request-id="15107ade-d464-11f0-8816-70089467f08a" X-ARR-LOG-ID="15107ade-d464-11f0-8816-70089467f08a" CLIENT-IP="73.102.252.105:52057" X-SITE-DEPLOYMENT-ID="app-accession-dev" WAS-DEFAULT-HOSTNAME="app-accession-dev.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/dump" X-Client-IP="73.102.252.105" X-Client-Port="52057" >
-  <step title="Cleanup Xml Logs" date="2025-12-08T18:31:21.272" >
-    <step title="Cleanup Infos" date="2025-12-08T18:31:21.311" totalFiles="565" totalCleanup="405" /><!-- duration: 12ms -->
-  </step><!-- duration: 54ms -->
-  <step title="Outgoing response" date="2025-12-08T18:31:38.201" type="response" statusCode="200" statusText="OK" /><!-- duration: 6ms -->
-</step><!-- duration: 16949ms -->

@@ -138,7 +138,8 @@ security-scan-results.json
 # ========== Azure App Logs ==========
 app_logs*/
 app_logs*.zip
-webapp_logs/
+webapp_logs*/
+webapp_logs*.zip
 api_logs/
 api_error_logs/
 debug_logs/
@@ -149,6 +150,9 @@ fresh_logs_extract/
 latest_debug_logs/
 latest_logs*/
 *_extract/
+current_logs/
+error_logs/
+*_logs/
 
 # ========== Debug/Troubleshooting Folders ==========
 auth_debug/

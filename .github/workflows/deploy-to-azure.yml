@@ -53,8 +53,14 @@ jobs:
           -x "node_modules/*" \
           -x "*.log" \
           -x "webapp_logs*/*" \
+          -x "current_logs/*" \
+          -x "error_logs/*" \
+          -x "*_logs/*" \
+          -x "*_extract/*" \
+          -x "*.zip" \
           -x ".github/*" \
           -x "tests/*" \
+          -x "infrastructure/*" \
           -x "deploy.zip"
 
         echo "📦 Package size: $(du -h deploy.zip | cut -f1)"
@@ -127,6 +133,14 @@ jobs:
       run: |
         echo "🚀 Deploying to ${{ env.AZURE_WEBAPP_NAME }}..."
 
+        # Use longer timeout for pip install during startup (20 minutes)
+        az webapp config appsettings set \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --settings WEBSITES_CONTAINER_START_TIME_LIMIT=1200 \
+          --output none
+
+        # Deploy with async to avoid GitHub timeout, Azure handles the rest
         az webapp deploy \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
@@ -138,7 +152,7 @@ jobs:
         echo "✅ Deployment package uploaded!"
         echo "📍 Site: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
         echo ""
-        echo "Note: Site will be available in ~1-2 minutes as container restarts"
+        echo "Note: First startup may take 5-10 minutes for pip install"
 
     - name: Quick status check
       run: |

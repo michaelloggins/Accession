@@ -1,3 +1,0 @@
-<step title="Startup Request" date="2025-12-04T18:14:11.836" instance="f8f925" url="/webssh/socket.io/?EIO=4&amp;transport=polling&amp;t=PhgaLn1&amp;sid=nQmYY4SJ_IM0EUZMAAAA" method="GET" type="request" pid="770,1,5" SCM_DO_BUILD_DURING_DEPLOYMENT="true" ScmType="None" >
-  <step title="Cleanup Xml Logs" date="2025-12-04T18:14:11.863" /><!-- duration: 68ms -->
-</step><!-- duration: 250ms -->
