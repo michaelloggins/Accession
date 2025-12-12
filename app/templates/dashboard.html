@@ -50,9 +50,20 @@
                 <span id="timer-display">15:00</span>
             </div>
 
-            <!-- User Info -->
-            <div class="user-avatar" id="user-avatar" title="Click to logout" onclick="logout()">
-                <span id="user-initials">--</span>
+            <!-- User Menu Dropdown -->
+            <div class="dropdown">
+                <div class="user-avatar" id="user-avatar" data-bs-toggle="dropdown" aria-expanded="false" title="User menu">
+                    <img id="user-photo" src="" alt="" style="display: none;">
+                    <span id="user-initials">--</span>
+                </div>
+                <ul class="dropdown-menu dropdown-menu-end user-dropdown">
+                    <li class="dropdown-header">
+                        <div class="user-dropdown-name" id="dropdown-user-name">User</div>
+                        <div class="user-dropdown-email" id="dropdown-user-email">user@example.com</div>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="logout(); return false;"><i class="bi bi-box-arrow-right me-2"></i>Log Out</a></li>
+                </ul>
             </div>
         </div>
     </nav>
@@ -1250,16 +1261,41 @@
         if (userJson) {
             try {
                 const user = JSON.parse(userJson);
-                document.getElementById('hero-user-name').textContent = user.full_name || 'User';
-            } catch (e) {}
+                const fullName = user.full_name || 'User';
+                const email = user.email || '';
+
+                // Get first name for welcome message
+                const firstName = fullName.split(' ')[0];
+                document.getElementById('hero-user-name').textContent = firstName;
+
+                // Set initials in avatar (e.g., "Michael Loggins" -> "ML")
+                const nameParts = fullName.split(' ').filter(p => p.length > 0);
+                let initials = '--';
+                if (nameParts.length >= 2) {
+                    initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+                } else if (nameParts.length === 1) {
+                    initials = nameParts[0].substring(0, 2).toUpperCase();
+                }
+                document.getElementById('user-initials').textContent = initials;
+
+                // Set dropdown info
+                document.getElementById('dropdown-user-name').textContent = fullName;
+                document.getElementById('dropdown-user-email').textContent = email;
+
+                return; // User found, don't fall through to Developer
+            } catch (e) {
+                console.warn('Error parsing user info:', e);
+            }
         }
 
         // Development mode fallback - only show if no real user is logged in
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const isDev = document.body.dataset.environment === 'development';
-        const hasRealUser = userJson && JSON.parse(userJson).full_name;
-        if ((isLocalhost || isDev) && !hasRealUser) {
+        if (isLocalhost || isDev) {
             document.getElementById('hero-user-name').textContent = 'Developer';
+            document.getElementById('user-initials').textContent = 'DV';
+            document.getElementById('dropdown-user-name').textContent = 'Developer';
+            document.getElementById('dropdown-user-email').textContent = 'dev@localhost';
         }
     }
 
