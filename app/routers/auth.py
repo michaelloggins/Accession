@@ -192,9 +192,11 @@ async def sso_login(request: Request):
     response = RedirectResponse(url=auth_url)
 
     # Store state in a secure cookie
+    # IMPORTANT: path must be set to /api/auth/ so the callback can read it
     response.set_cookie(
         key=SSO_STATE_COOKIE,
         value=signed_state,
+        path="/api/auth/",
         httponly=True,
         secure=settings.ENVIRONMENT != "development",
         samesite="lax",
@@ -381,7 +383,7 @@ async def sso_callback(
         )
 
         # Delete the SSO state cookie (no longer needed)
-        response.delete_cookie(SSO_STATE_COOKIE)
+        response.delete_cookie(SSO_STATE_COOKIE, path="/api/auth/")
 
         logger.info(f"SSO: User {user.email} successfully authenticated")
         return response
@@ -401,10 +403,10 @@ async def sso_logout(request: Request):
     # Clear application cookies
     response = RedirectResponse(url="/")
 
-    response.delete_cookie("access_token")
-    response.delete_cookie("user_info")
-    response.delete_cookie("last_activity")
-    response.delete_cookie(SSO_STATE_COOKIE)
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("user_info", path="/")
+    response.delete_cookie("last_activity", path="/")
+    response.delete_cookie(SSO_STATE_COOKIE, path="/api/auth/")
 
     # If Entra ID is configured, redirect to Entra logout
     if entra_service.is_configured:
