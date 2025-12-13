@@ -204,7 +204,7 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role,
-            "photo_url": user.photo_url
+            "photo_url": getattr(user, 'photo_url', None)
         }
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -343,8 +343,12 @@ async def sso_callback(
             user.last_login = now_eastern()
             user.last_synced_at = now_eastern()
             user.failed_login_attempts = 0
-            if photo_url:
-                user.photo_url = photo_url
+            # Try to set photo (may fail if column doesn't exist yet)
+            try:
+                if photo_url and hasattr(user, 'photo_url'):
+                    user.photo_url = photo_url
+            except Exception as e:
+                logger.warning(f"Could not save profile photo: {e}")
 
             logger.info(f"SSO: Updated existing user: {user.email}")
         else:
@@ -361,9 +365,14 @@ async def sso_callback(
                 last_login=now_eastern(),
                 last_synced_at=now_eastern(),
                 created_at=now_eastern(),
-                created_by="SSO",
-                photo_url=photo_url
+                created_by="SSO"
             )
+            # Try to set photo (may fail if column doesn't exist yet)
+            try:
+                if photo_url and hasattr(User, 'photo_url'):
+                    user.photo_url = photo_url
+            except Exception as e:
+                logger.warning(f"Could not save profile photo for new user: {e}")
             db.add(user)
             logger.info(f"SSO: Created new user via JIT: {user.email}")
 
