@@ -300,8 +300,12 @@ async def sso_callback(
         access_token = token_result.get("access_token")
         user_info = await entra_service.get_user_info(access_token)
 
-        # Fetch profile photo (non-blocking, optional)
-        photo_url = await entra_service.get_user_photo(access_token)
+        # Fetch profile photo (non-blocking, optional - should not break SSO)
+        photo_url = None
+        try:
+            photo_url = await entra_service.get_user_photo(access_token)
+        except Exception as e:
+            logger.warning(f"Could not fetch profile photo: {e}")
 
         # Check if group membership is required (from database or env var)
         require_group = get_require_group_membership(db)
